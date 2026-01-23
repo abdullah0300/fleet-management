@@ -78,7 +78,7 @@ export function DocumentCard({ document, onDelete, onView }: DocumentCardProps) 
                             {getEntityBadge()}
                         </div>
                         <h3 className="font-semibold mt-1 text-sm sm:text-base">
-                            {getDocumentTypeLabel(document.document_type)}
+                            {getDocumentTypeLabel(document.document_type || 'other')}
                         </h3>
                         {document.expiry_date && (
                             <p className={cn(
@@ -110,7 +110,7 @@ export function DocumentCard({ document, onDelete, onView }: DocumentCardProps) 
                                 variant="ghost"
                                 size="icon"
                                 className="h-8 w-8"
-                                onClick={() => window.open(document.file_url, '_blank')}
+                                onClick={() => document.file_url && window.open(document.file_url, '_blank')}
                             >
                                 <ExternalLink className="h-4 w-4" />
                             </Button>
