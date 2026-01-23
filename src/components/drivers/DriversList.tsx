@@ -134,7 +134,6 @@ export function DriversList({ initialData }: DriversListProps) {
                         <DriverCard
                             key={driver.id}
                             driver={driver}
-                            onViewDetails={() => router.push(`/dashboard/drivers/${driver.id}`)}
                         />
                     ))}
                 </div>
