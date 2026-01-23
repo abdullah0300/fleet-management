@@ -87,7 +87,7 @@ export function NotificationBell() {
                                 >
                                     {/* Icon */}
                                     <span className="text-lg shrink-0">
-                                        {getNotificationIcon(notification.type)}
+                                        {getNotificationIcon(notification.type || 'default')}
                                     </span>
 
                                     {/* Content */}
