@@ -1,26 +1,260 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
+@theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* Status Colors - Semantic Tokens */
+  --color-status-success: var(--status-success);
+  --color-status-success-foreground: var(--status-success-foreground);
+  --color-status-success-muted: var(--status-success-muted);
+
+  --color-status-warning: var(--status-warning);
+  --color-status-warning-foreground: var(--status-warning-foreground);
+  --color-status-warning-muted: var(--status-warning-muted);
+
+  --color-status-error: var(--status-error);
+  --color-status-error-foreground: var(--status-error-foreground);
+  --color-status-error-muted: var(--status-error-muted);
+
+  --color-status-info: var(--status-info);
+  --color-status-info-foreground: var(--status-info-foreground);
+  --color-status-info-muted: var(--status-info-muted);
+
+  /* Accent Colors - For KPIs and highlights */
+  --color-accent-purple: var(--accent-purple);
+  --color-accent-purple-foreground: var(--accent-purple-foreground);
+  --color-accent-purple-muted: var(--accent-purple-muted);
+
+  --color-accent-orange: var(--accent-orange);
+  --color-accent-orange-foreground: var(--accent-orange-foreground);
+  --color-accent-orange-muted: var(--accent-orange-muted);
+
+  --color-accent-teal: var(--accent-teal);
+  --color-accent-teal-foreground: var(--accent-teal-foreground);
+  --color-accent-teal-muted: var(--accent-teal-muted);
+
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Base styles - Light Mode */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.129 0.042 264.695);
+
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.129 0.042 264.695);
+
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.129 0.042 264.695);
+
+  --primary: oklch(0.546 0.245 262.881);
+  /* Blue-600 equivalent */
+  --primary-foreground: oklch(0.985 0 0);
+
+  --secondary: oklch(0.97 0.005 264.695);
+  --secondary-foreground: oklch(0.205 0.042 264.695);
+
+  --muted: oklch(0.97 0.005 264.695);
+  --muted-foreground: oklch(0.556 0.042 264.695);
+
+  --accent: oklch(0.97 0.005 264.695);
+  --accent-foreground: oklch(0.205 0.042 264.695);
+
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  --border: oklch(0.922 0.005 264.695);
+  --input: oklch(0.922 0.005 264.695);
+  --ring: oklch(0.546 0.245 262.881);
+
+  --radius: 0.5rem;
+
+  /* Status Colors - Light Mode */
+  --status-success: oklch(0.527 0.154 150.069);
+  /* Green-600 */
+  --status-success-foreground: oklch(0.985 0 0);
+  --status-success-muted: oklch(0.962 0.044 156.743);
+  /* Green-50 */
+
+  --status-warning: oklch(0.681 0.162 75.834);
+  /* Yellow-500 */
+  --status-warning-foreground: oklch(0.129 0.042 264.695);
+  --status-warning-muted: oklch(0.987 0.026 102.212);
+  /* Yellow-50 */
+
+  --status-error: oklch(0.577 0.245 27.325);
+  /* Red-600 */
+  --status-error-foreground: oklch(0.985 0 0);
+  --status-error-muted: oklch(0.971 0.013 17.38);
+  /* Red-50 */
+
+  --status-info: oklch(0.546 0.245 262.881);
+  /* Blue-600 */
+  --status-info-foreground: oklch(0.985 0 0);
+  --status-info-muted: oklch(0.97 0.014 254.604);
+  /* Blue-50 */
+
+  /* Accent Colors - Light Mode */
+  --accent-purple: oklch(0.558 0.288 302.321);
+  /* Purple-600 */
+  --accent-purple-foreground: oklch(0.985 0 0);
+  --accent-purple-muted: oklch(0.977 0.014 308.299);
+  /* Purple-50 */
+
+  --accent-orange: oklch(0.646 0.222 41.116);
+  /* Orange-500 */
+  --accent-orange-foreground: oklch(0.985 0 0);
+  --accent-orange-muted: oklch(0.98 0.016 73.684);
+  /* Orange-50 */
+
+  --accent-teal: oklch(0.577 0.127 180.067);
+  /* Teal-600 */
+  --accent-teal-foreground: oklch(0.985 0 0);
+  --accent-teal-muted: oklch(0.984 0.014 180.72);
+  /* Teal-50 */
+}
+
+/* Dark Mode */
+.dark {
+  --background: oklch(0.129 0.042 264.695);
+  --foreground: oklch(0.985 0 0);
+
+  --card: oklch(0.17 0.042 264.695);
+  --card-foreground: oklch(0.985 0 0);
+
+  --popover: oklch(0.17 0.042 264.695);
+  --popover-foreground: oklch(0.985 0 0);
+
+  --primary: oklch(0.623 0.214 259.815);
+  /* Blue-500 */
+  --primary-foreground: oklch(0.129 0.042 264.695);
+
+  --secondary: oklch(0.269 0.042 264.695);
+  --secondary-foreground: oklch(0.985 0 0);
+
+  --muted: oklch(0.269 0.042 264.695);
+  --muted-foreground: oklch(0.708 0.042 264.695);
+
+  --accent: oklch(0.269 0.042 264.695);
+  --accent-foreground: oklch(0.985 0 0);
+
+  --destructive: oklch(0.577 0.245 27.325);
+  --destructive-foreground: oklch(0.985 0 0);
+
+  --border: oklch(0.269 0.042 264.695);
+  --input: oklch(0.269 0.042 264.695);
+  --ring: oklch(0.623 0.214 259.815);
+
+  /* Status Colors - Dark Mode */
+  --status-success: oklch(0.696 0.17 162.48);
+  /* Green-400 */
+  --status-success-foreground: oklch(0.129 0.042 264.695);
+  --status-success-muted: oklch(0.287 0.082 142.495);
+  /* Dark green bg */
+
+  --status-warning: oklch(0.795 0.184 86.047);
+  /* Yellow-400 */
+  --status-warning-foreground: oklch(0.129 0.042 264.695);
+  --status-warning-muted: oklch(0.333 0.101 68.3);
+  /* Dark yellow bg */
+
+  --status-error: oklch(0.704 0.191 22.216);
+  /* Red-400 */
+  --status-error-foreground: oklch(0.129 0.042 264.695);
+  --status-error-muted: oklch(0.269 0.122 25.331);
+  /* Dark red bg */
+
+  --status-info: oklch(0.707 0.165 254.624);
+  /* Blue-400 */
+  --status-info-foreground: oklch(0.129 0.042 264.695);
+  --status-info-muted: oklch(0.25 0.086 254.21);
+  /* Dark blue bg */
+
+  /* Accent Colors - Dark Mode */
+  --accent-purple: oklch(0.714 0.203 305.504);
+  /* Purple-400 */
+  --accent-purple-foreground: oklch(0.129 0.042 264.695);
+  --accent-purple-muted: oklch(0.289 0.127 306.383);
+  /* Dark purple bg */
+
+  --accent-orange: oklch(0.75 0.183 55.934);
+  /* Orange-400 */
+  --accent-orange-foreground: oklch(0.129 0.042 264.695);
+  --accent-orange-muted: oklch(0.333 0.123 38.172);
+  /* Dark orange bg */
+
+  --accent-teal: oklch(0.704 0.14 182.503);
+  /* Teal-400 */
+  --accent-teal-foreground: oklch(0.129 0.042 264.695);
+  --accent-teal-muted: oklch(0.262 0.051 180.312);
+  /* Dark teal bg */
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Utility classes for status badges */
+@layer utilities {
+  .badge-success {
+    @apply bg-status-success-muted text-status-success border-status-success/20;
+  }
+
+  .badge-warning {
+    @apply bg-status-warning-muted text-status-warning border-status-warning/20;
+  }
+
+  .badge-error {
+    @apply bg-status-error-muted text-status-error border-status-error/20;
+  }
+
+  .badge-info {
+    @apply bg-status-info-muted text-status-info border-status-info/20;
+  }
+
+  .badge-purple {
+    @apply bg-accent-purple-muted text-accent-purple border-accent-purple/20;
+  }
+
+  .badge-orange {
+    @apply bg-accent-orange-muted text-accent-orange border-accent-orange/20;
+  }
+
+  .badge-neutral {
+    @apply bg-muted text-muted-foreground border-border;
+  }
 }
