@@ -4,11 +4,10 @@ import { useRouter } from 'next/navigation'
 import { User, Phone, CreditCard, Truck, IdCard, Calendar } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { DriverWithProfile } from '@/hooks/useDrivers'
 
 interface DriverCardProps {
-    driver: DriverWithProfile
-    onEdit?: (driver: DriverWithProfile) => void
+    driver: any
+    onEdit?: (driver: any) => void
 }
 
 export function DriverCard({ driver, onEdit }: DriverCardProps) {

@@ -7,10 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { VehicleCard } from '@/components/vehicles/VehicleCard'
-import { Vehicle } from '@/types/database'
 
 interface VehiclesListProps {
-    initialData: Vehicle[]
+    initialData: any[]
 }
 
 export function VehiclesList({ initialData }: VehiclesListProps) {
@@ -131,11 +130,10 @@ export function VehiclesList({ initialData }: VehiclesListProps) {
                 </div>
             ) : (
                 <div className="grid gap-3 sm:gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
-                    {filteredVehicles.map((vehicle) => (
+                    {filteredVehicles.map((vehicle: any) => (
                         <VehicleCard
                             key={vehicle.id}
                             vehicle={vehicle}
-                            onViewDetails={() => router.push(`/dashboard/vehicles/${vehicle.id}`)}
                         />
                     ))}
                 </div>

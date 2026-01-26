@@ -4,11 +4,10 @@ import { useRouter } from 'next/navigation'
 import { Truck, MapPin, User, Gauge, Wrench } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { VehicleWithDriver } from '@/hooks/useVehicles'
 
 interface VehicleCardProps {
-    vehicle: VehicleWithDriver
-    onEdit?: (vehicle: VehicleWithDriver) => void
+    vehicle: any
+    onEdit?: (vehicle: any) => void
 }
 
 export function VehicleCard({ vehicle, onEdit }: VehicleCardProps) {
