@@ -68,7 +68,8 @@ export function StatusChart({ data, type = 'pie', height = 200 }: StatusChartPro
                         type="category"
                         dataKey="name"
                         width={80}
-                        tick={{ fontSize: 12, textTransform: 'capitalize' }}
+                        tick={{ fontSize: 12 }}
+                        tickFormatter={(value) => String(value).charAt(0).toUpperCase() + String(value).slice(1)}
                     />
                     <Tooltip
                         contentStyle={{
