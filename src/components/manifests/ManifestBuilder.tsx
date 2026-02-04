@@ -51,10 +51,10 @@ export function ManifestBuilder() {
         queryFn: async () => {
             const { data } = await supabase
                 .from('jobs')
-                .select('*') // All fields including customer_name
+                .select('*, job_stops(type, address)') // All fields including customer_name and stops
                 .eq('status', 'pending')
                 .is('manifest_id', null) // Only unassigned
-            return (data || []) as Job[]
+            return (data || []) as any[] // weak type cast to allow flow, or strict (Job & { job_stops: any[] })[]
         }
     })
 
@@ -261,7 +261,7 @@ export function ManifestBuilder() {
                                         <div className="flex-1">
                                             <div className="font-semibold">{job.job_number}</div>
                                             <div className="text-sm text-muted-foreground">
-                                                {job.customer_name} • {(job.delivery_location as any)?.address}
+                                                {job.customer_name} • {getJobDeliveryAddress(job as any)}
                                             </div>
                                         </div>
                                         <Button
