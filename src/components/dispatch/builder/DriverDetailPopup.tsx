@@ -40,7 +40,8 @@ export function DriverDetailPopup({ driver, open, onOpenChange, onSelectForManif
     )
 
     // Get current job from the manifest
-    const currentJob = currentManifest?.manifest_jobs?.[0]?.job || null
+    // Get current job from the manifest
+    const currentJob = currentManifest?.jobs?.[0] || null
 
     // Filter completed jobs for this driver (last 5)
     const driverJobs = allJobs
@@ -65,10 +66,10 @@ export function DriverDetailPopup({ driver, open, onOpenChange, onSelectForManif
         if (!currentManifest) return null
 
         // Get the last stop from current manifest jobs
-        const manifestJobs = currentManifest.manifest_jobs || []
+        const manifestJobs = currentManifest.jobs || []
         if (manifestJobs.length === 0) return null
 
-        const lastJob = manifestJobs[manifestJobs.length - 1]?.job
+        const lastJob = manifestJobs[manifestJobs.length - 1]
         if (!lastJob) return null
 
         // Use scheduled_time if available
@@ -140,7 +141,7 @@ export function DriverDetailPopup({ driver, open, onOpenChange, onSelectForManif
                                                 Manifest #{currentManifest.manifest_number || currentManifest.id?.slice(0, 8)}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
-                                                {currentManifest.manifest_jobs?.length || 0} job(s) • {currentManifest.status}
+                                                {currentManifest.jobs?.length || 0} job(s) • {currentManifest.status}
                                             </p>
                                         </div>
                                         <Badge variant="outline" className="text-xs">

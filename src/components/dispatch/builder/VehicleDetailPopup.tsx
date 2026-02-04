@@ -40,7 +40,8 @@ export function VehicleDetailPopup({ vehicle, open, onOpenChange, onSelectForMan
     )
 
     // Get current job from the manifest
-    const currentJob = currentManifest?.manifest_jobs?.[0]?.job || null
+    // Get current job from the manifest
+    const currentJob = currentManifest?.jobs?.[0] || null
 
     // Filter jobs for this vehicle (last 5)
     const vehicleJobs = allJobs
@@ -64,10 +65,10 @@ export function VehicleDetailPopup({ vehicle, open, onOpenChange, onSelectForMan
     const getEstimatedFreeTime = () => {
         if (!currentManifest) return null
 
-        const manifestJobs = currentManifest.manifest_jobs || []
+        const manifestJobs = currentManifest.jobs || []
         if (manifestJobs.length === 0) return null
 
-        const lastJob = manifestJobs[manifestJobs.length - 1]?.job
+        const lastJob = manifestJobs[manifestJobs.length - 1]
         if (!lastJob) return null
 
         if (lastJob.scheduled_time) {
@@ -136,7 +137,7 @@ export function VehicleDetailPopup({ vehicle, open, onOpenChange, onSelectForMan
                                                 Manifest #{currentManifest.manifest_number || currentManifest.id?.slice(0, 8)}
                                             </p>
                                             <p className="text-xs text-muted-foreground">
-                                                {currentManifest.manifest_jobs?.length || 0} job(s) • {currentManifest.status}
+                                                {currentManifest.jobs?.length || 0} job(s) • {currentManifest.status}
                                             </p>
                                         </div>
                                         <Badge variant="outline" className="text-xs">
