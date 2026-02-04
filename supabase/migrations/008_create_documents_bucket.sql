@@ -10,7 +10,7 @@ on conflict (id) do nothing;
 drop policy if exists "Allow view access to all users" on storage.objects;
 create policy "Allow view access to all users"
 on storage.objects for select
-to authenticated
+to authenticated 
 using ( bucket_id = 'documents' );
 
 -- Policy to allow authenticated users to upload documents
