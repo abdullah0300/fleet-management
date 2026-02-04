@@ -249,24 +249,24 @@ export function useDeleteCostEstimate() {
  * Calculate cost from inputs (utility function)
  */
 export function calculateCosts(input: {
-    distanceMiles: number
-    fuelEfficiencyMPG: number // mpg
-    fuelPricePerGallon: number // $/gal
+    distance: number
+    fuelEfficiency: number // mpg or km/l
+    fuelPrice: number // $/gal or $/l
     tollCost: number
     driverPaymentType: 'per_mile' | 'per_trip' | 'hourly' | 'salary'
     driverRate: number
     tripDurationMinutes?: number
 }) {
     // Calculate fuel cost
-    const fuelCost = input.fuelEfficiencyMPG > 0
-        ? (input.distanceMiles / input.fuelEfficiencyMPG) * input.fuelPricePerGallon
+    const fuelCost = input.fuelEfficiency > 0
+        ? (input.distance / input.fuelEfficiency) * input.fuelPrice
         : 0
 
     // Calculate driver cost
     let driverCost = 0
     switch (input.driverPaymentType) {
-        case 'per_mile':
-            driverCost = input.distanceMiles * input.driverRate
+        case 'per_mile': // Treated as "per distance unit"
+            driverCost = input.distance * input.driverRate
             break
         case 'per_trip':
             driverCost = input.driverRate
@@ -322,7 +322,14 @@ export function useDriversForCost() {
                 `)
                 .order('created_at')
             if (error) throw error
-            return data as (Pick<Driver, 'id' | 'payment_type' | 'rate_amount'> & { profiles: { full_name: string } | null })[]
+
+            // Supabase sometimes returns relation as array even if 1:1
+            return (data || []).map((d: any) => ({
+                id: d.id,
+                payment_type: d.payment_type,
+                rate_amount: d.rate_amount,
+                profiles: Array.isArray(d.profiles) ? d.profiles[0] : d.profiles
+            })) as (Pick<Driver, 'id' | 'payment_type' | 'rate_amount'> & { profiles: { full_name: string } | null })[]
         },
     })
 }

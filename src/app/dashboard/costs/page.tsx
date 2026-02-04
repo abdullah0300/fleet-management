@@ -92,7 +92,7 @@ export default function CostsPage() {
 
     // Calculations
     const costs = calculateCosts({
-        distanceKm: fuelDistance,
+        distance: fuelDistance,
         fuelEfficiency,
         fuelPrice,
         tollCost: tollAmount,
