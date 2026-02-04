@@ -126,7 +126,7 @@ export function VehicleForm({ initialData, onSubmit, isSubmitting }: VehicleForm
 
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label htmlFor="fuel_efficiency">Fuel Efficiency (km/L)</Label>
+                    <Label htmlFor="fuel_efficiency">Fuel Efficiency (MPG)</Label>
                     <Input
                         id="fuel_efficiency"
                         type="number"
@@ -137,7 +137,7 @@ export function VehicleForm({ initialData, onSubmit, isSubmitting }: VehicleForm
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="odometer_reading">Odometer Reading (km)</Label>
+                    <Label htmlFor="odometer_reading">Odometer Reading (Miles)</Label>
                     <Input
                         id="odometer_reading"
                         type="number"

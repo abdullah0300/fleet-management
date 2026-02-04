@@ -3,28 +3,18 @@
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { JobForm } from '@/components/jobs/JobForm'
-import { useCreateJob, useAssignJob } from '@/hooks/useJobs'
-import { JobInsert } from '@/types/database'
+import { JobCreationContent } from '@/components/jobs/JobCreationContent'
 
 export default function NewJobPage() {
     const router = useRouter()
-    const createMutation = useCreateJob()
-    const assignMutation = useAssignJob()
 
-    const handleSubmit = async (data: JobInsert) => {
-        const result = await createMutation.mutateAsync(data)
-
-        // If both vehicle and driver are assigned, trigger the assign workflow
-        if (data.vehicle_id && data.driver_id && result.id) {
-            await assignMutation.mutateAsync({
-                jobId: result.id,
-                vehicleId: data.vehicle_id,
-                driverId: data.driver_id,
-            })
-        }
-
+    const handleSave = () => {
+        // Navigate back to jobs list after successful save
         router.push('/dashboard/jobs')
+    }
+
+    const handleCancel = () => {
+        router.back()
     }
 
     return (
@@ -42,10 +32,11 @@ export default function NewJobPage() {
                 </div>
             </div>
 
-            {/* Form */}
-            <JobForm
-                onSubmit={handleSubmit}
-                isSubmitting={createMutation.isPending || assignMutation.isPending}
+            {/* Form - Same as dispatch modal */}
+            <JobCreationContent
+                onSave={handleSave}
+                onCancel={handleCancel}
+                variant="page"
             />
         </div>
     )

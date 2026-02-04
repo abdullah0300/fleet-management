@@ -104,6 +104,58 @@ async function deleteVehicleApi(id: string): Promise<void> {
     if (error) throw error
 }
 
+// Bulk create vehicles
+async function bulkCreateVehiclesApi(vehicles: VehicleInsert[]): Promise<{
+    successful: VehicleWithDriver[]
+    failed: { index: number; error: string; data: VehicleInsert }[]
+}> {
+    const successful: VehicleWithDriver[] = []
+    const failed: { index: number; error: string; data: VehicleInsert }[] = []
+
+    // Process in batches of 10 to avoid overwhelming the database
+    const batchSize = 10
+    for (let i = 0; i < vehicles.length; i += batchSize) {
+        const batch = vehicles.slice(i, i + batchSize)
+
+        const { data, error } = await supabase
+            .from('vehicles')
+            .insert(batch)
+            .select(`
+                *,
+                profiles:current_driver_id (*)
+            `)
+
+        if (error) {
+            // If batch fails, try individual inserts to identify problematic records
+            for (let j = 0; j < batch.length; j++) {
+                const vehicle = batch[j]
+                const { data: singleData, error: singleError } = await supabase
+                    .from('vehicles')
+                    .insert([vehicle])
+                    .select(`
+                        *,
+                        profiles:current_driver_id (*)
+                    `)
+                    .single()
+
+                if (singleError) {
+                    failed.push({
+                        index: i + j,
+                        error: singleError.message,
+                        data: vehicle,
+                    })
+                } else if (singleData) {
+                    successful.push(singleData as VehicleWithDriver)
+                }
+            }
+        } else if (data) {
+            successful.push(...(data as VehicleWithDriver[]))
+        }
+    }
+
+    return { successful, failed }
+}
+
 // ==================== HOOKS ====================
 
 /**
@@ -223,6 +275,26 @@ export function useDeleteVehicle() {
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() })
+        },
+    })
+}
+
+/**
+ * Hook to bulk create vehicles from CSV import
+ * Returns detailed results with successful and failed records
+ */
+export function useBulkCreateVehicles() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: bulkCreateVehiclesApi,
+        onSuccess: (result) => {
+            // Invalidate list to refetch all new vehicles
+            queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() })
+            // Add successful vehicles to detail cache
+            result.successful.forEach((vehicle) => {
+                queryClient.setQueryData(vehicleKeys.detail(vehicle.id), vehicle)
+            })
         },
     })
 }

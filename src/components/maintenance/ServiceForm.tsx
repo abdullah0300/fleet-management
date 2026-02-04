@@ -17,9 +17,11 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { useVehicles } from '@/hooks/useVehicles'
 import { MaintenanceRecordInsert } from '@/types/database'
+import { useServicePrograms } from '@/hooks/useSmartMaintenance'
 
 const serviceFormSchema = z.object({
     vehicle_id: z.string().min(1, 'Vehicle is required'),
+    program_id: z.string().optional(),
     type: z.enum(['scheduled', 'repair', 'inspection']),
     description: z.string().min(1, 'Description is required'),
     cost: z.number().optional(),
@@ -38,8 +40,12 @@ interface ServiceFormProps {
     isSubmitting?: boolean
 }
 
+import { useRouter } from 'next/navigation'
+
 export function ServiceForm({ initialData, onSubmit, isSubmitting }: ServiceFormProps) {
+    const router = useRouter()
     const { data: vehiclesData } = useVehicles()
+    const { data: programs } = useServicePrograms()
     const vehicles = vehiclesData?.data || []
 
     const {
@@ -52,6 +58,7 @@ export function ServiceForm({ initialData, onSubmit, isSubmitting }: ServiceForm
         resolver: zodResolver(serviceFormSchema),
         defaultValues: {
             vehicle_id: initialData?.vehicle_id || '',
+            program_id: initialData?.program_id || '',
             type: initialData?.type || 'scheduled',
             description: initialData?.description || '',
             cost: initialData?.cost,
@@ -64,11 +71,17 @@ export function ServiceForm({ initialData, onSubmit, isSubmitting }: ServiceForm
     })
 
     const selectedVehicleId = watch('vehicle_id')
+    const selectedProgramId = watch('program_id')
     const selectedType = watch('type')
     const selectedStatus = watch('status')
 
     const handleFormSubmit = async (data: ServiceFormData) => {
-        const maintenanceData: MaintenanceRecordInsert = {
+        // Here we can use program_id if we want to pass it to the parent
+        // But the parent expects MaintenanceRecordInsert which might not have program_id column yet?
+        // Wait, I updated the SQL to add program_id to maintenance_records table!
+        // So I should update the type definition or just cast it for now if types aren't auto-generated.
+
+        const maintenanceData: MaintenanceRecordInsert & { program_id?: string | null } = {
             vehicle_id: data.vehicle_id,
             type: data.type,
             description: data.description,
@@ -78,6 +91,7 @@ export function ServiceForm({ initialData, onSubmit, isSubmitting }: ServiceForm
             next_service_date: data.next_service_date || null,
             next_service_odometer: data.next_service_odometer || null,
             status: data.status,
+            program_id: data.program_id || null
         }
 
         await onSubmit(maintenanceData)
@@ -116,6 +130,46 @@ export function ServiceForm({ initialData, onSubmit, isSubmitting }: ServiceForm
                                 <p className="text-xs text-status-error">{errors.vehicle_id.message}</p>
                             )}
                         </div>
+
+                        <div className="space-y-1.5 sm:space-y-2">
+                            <div className="flex items-center justify-between">
+                                <Label className="text-xs sm:text-sm">Service Program (Optional)</Label>
+                                <Button
+                                    type="button"
+                                    variant="link"
+                                    size="sm"
+                                    className="h-auto p-0 text-xs text-muted-foreground hover:text-primary"
+                                    onClick={() => router.push('/dashboard/maintenance/setup')}
+                                >
+                                    Manage Programs
+                                </Button>
+                            </div>
+                            <Select
+                                value={selectedProgramId}
+                                onValueChange={(value) => {
+                                    setValue('program_id', value)
+                                    // Auto-fill details if program selected
+                                    const prog = programs?.find(p => p.id === value)
+                                    if (prog) {
+                                        setValue('description', prog.name)
+                                        setValue('type', 'scheduled')
+                                    }
+                                }}
+                            >
+                                <SelectTrigger className="text-sm">
+                                    <SelectValue placeholder="Select standard program..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="none">-- Custom Service --</SelectItem>
+                                    {programs?.map((p) => (
+                                        <SelectItem key={p.id} value={p.id}>
+                                            {p.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+
                         <div className="space-y-1.5 sm:space-y-2">
                             <Label className="text-xs sm:text-sm">Type *</Label>
                             <Select

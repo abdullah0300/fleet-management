@@ -1,6 +1,6 @@
 'use client'
 
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Button } from '@/components/ui/button'
@@ -19,6 +19,8 @@ import { useDrivers } from '@/hooks/useDrivers'
 import { useRoutes } from '@/hooks/useRoutes'
 import { MapPin, User, Truck, Calendar, Package, Phone, DollarSign } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { LocationPicker } from '@/components/ui/LocationPicker'
+import { PhoneInput } from '@/components/ui/phone-input'
 
 const jobSchema = z.object({
     job_number: z.string().optional(),
@@ -26,7 +28,11 @@ const jobSchema = z.object({
     customer_phone: z.string().optional(),
     customer_email: z.string().email().optional().or(z.literal('')),
     pickup_address: z.string().min(1, 'Pickup address is required'),
+    pickup_lat: z.number().optional(),
+    pickup_lng: z.number().optional(),
     delivery_address: z.string().min(1, 'Delivery address is required'),
+    delivery_lat: z.number().optional(),
+    delivery_lng: z.number().optional(),
     scheduled_date: z.string().optional(),
     scheduled_time: z.string().optional(),
     vehicle_id: z.string().optional(),
@@ -35,6 +41,7 @@ const jobSchema = z.object({
     notes: z.string().optional(),
     estimated_cost: z.number().optional(),
     priority: z.enum(['low', 'normal', 'high', 'urgent']).optional(),
+    weight: z.number().optional(),
 })
 
 type JobFormData = z.infer<typeof jobSchema>
@@ -54,15 +61,16 @@ export function JobForm({ initialData, onSubmit, isSubmitting }: JobFormProps) {
     const drivers = driversData?.data || []
     const routes = routesData?.data || []
 
-    // Filter available resources
-    const availableVehicles = vehicles.filter(v => v.status === 'available' || v.id === initialData?.vehicle_id)
-    const availableDrivers = drivers.filter(d => d.status === 'available' || d.id === initialData?.driver_id)
+    // ALLOW ALL DRIVERS/VEHICLES (Scheduling happens in future, not just now)
+    const availableVehicles = vehicles
+    const availableDrivers = drivers
 
     const {
         register,
         handleSubmit,
         setValue,
         watch,
+        control,
         formState: { errors },
     } = useForm<JobFormData>({
         resolver: zodResolver(jobSchema),
@@ -72,7 +80,11 @@ export function JobForm({ initialData, onSubmit, isSubmitting }: JobFormProps) {
             customer_phone: initialData?.customer_phone || '',
             customer_email: initialData?.customer_email || '',
             pickup_address: initialData?.pickup_address || '',
+            pickup_lat: initialData?.pickup_lat,
+            pickup_lng: initialData?.pickup_lng,
             delivery_address: initialData?.delivery_address || '',
+            delivery_lat: initialData?.delivery_lat,
+            delivery_lng: initialData?.delivery_lng,
             scheduled_date: initialData?.scheduled_date || '',
             scheduled_time: initialData?.scheduled_time || '',
             vehicle_id: initialData?.vehicle_id || 'none',
@@ -80,6 +92,7 @@ export function JobForm({ initialData, onSubmit, isSubmitting }: JobFormProps) {
             route_id: initialData?.route_id || 'none',
             notes: initialData?.notes || '',
             priority: initialData?.priority || 'normal',
+            weight: initialData?.weight,
         },
     })
 
@@ -93,18 +106,28 @@ export function JobForm({ initialData, onSubmit, isSubmitting }: JobFormProps) {
         const driverId = data.driver_id === 'none' ? null : data.driver_id || null
         const routeId = data.route_id === 'none' ? null : data.route_id || null
 
-        const jobData: JobInsert = {
+        // Cast to any to include location fields that might be handled by the parent onSubmit even if not in JobInsert schema
+        const jobData: any = {
             job_number: data.job_number,
             customer_name: data.customer_name,
             customer_phone: data.customer_phone || null,
-            pickup_location: { address: data.pickup_address },
-            delivery_location: { address: data.delivery_address },
+            pickup_location: {
+                address: data.pickup_address,
+                lat: data.pickup_lat,
+                lng: data.pickup_lng
+            },
+            delivery_location: {
+                address: data.delivery_address,
+                lat: data.delivery_lat,
+                lng: data.delivery_lng
+            },
             scheduled_date: data.scheduled_date || null,
             scheduled_time: data.scheduled_time || null,
             vehicle_id: vehicleId,
             driver_id: driverId,
             route_id: routeId,
             notes: data.notes || null,
+            weight: data.weight || null,
             status: vehicleId && driverId ? 'assigned' : 'pending',
         }
 
@@ -136,15 +159,17 @@ export function JobForm({ initialData, onSubmit, isSubmitting }: JobFormProps) {
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="customer_phone">Phone</Label>
-                            <div className="relative">
-                                <Phone className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                <Input
-                                    id="customer_phone"
-                                    placeholder="+1 234 567 8900"
-                                    className="pl-9"
-                                    {...register('customer_phone')}
-                                />
-                            </div>
+                            <Controller
+                                control={control}
+                                name="customer_phone"
+                                render={({ field }) => (
+                                    <PhoneInput
+                                        id="customer_phone"
+                                        value={field.value}
+                                        onChange={field.onChange}
+                                    />
+                                )}
+                            />
                         </div>
                     </div>
                     <div className="space-y-2">
@@ -170,33 +195,33 @@ export function JobForm({ initialData, onSubmit, isSubmitting }: JobFormProps) {
                 <CardContent className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="pickup_address">Pickup Address *</Label>
-                        <div className="relative">
-                            <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-status-success" />
-                            <Input
-                                id="pickup_address"
-                                placeholder="123 Pickup Street, City, State"
-                                className="pl-9"
-                                {...register('pickup_address')}
-                            />
-                        </div>
-                        {errors.pickup_address && (
-                            <p className="text-xs text-status-error">{errors.pickup_address.message}</p>
-                        )}
+                        <LocationPicker
+                            value={watch('pickup_address')}
+                            onChange={(value, coords) => {
+                                setValue('pickup_address', value)
+                                if (coords) {
+                                    setValue('pickup_lat', coords.lat)
+                                    setValue('pickup_lng', coords.lng)
+                                }
+                            }}
+                            placeholder="Search pickup location..."
+                            error={errors.pickup_address?.message}
+                        />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="delivery_address">Delivery Address *</Label>
-                        <div className="relative">
-                            <MapPin className="absolute left-3 top-2.5 h-4 w-4 text-status-error" />
-                            <Input
-                                id="delivery_address"
-                                placeholder="456 Delivery Ave, City, State"
-                                className="pl-9"
-                                {...register('delivery_address')}
-                            />
-                        </div>
-                        {errors.delivery_address && (
-                            <p className="text-xs text-status-error">{errors.delivery_address.message}</p>
-                        )}
+                        <LocationPicker
+                            value={watch('delivery_address')}
+                            onChange={(value, coords) => {
+                                setValue('delivery_address', value)
+                                if (coords) {
+                                    setValue('delivery_lat', coords.lat)
+                                    setValue('delivery_lng', coords.lng)
+                                }
+                            }}
+                            placeholder="Search delivery location..."
+                            error={errors.delivery_address?.message}
+                        />
                     </div>
 
                     {/* Saved Routes */}
@@ -350,7 +375,16 @@ export function JobForm({ initialData, onSubmit, isSubmitting }: JobFormProps) {
                         Additional Details
                     </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label htmlFor="weight">Weight (lbs)</Label>
+                        <Input
+                            id="weight"
+                            type="number"
+                            placeholder="0.0"
+                            {...register('weight', { valueAsNumber: true })}
+                        />
+                    </div>
                     <div className="space-y-2">
                         <Label htmlFor="notes">Notes / Special Instructions</Label>
                         <textarea

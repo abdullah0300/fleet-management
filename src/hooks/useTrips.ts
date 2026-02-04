@@ -133,10 +133,16 @@ export function useStartTrip() {
     const queryClient = useQueryClient()
 
     return useMutation({
-        mutationFn: async (data: { jobId: string; driverId: string; vehicleId: string; startOdometer?: number }) => {
+        mutationFn: async (data: { jobId?: string; manifestId?: string; driverId: string; vehicleId: string; startOdometer?: number }) => {
+            // Validate input
+            if (!data.jobId && !data.manifestId) {
+                throw new Error("Either Job ID or Manifest ID is required to start a trip")
+            }
+
             // Create trip record
             const tripData: TripInsert = {
-                job_id: data.jobId,
+                job_id: data.jobId || null,
+                manifest_id: data.manifestId || null,
                 driver_id: data.driverId,
                 vehicle_id: data.vehicleId,
                 start_time: new Date().toISOString(),
@@ -152,23 +158,31 @@ export function useStartTrip() {
 
             if (tripError) throw tripError
 
-            // Update job status
-            await supabase
-                .from('jobs')
-                .update({ status: 'in_progress' })
-                .eq('id', data.jobId)
-
-            // Update vehicle status
+            // Update Vehicle & Driver Status (Common)
             await supabase
                 .from('vehicles')
                 .update({ status: 'in_use' })
                 .eq('id', data.vehicleId)
 
-            // Update driver status
             await supabase
                 .from('drivers')
                 .update({ status: 'on_trip' })
                 .eq('id', data.driverId)
+
+            // Update Entity Status
+            if (data.manifestId) {
+                // Update Manifest
+                await supabase
+                    .from('manifests')
+                    .update({ status: 'in_transit' })
+                    .eq('id', data.manifestId)
+            } else if (data.jobId) {
+                // Update Job
+                await supabase
+                    .from('jobs')
+                    .update({ status: 'in_progress' })
+                    .eq('id', data.jobId)
+            }
 
             return trip
         },
@@ -176,6 +190,7 @@ export function useStartTrip() {
             queryClient.invalidateQueries({ queryKey: tripKeys.lists() })
             queryClient.invalidateQueries({ queryKey: tripKeys.active() })
             queryClient.invalidateQueries({ queryKey: ['jobs'] })
+            queryClient.invalidateQueries({ queryKey: ['manifests'] }) // Invalidates manifests too
             queryClient.invalidateQueries({ queryKey: ['vehicles'] })
             queryClient.invalidateQueries({ queryKey: ['drivers'] })
         },
@@ -191,7 +206,8 @@ export function useCompleteTrip() {
     return useMutation({
         mutationFn: async (data: {
             tripId: string
-            jobId: string
+            jobId?: string
+            manifestId?: string
             driverId: string
             vehicleId: string
             endOdometer?: number
@@ -224,11 +240,21 @@ export function useCompleteTrip() {
 
             if (tripError) throw tripError
 
-            // Update job status
-            await supabase
-                .from('jobs')
-                .update({ status: 'completed' })
-                .eq('id', data.jobId)
+            // Update Entity Status (Manifest or Job)
+            if (data.manifestId) {
+                const { error: manError } = await supabase
+                    .from('manifests')
+                    .update({ status: 'completed' })
+                    .eq('id', data.manifestId)
+                if (manError) throw manError
+            } else if (data.jobId) {
+                const { error: jobError } = await supabase
+                    .from('jobs')
+                    .update({ status: 'completed' })
+                    .eq('id', data.jobId)
+
+                if (jobError) throw jobError
+            }
 
             // Update vehicle status
             await supabase
@@ -249,6 +275,7 @@ export function useCompleteTrip() {
             queryClient.invalidateQueries({ queryKey: tripKeys.detail(variables.tripId) })
             queryClient.invalidateQueries({ queryKey: tripKeys.active() })
             queryClient.invalidateQueries({ queryKey: ['jobs'] })
+            queryClient.invalidateQueries({ queryKey: ['manifests'] })
             queryClient.invalidateQueries({ queryKey: ['vehicles'] })
             queryClient.invalidateQueries({ queryKey: ['drivers'] })
         },

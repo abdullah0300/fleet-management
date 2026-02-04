@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { VehicleCard } from '@/components/vehicles/VehicleCard'
+import { BulkVehicleImport } from '@/components/vehicles/BulkVehicleImport'
 
 interface VehiclesListProps {
     initialData: any[]
@@ -46,13 +47,16 @@ export function VehiclesList({ initialData }: VehiclesListProps) {
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Vehicles</h1>
                     <p className="text-muted-foreground text-sm">Manage your fleet vehicles</p>
                 </div>
-                <Button
-                    onClick={() => router.push('/dashboard/vehicles/new')}
-                    className="gap-2 w-full sm:w-auto"
-                >
-                    <Plus className="h-4 w-4" />
-                    Add Vehicle
-                </Button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <BulkVehicleImport />
+                    <Button
+                        onClick={() => router.push('/dashboard/vehicles/new')}
+                        className="gap-2 flex-1 sm:flex-none"
+                    >
+                        <Plus className="h-4 w-4" />
+                        Add Vehicle
+                    </Button>
+                </div>
             </div>
 
             {/* Stats */}

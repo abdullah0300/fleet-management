@@ -4,10 +4,11 @@ import { useRouter } from 'next/navigation'
 import { Truck, MapPin, User, Gauge, Wrench } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { VehicleWithDriver } from '@/hooks/useVehicles'
 
 interface VehicleCardProps {
-    vehicle: any
-    onEdit?: (vehicle: any) => void
+    vehicle: VehicleWithDriver
+    onEdit?: (vehicle: VehicleWithDriver) => void
 }
 
 export function VehicleCard({ vehicle, onEdit }: VehicleCardProps) {
@@ -93,7 +94,7 @@ export function VehicleCard({ vehicle, onEdit }: VehicleCardProps) {
                         <div>
                             <p className="text-[10px] text-muted-foreground uppercase">Odometer</p>
                             <p className="font-medium text-foreground text-xs">
-                                {odometer.toLocaleString()} km
+                                {odometer.toLocaleString()} mi
                             </p>
                         </div>
                     </div>
@@ -107,7 +108,7 @@ export function VehicleCard({ vehicle, onEdit }: VehicleCardProps) {
                             <p className="text-[10px] text-muted-foreground uppercase">Fuel Type</p>
                             <p className="font-medium text-foreground text-xs capitalize">
                                 {vehicle.fuel_type || 'Not specified'}
-                                {vehicle.fuel_efficiency ? ` • ${vehicle.fuel_efficiency} km/L` : ''}
+                                {vehicle.fuel_efficiency ? ` • ${vehicle.fuel_efficiency} MPG` : ''}
                             </p>
                         </div>
                     </div>

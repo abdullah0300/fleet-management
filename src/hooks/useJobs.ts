@@ -1,18 +1,82 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
-import { Job, JobInsert, JobUpdate, Vehicle, Route } from '@/types/database'
+import { Job, JobInsert, JobUpdate, JobStop, JobStopInsert, JobWithStops, Vehicle, Route } from '@/types/database'
 import { DriverWithProfile } from './useDrivers'
 import { vehicleKeys } from './useVehicles'
 import { driverKeys } from './useDrivers'
 
-// Job with all relations
-export type JobWithRelations = Job & {
+// ============================================
+// EXTENDED TYPES
+// ============================================
+
+// Job with all relations including stops
+export type JobWithRelations = JobWithStops & {
     routes: Route | null
     vehicles: Vehicle | null
     drivers: DriverWithProfile | null
+    manifests?: { id: string; manifest_number: string | null; status: string | null } | null
 }
 
-// Query keys for cache management
+// ============================================
+// HELPER FUNCTIONS (DRY - Use across all components)
+// ============================================
+
+/**
+ * Get the first pickup address from a job's stops
+ */
+export function getJobPickupAddress(job: { job_stops?: JobStop[] } | null | undefined): string {
+    if (!job?.job_stops?.length) return 'No pickup address'
+    const pickup = job.job_stops
+        .filter(s => s.type === 'pickup')
+        .sort((a, b) => a.sequence_order - b.sequence_order)[0]
+    return pickup?.address || job.job_stops[0]?.address || 'No pickup address'
+}
+
+/**
+ * Get the last dropoff address from a job's stops
+ */
+export function getJobDeliveryAddress(job: { job_stops?: JobStop[] } | null | undefined): string {
+    if (!job?.job_stops?.length) return 'No delivery address'
+    const dropoffs = job.job_stops
+        .filter(s => s.type === 'dropoff')
+        .sort((a, b) => b.sequence_order - a.sequence_order)
+    return dropoffs[0]?.address || job.job_stops[job.job_stops.length - 1]?.address || 'No delivery address'
+}
+
+/**
+ * Get all stops formatted for map rendering
+ */
+export function getJobMapPoints(job: { job_stops?: JobStop[] } | null | undefined): Array<{
+    lat: number
+    lng: number
+    type: 'pickup' | 'dropoff' | 'waypoint'
+    address: string
+    sequence: number
+}> {
+    if (!job?.job_stops?.length) return []
+    return job.job_stops
+        .filter(s => s.latitude && s.longitude)
+        .sort((a, b) => a.sequence_order - b.sequence_order)
+        .map(s => ({
+            lat: s.latitude!,
+            lng: s.longitude!,
+            type: s.type,
+            address: s.address,
+            sequence: s.sequence_order
+        }))
+}
+
+/**
+ * Get total stop count for a job
+ */
+export function getJobStopCount(job: { job_stops?: JobStop[] } | null | undefined): number {
+    return job?.job_stops?.length || 0
+}
+
+// ============================================
+// QUERY KEYS
+// ============================================
+
 export const jobKeys = {
     all: ['jobs'] as const,
     lists: () => [...jobKeys.all, 'list'] as const,
@@ -24,7 +88,11 @@ export const jobKeys = {
 
 const supabase = createClient()
 
-// Fetch all jobs with pagination
+// ============================================
+// API FUNCTIONS
+// ============================================
+
+// Fetch all jobs with pagination (includes stops)
 async function fetchJobs(page = 1, pageSize = 50): Promise<{
     data: JobWithRelations[]
     count: number
@@ -37,8 +105,10 @@ async function fetchJobs(page = 1, pageSize = 50): Promise<{
         .from('jobs')
         .select(`
             *,
+            job_stops (*),
             routes:route_id (*),
-            vehicles:vehicle_id (*),
+            vehicles:vehicle_id (*, profiles:current_driver_id(full_name)),
+            manifests:manifest_id (id, manifest_number, status),
             drivers:driver_id (
                 *,
                 profiles (*)
@@ -49,21 +119,31 @@ async function fetchJobs(page = 1, pageSize = 50): Promise<{
 
     if (error) throw error
 
+    // Sort job_stops by sequence_order for each job
+    const jobsWithSortedStops = (data || []).map(job => ({
+        ...job,
+        job_stops: (job.job_stops || []).sort((a: JobStop, b: JobStop) =>
+            a.sequence_order - b.sequence_order
+        )
+    }))
+
     return {
-        data: (data as JobWithRelations[]) || [],
+        data: jobsWithSortedStops as JobWithRelations[],
         count: count || 0,
         hasMore: (count || 0) > to + 1,
     }
 }
 
-// Fetch single job
+// Fetch single job (includes stops)
 async function fetchJob(id: string): Promise<JobWithRelations> {
     const { data, error } = await supabase
         .from('jobs')
         .select(`
             *,
+            job_stops (*),
             routes:route_id (*),
-            vehicles:vehicle_id (*),
+            vehicles:vehicle_id (*, profiles:current_driver_id(full_name)),
+            manifests:manifest_id (id, manifest_number, status),
             drivers:driver_id (
                 *,
                 profiles (*)
@@ -73,18 +153,70 @@ async function fetchJob(id: string): Promise<JobWithRelations> {
         .single()
 
     if (error) throw error
-    return data as JobWithRelations
+
+    // Sort stops by sequence
+    const jobWithSortedStops = {
+        ...data,
+        job_stops: (data.job_stops || []).sort((a: JobStop, b: JobStop) =>
+            a.sequence_order - b.sequence_order
+        )
+    }
+
+    return jobWithSortedStops as JobWithRelations
 }
 
-// Create job
+// Input type for creating job with stops
+export interface CreateJobWithStopsInput {
+    job: JobInsert
+    stops: Omit<JobStopInsert, 'job_id'>[]
+}
+
+// Create job with stops (single transaction pattern)
+async function createJobWithStopsApi(input: CreateJobWithStopsInput): Promise<JobWithRelations> {
+    // 1. Insert the job first
+    const { data: jobData, error: jobError } = await supabase
+        .from('jobs')
+        .insert([input.job])
+        .select('*')
+        .single()
+
+    if (jobError) throw jobError
+
+    // 2. Insert all stops with the new job_id
+    if (input.stops.length > 0) {
+        const stopsWithJobId: JobStopInsert[] = input.stops.map((stop, index) => ({
+            ...stop,
+            job_id: jobData.id,
+            sequence_order: stop.sequence_order ?? index + 1,
+            arrival_mode: stop.arrival_mode,  // Explicitly map new fields
+            scheduled_arrival: stop.scheduled_arrival,
+            window_start: stop.window_start,
+            window_end: stop.window_end,
+            service_duration: stop.service_duration
+        }))
+
+        const { error: stopsError } = await supabase
+            .from('job_stops')
+            .insert(stopsWithJobId)
+
+        if (stopsError) throw stopsError
+    }
+
+    // 3. Fetch the complete job with all relations
+    return fetchJob(jobData.id)
+}
+
+// Legacy create job (for backward compatibility)
 async function createJobApi(job: JobInsert): Promise<JobWithRelations> {
     const { data, error } = await supabase
         .from('jobs')
         .insert([job])
         .select(`
             *,
+            job_stops (*),
             routes:route_id (*),
             vehicles:vehicle_id (*),
+            manifests:manifest_id (id, manifest_number, status),
             drivers:driver_id (
                 *,
                 profiles (*)
@@ -110,6 +242,7 @@ async function updateJobApi({
         .eq('id', id)
         .select(`
             *,
+            job_stops (*),
             routes:route_id (*),
             vehicles:vehicle_id (*),
             drivers:driver_id (
@@ -123,7 +256,7 @@ async function updateJobApi({
     return data as JobWithRelations
 }
 
-// Delete job
+// Delete job (stops are cascade deleted via FK)
 async function deleteJobApi(id: string): Promise<void> {
     const { error } = await supabase.from('jobs').delete().eq('id', id)
     if (error) throw error
@@ -150,6 +283,7 @@ async function assignJobApi({
         .eq('id', jobId)
         .select(`
             *,
+            job_stops (*),
             routes:route_id (*),
             vehicles:vehicle_id (*),
             drivers:driver_id (
@@ -161,24 +295,49 @@ async function assignJobApi({
 
     if (jobError) throw jobError
 
-    // Update vehicle status (fire and forget - cache will be invalidated)
-    supabase
-        .from('vehicles')
-        .update({ status: 'in_use', current_driver_id: driverId })
-        .eq('id', vehicleId)
-        .then()
+    // Sync to Manifest if applicable (Reverse Sync: Job -> Manifest)
+    if (jobData.manifest_id) {
+        const { error: manifestError } = await supabase
+            .from('manifests')
+            .update({
+                driver_id: driverId,
+                vehicle_id: vehicleId,
+                // We don't automatically change status to 'scheduled' or 'in_transit' 
+                // to avoid overriding specific manifest flows, but driver/vehicle must sync.
+            })
+            .eq('id', jobData.manifest_id)
 
-    // Update driver status (fire and forget - cache will be invalidated)
-    supabase
-        .from('drivers')
-        .update({ status: 'on_trip', assigned_vehicle_id: vehicleId })
-        .eq('id', driverId)
-        .then()
+        if (manifestError) {
+            console.error('Failed to sync job assignment to manifest:', manifestError)
+        }
+    }
+
+    // Update vehicle and driver status with proper error handling
+    const [vehicleResult, driverResult] = await Promise.all([
+        supabase
+            .from('vehicles')
+            .update({ status: 'in_use', current_driver_id: driverId })
+            .eq('id', vehicleId),
+        supabase
+            .from('drivers')
+            .update({ status: 'on_trip', assigned_vehicle_id: vehicleId })
+            .eq('id', driverId)
+    ])
+
+    // Log errors but don't fail the entire operation - job assignment succeeded
+    if (vehicleResult.error) {
+        console.error('Failed to update vehicle status:', vehicleResult.error)
+    }
+    if (driverResult.error) {
+        console.error('Failed to update driver status:', driverResult.error)
+    }
 
     return jobData as JobWithRelations
 }
 
-// ==================== HOOKS ====================
+// ============================================
+// HOOKS
+// ============================================
 
 /**
  * Hook to fetch all jobs with caching
@@ -209,7 +368,22 @@ export function useJob(id: string) {
 }
 
 /**
- * Hook to create a new job
+ * Hook to create a new job with stops
+ */
+export function useCreateJobWithStops() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: createJobWithStopsApi,
+        onSuccess: (newJob) => {
+            queryClient.invalidateQueries({ queryKey: jobKeys.lists() })
+            queryClient.setQueryData(jobKeys.detail(newJob.id), newJob)
+        },
+    })
+}
+
+/**
+ * Hook to create a new job (legacy - no stops)
  */
 export function useCreateJob() {
     const queryClient = useQueryClient()
@@ -269,6 +443,42 @@ export function useAssignJob() {
             // Invalidate vehicle and driver caches to reflect status changes
             queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() })
             queryClient.invalidateQueries({ queryKey: driverKeys.lists() })
+
+            // Invalidate manifests if the job belonged to one
+            if (updatedJob.manifest_id) {
+                queryClient.invalidateQueries({ queryKey: ['manifests'] })
+            }
+        },
+    })
+}
+
+// Update a specific job stop
+async function updateJobStopApi({
+    id,
+    updates,
+}: {
+    id: string
+    updates: Partial<JobStop>
+}): Promise<void> {
+    const { error } = await supabase
+        .from('job_stops')
+        .update(updates)
+        .eq('id', id)
+
+    if (error) throw error
+}
+
+/**
+ * Hook to update a job stop
+ */
+export function useUpdateJobStop() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: updateJobStopApi,
+        onSuccess: () => {
+            // Invalidate job lists to refresh the parent job and its stops
+            queryClient.invalidateQueries({ queryKey: jobKeys.lists() })
         },
     })
 }

@@ -1,13 +1,15 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Edit, Trash2, Truck, Gauge, Fuel, Calendar, MapPin, User } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, Truck, Gauge, Fuel, Calendar, MapPin, User, Stethoscope } from 'lucide-react'
 import { useVehicle, useUpdateVehicle, useDeleteVehicle, VehicleWithDriver } from '@/hooks/useVehicles'
+import { useVehicleMaintenanceStatus } from '@/hooks/useSmartMaintenance'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { VehicleForm } from '@/components/vehicles/VehicleForm'
+import { VehicleHealthVisualizer } from '@/components/maintenance/VehicleHealthVisualizer'
 import { VehicleUpdate } from '@/types/database'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useState } from 'react'
@@ -19,6 +21,9 @@ export default function VehicleDetailPage() {
 
     // Use the single vehicle hook - fetches only this vehicle, uses cache if available
     const { data: vehicle, isLoading, error } = useVehicle(id)
+    // New: Fetch maintenance status
+    const { data: maintenanceStatus, isLoading: isMaintenanceLoading } = useVehicleMaintenanceStatus(id)
+
     const updateMutation = useUpdateVehicle()
     const deleteMutation = useDeleteVehicle()
     const [isEditing, setIsEditing] = useState(false)
@@ -128,6 +133,17 @@ export default function VehicleDetailPage() {
                 </div>
             </div>
 
+            {/* Smart Maintenance Visualizer */}
+            {maintenanceStatus && maintenanceStatus.length > 0 && (
+                <div className="rounded-xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-700">
+                    <VehicleHealthVisualizer
+                        currentOdometer={vehicle.odometer_reading || 0}
+                        programs={maintenanceStatus}
+                    />
+                </div>
+            )}
+
+
             {/* Stats Grid */}
             <div className="grid gap-3 sm:gap-4 grid-cols-2 lg:grid-cols-4">
                 <Card>
@@ -218,14 +234,30 @@ export default function VehicleDetailPage() {
                     <CardHeader className="p-4 sm:p-6">
                         <CardTitle className="text-base sm:text-lg">Maintenance History</CardTitle>
                     </CardHeader>
-                    <CardContent className="flex items-center justify-center p-6 text-muted-foreground">
-                        <div className="text-center">
-                            <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">No maintenance records yet</p>
-                            <Button variant="outline" size="sm" className="mt-4">
-                                Add Service Record
-                            </Button>
-                        </div>
+                    <CardContent className="flex items-center justify-center p-6 text-muted-foreground h-[200px]">
+                        {maintenanceStatus && maintenanceStatus.length > 0 ? (
+                            <div className="space-y-2 w-full">
+                                {maintenanceStatus.map(status => (
+                                    <div key={status.id} className="flex justify-between items-center text-sm p-2 border rounded hover:bg-muted/50">
+                                        <div className='flex flex-col'>
+                                            <span className='font-medium'>{status.service_programs?.name}</span>
+                                            <span className='text-xs'>Last: {status.last_service_odometer} km</span>
+                                        </div>
+                                        <Badge variant={status.status === 'ok' ? 'outline' : 'destructive'} className="uppercase text-[10px]">
+                                            {status.status}
+                                        </Badge>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : (
+                            <div className="text-center">
+                                <Stethoscope className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                <p className="text-sm">No Smart Maintenance Configured</p>
+                                <Button variant="outline" size="sm" className="mt-4" onClick={() => router.push('/dashboard/maintenance/setup')}>
+                                    Configure Program
+                                </Button>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>

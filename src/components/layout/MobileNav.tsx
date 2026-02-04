@@ -9,12 +9,14 @@ import {
     Users,
     Map,
     ClipboardList,
+    ScrollText,
     Navigation,
     FileText,
     Settings,
     ChartBar,
     DollarSign,
-    Wrench
+    Wrench,
+    CalendarDays
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -31,7 +33,9 @@ const navigation = [
     { name: 'Vehicles', href: '/dashboard/vehicles', icon: Truck },
     { name: 'Drivers', href: '/dashboard/drivers', icon: Users },
     { name: 'Routes', href: '/dashboard/routes', icon: Map },
+    { name: 'Dispatch', href: '/dashboard/dispatch', icon: CalendarDays },
     { name: 'Jobs', href: '/dashboard/jobs', icon: ClipboardList },
+    { name: 'Manifests', href: '/dashboard/manifests', icon: ScrollText },
     { name: 'Costs', href: '/dashboard/costs', icon: DollarSign },
     { name: 'Tracking', href: '/dashboard/tracking', icon: Navigation },
     { name: 'Maintenance', href: '/dashboard/maintenance', icon: Wrench },

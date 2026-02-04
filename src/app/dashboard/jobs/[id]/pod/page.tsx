@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { ArrowLeft, Package, MapPin, User, Clock, Camera, PenLine, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react'
-import { useJob } from '@/hooks/useJobs'
+import { useJob, getJobPickupAddress, getJobDeliveryAddress } from '@/hooks/useJobs'
 import { useCreatePOD } from '@/hooks/usePOD'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -117,8 +117,9 @@ export default function ProofOfDeliveryPage() {
         )
     }
 
-    const pickup = job.pickup_location as { address?: string } | null
-    const delivery = job.delivery_location as { address?: string } | null
+    // Use helper functions for addresses
+    const pickupAddress = getJobPickupAddress(job)
+    const deliveryAddress = getJobDeliveryAddress(job)
 
     return (
         <div className="flex flex-col gap-4 sm:gap-6 max-w-2xl mx-auto pb-8">
@@ -153,7 +154,7 @@ export default function ProofOfDeliveryPage() {
                         </div>
                         <div className="min-w-0">
                             <p className="text-[10px] sm:text-xs text-muted-foreground">Pickup</p>
-                            <p className="text-xs sm:text-sm font-medium truncate">{pickup?.address || 'Not set'}</p>
+                            <p className="text-xs sm:text-sm font-medium truncate">{pickupAddress}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3">
@@ -162,7 +163,7 @@ export default function ProofOfDeliveryPage() {
                         </div>
                         <div className="min-w-0">
                             <p className="text-[10px] sm:text-xs text-muted-foreground">Delivery</p>
-                            <p className="text-xs sm:text-sm font-medium truncate">{delivery?.address || 'Not set'}</p>
+                            <p className="text-xs sm:text-sm font-medium truncate">{deliveryAddress}</p>
                         </div>
                     </div>
                     <div className="flex items-center gap-2 sm:gap-3">

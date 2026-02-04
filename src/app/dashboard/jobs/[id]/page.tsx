@@ -1,12 +1,14 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Edit, Trash2, User, Phone, MapPin, Truck, Calendar, Clock, Package, DollarSign, CheckCircle2, XCircle, Play, Camera } from 'lucide-react'
-import { useJob, useUpdateJob, useDeleteJob } from '@/hooks/useJobs'
+import { ArrowLeft, Edit, Trash2, User, Phone, MapPin, Truck, Calendar, Clock, Package, DollarSign, CheckCircle2, XCircle, Play, Camera, Navigation } from 'lucide-react'
+import { useJob, useUpdateJob, useDeleteJob, getJobPickupAddress, getJobDeliveryAddress, getJobMapPoints, getJobStopCount } from '@/hooks/useJobs'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { JobRouteMap } from '@/components/jobs/JobRouteMap'
+import { EntityDocuments } from '@/components/documents/EntityDocuments'
 
 export default function JobDetailPage() {
     const params = useParams()
@@ -74,8 +76,16 @@ export default function JobDetailPage() {
 
     const statusInfo = getStatusBadge(job.status)
     const nextAction = getNextStatusAction(job.status)
-    const pickup = job.pickup_location as { address?: string } | null
-    const delivery = job.delivery_location as { address?: string } | null
+
+    // Use helper functions for addresses
+    const pickupAddress = getJobPickupAddress(job)
+    const deliveryAddress = getJobDeliveryAddress(job)
+    const mapPoints = getJobMapPoints(job)
+    const stopCount = getJobStopCount(job)
+
+    // Get first pickup and last dropoff coordinates for the map
+    const pickupPoint = mapPoints.find(p => p.type === 'pickup')
+    const deliveryPoint = [...mapPoints].reverse().find(p => p.type === 'dropoff')
 
     return (
         <div className="flex flex-col gap-6">
@@ -141,6 +151,27 @@ export default function JobDetailPage() {
                 </div>
             </div>
 
+            {/* Live Map */}
+            <Card className="overflow-hidden border-2 border-primary/10 shadow-md">
+                <CardHeader className="bg-muted/10 pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-primary" />
+                        Live Route Map
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 aspect-[21/9] sm:aspect-[3/1] min-h-[300px] relative">
+                    <JobRouteMap
+                        pickup={pickupPoint ? { lat: pickupPoint.lat, lng: pickupPoint.lng, address: pickupPoint.address } : undefined}
+                        delivery={deliveryPoint ? { lat: deliveryPoint.lat, lng: deliveryPoint.lng, address: deliveryPoint.address } : undefined}
+                        vehicleLocation={
+                            job?.vehicles?.current_location && (job.vehicles.current_location as any)?.lat
+                                ? { lat: (job.vehicles.current_location as any).lat, lng: (job.vehicles.current_location as any).lng }
+                                : undefined
+                        }
+                    />
+                </CardContent>
+            </Card>
+
             {/* Status Timeline */}
             <Card>
                 <CardHeader className="pb-3">
@@ -196,24 +227,82 @@ export default function JobDetailPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-full bg-status-success-muted flex items-center justify-center shrink-0">
-                                <MapPin className="h-4 w-4 text-status-success" />
+                        {/* Show all stops if multiple, otherwise just pickup/delivery */}
+                        {stopCount > 2 ? (
+                            <div className="space-y-3">
+                                {job.job_stops?.map((stop, index) => (
+                                    <div key={stop.id} className="flex items-start gap-3">
+                                        <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${stop.type === 'pickup' ? 'bg-status-success-muted' :
+                                            stop.type === 'waypoint' ? 'bg-status-info-muted' : 'bg-status-error-muted'
+                                            }`}>
+                                            <span className="text-xs font-bold">{index + 1}</span>
+                                        </div>
+                                        <div className="flex-1">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <p className="text-xs text-muted-foreground capitalize">
+                                                        {index === 0 ? 'Start' : (index === (job.job_stops?.length || 0) - 1 ? 'End' : stop.type)}
+                                                    </p>
+                                                    <p className="font-medium text-sm">{stop.address}</p>
+                                                </div>
+
+                                                {/* Time Display */}
+                                                {(stop as any).arrival_mode === 'window' && (stop as any).window_start && (stop as any).window_end ? (
+                                                    <div className="text-right">
+                                                        <Badge variant="outline" className="text-[10px] gap-1 bg-blue-50 text-blue-700 border-blue-200">
+                                                            <Clock className="h-3 w-3" />
+                                                            {new Date((stop as any).window_start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                                                            {' - '}
+                                                            {new Date((stop as any).window_end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                                                        </Badge>
+                                                        <p className="text-[10px] text-muted-foreground mt-0.5">Time Window</p>
+                                                    </div>
+                                                ) : ((stop as any).arrival_mode === 'fixed' && (stop as any).scheduled_arrival) ? (
+                                                    <div className="text-right">
+                                                        <Badge variant="outline" className="text-[10px] gap-1 bg-orange-50 text-orange-700 border-orange-200">
+                                                            <Clock className="h-3 w-3" />
+                                                            {new Date((stop as any).scheduled_arrival).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                                                        </Badge>
+                                                        <p className="text-[10px] text-muted-foreground mt-0.5">Appointment</p>
+                                                    </div>
+                                                ) : (stop as any).scheduled_time ? (
+                                                    // Legacy / Simple fallback
+                                                    <div className="text-right">
+                                                        <Badge variant="outline" className="text-[10px] gap-1">
+                                                            <Clock className="h-3 w-3" />
+                                                            {(stop as any).scheduled_time.slice(0, 5)}
+                                                        </Badge>
+                                                    </div>
+                                                ) : null}
+                                            </div>
+
+                                            {stop.notes && <p className="text-xs text-muted-foreground mt-1 bg-gray-50 p-1.5 rounded border border-gray-100">{stop.notes}</p>}
+                                        </div>
+                                    </div>
+                                ))}
                             </div>
-                            <div>
-                                <p className="text-xs text-muted-foreground">Pickup</p>
-                                <p className="font-medium">{pickup?.address || 'Not set'}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-full bg-status-error-muted flex items-center justify-center shrink-0">
-                                <MapPin className="h-4 w-4 text-status-error" />
-                            </div>
-                            <div>
-                                <p className="text-xs text-muted-foreground">Delivery</p>
-                                <p className="font-medium">{delivery?.address || 'Not set'}</p>
-                            </div>
-                        </div>
+                        ) : (
+                            <>
+                                <div className="flex items-start gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-status-success-muted flex items-center justify-center shrink-0">
+                                        <MapPin className="h-4 w-4 text-status-success" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Pickup</p>
+                                        <p className="font-medium">{pickupAddress}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                    <div className="w-8 h-8 rounded-full bg-status-error-muted flex items-center justify-center shrink-0">
+                                        <MapPin className="h-4 w-4 text-status-error" />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-muted-foreground">Delivery</p>
+                                        <p className="font-medium">{deliveryAddress}</p>
+                                    </div>
+                                </div>
+                            </>
+                        )}
                     </CardContent>
                 </Card>
 
@@ -321,35 +410,52 @@ export default function JobDetailPage() {
                 </Card>
             </div>
 
+            {/* Documents */}
+            <Card>
+                <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                        <Package className="h-4 w-4" />
+                        Documents
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="h-[400px]">
+                    <EntityDocuments entityId={id} entityType="job" />
+                </CardContent>
+            </Card>
+
             {/* Notes */}
-            {job.notes && (
-                <Card>
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <Package className="h-4 w-4" />
-                            Notes
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm whitespace-pre-wrap">{job.notes}</p>
-                    </CardContent>
-                </Card>
-            )}
+            {
+                job.notes && (
+                    <Card>
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-base flex items-center gap-2">
+                                <Package className="h-4 w-4" />
+                                Notes
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm whitespace-pre-wrap">{job.notes}</p>
+                        </CardContent>
+                    </Card>
+                )
+            }
 
             {/* Actions */}
-            {job.status !== 'completed' && job.status !== 'cancelled' && (
-                <div className="flex gap-3 justify-end">
-                    <Button
-                        variant="outline"
-                        className="gap-2 text-status-error border-status-error hover:bg-status-error-muted"
-                        onClick={() => handleStatusChange('cancelled')}
-                        disabled={updateMutation.isPending}
-                    >
-                        <XCircle className="h-4 w-4" />
-                        Cancel Job
-                    </Button>
-                </div>
-            )}
-        </div>
+            {
+                job.status !== 'completed' && job.status !== 'cancelled' && (
+                    <div className="flex gap-3 justify-end">
+                        <Button
+                            variant="outline"
+                            className="gap-2 text-status-error border-status-error hover:bg-status-error-muted"
+                            onClick={() => handleStatusChange('cancelled')}
+                            disabled={updateMutation.isPending}
+                        >
+                            <XCircle className="h-4 w-4" />
+                            Cancel Job
+                        </Button>
+                    </div>
+                )
+            }
+        </div >
     )
 }

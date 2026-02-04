@@ -6,6 +6,7 @@ import { Plus, Search, Users, Truck, Clock, CheckCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { DriverCard } from '@/components/drivers/DriverCard'
+import { BulkDriverImport } from '@/components/drivers/BulkDriverImport'
 import { Driver } from '@/types/database'
 
 interface DriversListProps {
@@ -46,13 +47,16 @@ export function DriversList({ initialData }: DriversListProps) {
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Drivers</h1>
                     <p className="text-muted-foreground text-sm">Manage your fleet drivers</p>
                 </div>
-                <Button
-                    onClick={() => router.push('/dashboard/drivers/new')}
-                    className="gap-2 w-full sm:w-auto"
-                >
-                    <Plus className="h-4 w-4" />
-                    Add Driver
-                </Button>
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <BulkDriverImport />
+                    <Button
+                        onClick={() => router.push('/dashboard/drivers/new')}
+                        className="gap-2 flex-1 sm:flex-none"
+                    >
+                        <Plus className="h-4 w-4" />
+                        Add Driver
+                    </Button>
+                </div>
             </div>
 
             {/* Stats */}

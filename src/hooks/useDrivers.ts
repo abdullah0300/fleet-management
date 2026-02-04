@@ -109,6 +109,60 @@ async function deleteDriverApi(id: string): Promise<void> {
     if (error) throw error
 }
 
+// Bulk create drivers
+async function bulkCreateDriversApi(drivers: DriverInsert[]): Promise<{
+    successful: DriverWithProfile[]
+    failed: { index: number; error: string; data: DriverInsert }[]
+}> {
+    const successful: DriverWithProfile[] = []
+    const failed: { index: number; error: string; data: DriverInsert }[] = []
+
+    // Process in batches of 10 to avoid overwhelming the database
+    const batchSize = 10
+    for (let i = 0; i < drivers.length; i += batchSize) {
+        const batch = drivers.slice(i, i + batchSize)
+
+        const { data, error } = await supabase
+            .from('drivers')
+            .insert(batch)
+            .select(`
+                *,
+                profiles (*),
+                vehicles:assigned_vehicle_id (*)
+            `)
+
+        if (error) {
+            // If batch fails, try individual inserts to identify problematic records
+            for (let j = 0; j < batch.length; j++) {
+                const driver = batch[j]
+                const { data: singleData, error: singleError } = await supabase
+                    .from('drivers')
+                    .insert([driver])
+                    .select(`
+                        *,
+                        profiles (*),
+                        vehicles:assigned_vehicle_id (*)
+                    `)
+                    .single()
+
+                if (singleError) {
+                    failed.push({
+                        index: i + j,
+                        error: singleError.message,
+                        data: driver,
+                    })
+                } else if (singleData) {
+                    successful.push(singleData as DriverWithProfile)
+                }
+            }
+        } else if (data) {
+            successful.push(...(data as DriverWithProfile[]))
+        }
+    }
+
+    return { successful, failed }
+}
+
 // ==================== HOOKS ====================
 
 /**
@@ -216,6 +270,26 @@ export function useDeleteDriver() {
         },
         onSettled: () => {
             queryClient.invalidateQueries({ queryKey: driverKeys.lists() })
+        },
+    })
+}
+
+/**
+ * Hook to bulk create drivers from CSV import
+ * Returns detailed results with successful and failed records
+ */
+export function useBulkCreateDrivers() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: bulkCreateDriversApi,
+        onSuccess: (result) => {
+            // Invalidate list to refetch all new drivers
+            queryClient.invalidateQueries({ queryKey: driverKeys.lists() })
+            // Add successful drivers to detail cache
+            result.successful.forEach((driver) => {
+                queryClient.setQueryData(driverKeys.detail(driver.id), driver)
+            })
         },
     })
 }

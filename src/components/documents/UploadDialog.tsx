@@ -18,6 +18,7 @@ import {
     DialogHeader,
     DialogTitle,
     DialogTrigger,
+    DialogDescription,
 } from '@/components/ui/dialog'
 import { useVehicles } from '@/hooks/useVehicles'
 import { useDrivers } from '@/hooks/useDrivers'
@@ -27,6 +28,8 @@ import { cn } from '@/lib/utils'
 interface UploadDialogProps {
     trigger?: React.ReactNode
     onSuccess?: () => void
+    entityType?: 'vehicle' | 'driver' | 'job'
+    entityId?: string
 }
 
 const documentTypes = [
@@ -37,15 +40,16 @@ const documentTypes = [
     { value: 'permit', label: 'Permit' },
     { value: 'contract', label: 'Contract' },
     { value: 'invoice', label: 'Invoice' },
+    { value: 'pod', label: 'Proof of Delivery' },
     { value: 'other', label: 'Other' },
 ]
 
-export function UploadDialog({ trigger, onSuccess }: UploadDialogProps) {
+export function UploadDialog({ trigger, onSuccess, entityType: initialType, entityId: initialId }: UploadDialogProps) {
     const [open, setOpen] = useState(false)
     const [file, setFile] = useState<File | null>(null)
-    const [entityType, setEntityType] = useState<'vehicle' | 'driver'>('vehicle')
-    const [entityId, setEntityId] = useState('')
-    const [documentType, setDocumentType] = useState('registration')
+    const [entityType, setEntityType] = useState<'vehicle' | 'driver' | 'job'>(initialType || 'vehicle')
+    const [entityId, setEntityId] = useState(initialId || '')
+    const [documentType, setDocumentType] = useState('other')
     const [expiryDate, setExpiryDate] = useState('')
     const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -64,13 +68,16 @@ export function UploadDialog({ trigger, onSuccess }: UploadDialogProps) {
     }
 
     const handleSubmit = async () => {
-        if (!file || !entityId || !documentType) return
+        if (!file || (!entityId && !initialId) || !documentType) return
+
+        const finalEntityId = initialId || entityId
+        const finalEntityType = initialType || entityType
 
         await uploadMutation.mutateAsync({
             file,
             metadata: {
-                entityType,
-                entityId,
+                entityType: finalEntityType,
+                entityId: finalEntityId,
                 documentType,
                 expiryDate: expiryDate || undefined,
             }
@@ -78,8 +85,8 @@ export function UploadDialog({ trigger, onSuccess }: UploadDialogProps) {
 
         // Reset and close
         setFile(null)
-        setEntityId('')
-        setDocumentType('registration')
+        if (!initialId) setEntityId('')
+        setDocumentType('other')
         setExpiryDate('')
         setOpen(false)
         onSuccess?.()
@@ -92,6 +99,8 @@ export function UploadDialog({ trigger, onSuccess }: UploadDialogProps) {
             setFile(droppedFile)
         }
     }
+
+    const isFixedEntity = !!initialType && !!initialId
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
@@ -106,6 +115,9 @@ export function UploadDialog({ trigger, onSuccess }: UploadDialogProps) {
             <DialogContent className="sm:max-w-md">
                 <DialogHeader>
                     <DialogTitle>Upload Document</DialogTitle>
+                    <DialogDescription>
+                        Select a file and specify the document type and entity.
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4 py-4">
                     {/* Drop Zone */}
@@ -155,56 +167,59 @@ export function UploadDialog({ trigger, onSuccess }: UploadDialogProps) {
                         className="hidden"
                     />
 
-                    {/* Entity Type */}
-                    <div className="grid grid-cols-2 gap-2">
-                        <Button
-                            type="button"
-                            variant={entityType === 'vehicle' ? 'default' : 'outline'}
-                            className="w-full"
-                            onClick={() => {
-                                setEntityType('vehicle')
-                                setEntityId('')
-                            }}
-                        >
-                            Vehicle
-                        </Button>
-                        <Button
-                            type="button"
-                            variant={entityType === 'driver' ? 'default' : 'outline'}
-                            className="w-full"
-                            onClick={() => {
-                                setEntityType('driver')
-                                setEntityId('')
-                            }}
-                        >
-                            Driver
-                        </Button>
-                    </div>
+                    {/* Entity Selection (Hide if fixed) */}
+                    {!isFixedEntity && (
+                        <>
+                            <div className="grid grid-cols-2 gap-2">
+                                <Button
+                                    type="button"
+                                    variant={entityType === 'vehicle' ? 'default' : 'outline'}
+                                    className="w-full"
+                                    onClick={() => {
+                                        setEntityType('vehicle')
+                                        setEntityId('')
+                                    }}
+                                >
+                                    Vehicle
+                                </Button>
+                                <Button
+                                    type="button"
+                                    variant={entityType === 'driver' ? 'default' : 'outline'}
+                                    className="w-full"
+                                    onClick={() => {
+                                        setEntityType('driver')
+                                        setEntityId('')
+                                    }}
+                                >
+                                    Driver
+                                </Button>
+                            </div>
 
-                    {/* Entity Selection */}
-                    <div className="space-y-2">
-                        <Label className="text-sm">Select {entityType === 'vehicle' ? 'Vehicle' : 'Driver'} *</Label>
-                        <Select value={entityId} onValueChange={setEntityId}>
-                            <SelectTrigger>
-                                <SelectValue placeholder={`Select a ${entityType}...`} />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {entityType === 'vehicle' ? (
-                                    vehicles.map((v) => (
-                                        <SelectItem key={v.id} value={v.id}>
-                                            {v.make} {v.model} - {v.registration_number}
-                                        </SelectItem>
-                                    ))
-                                ) : (
-                                    drivers.map((d) => (
-                                        <SelectItem key={d.id} value={d.id}>
-                                            {d.profiles?.full_name || 'Unknown'}
-                                        </SelectItem>
-                                    ))
-                                )}
-                            </SelectContent>
-                        </Select>
-                    </div>
+                            <div className="space-y-2">
+                                <Label className="text-sm">Select {entityType === 'vehicle' ? 'Vehicle' : 'Driver'} *</Label>
+                                <Select value={entityId} onValueChange={setEntityId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder={`Select a ${entityType}...`} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {entityType === 'vehicle' ? (
+                                            vehicles.map((v) => (
+                                                <SelectItem key={v.id} value={v.id}>
+                                                    {v.make} {v.model} - {v.registration_number}
+                                                </SelectItem>
+                                            ))
+                                        ) : (
+                                            drivers.map((d) => (
+                                                <SelectItem key={d.id} value={d.id}>
+                                                    {d.profiles?.full_name || 'Unknown'}
+                                                </SelectItem>
+                                            ))
+                                        )}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </>
+                    )}
 
                     {/* Document Type */}
                     <div className="space-y-2">
@@ -237,11 +252,12 @@ export function UploadDialog({ trigger, onSuccess }: UploadDialogProps) {
                     <Button
                         className="w-full gap-2"
                         onClick={handleSubmit}
-                        disabled={!file || !entityId || uploadMutation.isPending}
+                        disabled={!file || (!isFixedEntity && !entityId) || uploadMutation.isPending}
                     >
                         {uploadMutation.isPending ? (
                             <>
                                 <Loader2 className="h-4 w-4 animate-spin" />
+                                <Upload className="h-4 w-4 hidden" />
                                 Uploading...
                             </>
                         ) : (

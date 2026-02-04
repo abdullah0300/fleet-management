@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { Vehicle, Driver, Job, Route, MaintenanceRecord, Document } from '@/types/database'
+import { Vehicle, Driver, Job, Route, MaintenanceRecord, Document, Manifest } from '@/types/database'
 
 /**
  * Server-side data fetching functions
@@ -304,4 +304,70 @@ export async function getDashboardStats() {
             overdue: maintenance.data?.filter(m => m.next_service_date && m.next_service_date < today).length || 0,
         },
     }
+}
+
+// ==========================================
+// MANIFESTS
+// ==========================================
+
+export async function getManifests(): Promise<Manifest[]> {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+        .from('manifests')
+        .select(`
+            *,
+            vehicles (registration_number, make, model),
+            drivers (profiles (full_name)),
+            jobs (id, status, job_number)
+        `)
+        .order('created_at', { ascending: false })
+
+    if (error) {
+        console.error('Error fetching manifests:', error)
+        return []
+    }
+
+    return data || []
+}
+
+export async function getManifest(id: string): Promise<Manifest | null> {
+    const supabase = await createClient()
+
+    const { data, error } = await supabase
+        .from('manifests')
+        .select(`
+            *,
+            vehicles (registration_number, make, model),
+            drivers (profiles (full_name, phone)),
+            jobs (
+                id, job_number, status, sequence_order,
+                customer_name, customer_phone, customer_email,
+                priority, notes,
+                job_stops (
+                    id, sequence_order, type, address,
+                    latitude, longitude, notes, status
+                )
+            )
+        `)
+        .eq('id', id)
+        .single()
+
+    if (error) {
+        console.error('Error fetching manifest:', error)
+        return null
+    }
+
+    // Sort jobs by sequence_order
+    if (data && data.jobs && Array.isArray(data.jobs)) {
+        data.jobs.sort((a: any, b: any) => (a.sequence_order || 0) - (b.sequence_order || 0))
+        // Also sort job_stops within each job
+        data.jobs.forEach((job: any) => {
+            if (job.job_stops && Array.isArray(job.job_stops)) {
+                job.job_stops.sort((a: any, b: any) => (a.sequence_order || 0) - (b.sequence_order || 0))
+            }
+        })
+    }
+
+    return data
 }

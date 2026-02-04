@@ -190,53 +190,120 @@ export interface Database {
         Row: {
           id: string
           job_number: string | null
+          manifest_id: string | null
+          sequence_order: number | null
           route_id: string | null
           vehicle_id: string | null
           driver_id: string | null
           status: 'pending' | 'assigned' | 'in_progress' | 'completed' | 'cancelled' | null
-          pickup_location: Json | null
-          delivery_location: Json | null
           scheduled_date: string | null
           scheduled_time: string | null
           customer_name: string | null
           customer_phone: string | null
+          customer_email: string | null
+          priority: 'low' | 'normal' | 'high' | 'urgent' | null
           notes: string | null
+          weight: number | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           job_number?: string | null
+          manifest_id?: string | null
           route_id?: string | null
           vehicle_id?: string | null
           driver_id?: string | null
           status?: 'pending' | 'assigned' | 'in_progress' | 'completed' | 'cancelled' | null
-          pickup_location?: Json | null
-          delivery_location?: Json | null
           scheduled_date?: string | null
           scheduled_time?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          customer_email?: string | null
+          priority?: 'low' | 'normal' | 'high' | 'urgent' | null
           notes?: string | null
+          weight?: number | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           job_number?: string | null
+          manifest_id?: string | null
           route_id?: string | null
           vehicle_id?: string | null
           driver_id?: string | null
           status?: 'pending' | 'assigned' | 'in_progress' | 'completed' | 'cancelled' | null
-          pickup_location?: Json | null
-          delivery_location?: Json | null
           scheduled_date?: string | null
           scheduled_time?: string | null
           customer_name?: string | null
           customer_phone?: string | null
+          customer_email?: string | null
+          priority?: 'low' | 'normal' | 'high' | 'urgent' | null
           notes?: string | null
+          weight?: number | null
           created_at?: string
           updated_at?: string
+        }
+      }
+
+      // ============================================
+      // 5b. JOB_STOPS (Multi-stop support)
+      // ============================================
+      job_stops: {
+        Row: {
+          id: string
+          job_id: string
+          sequence_order: number
+          type: 'pickup' | 'dropoff' | 'waypoint'
+          address: string
+          latitude: number | null
+          longitude: number | null
+          notes: string | null
+          status: 'pending' | 'completed' | 'skipped'
+          scheduled_time: string | null
+          service_duration: number | null
+          arrival_mode: 'fixed' | 'window'
+          scheduled_arrival: string | null
+          window_start: string | null
+          window_end: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          sequence_order?: number
+          type: 'pickup' | 'dropoff' | 'waypoint'
+          address: string
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          status?: 'pending' | 'completed' | 'skipped'
+          scheduled_time?: string | null
+          service_duration?: number | null
+          arrival_mode?: 'fixed' | 'window'
+          scheduled_arrival?: string | null
+          window_start?: string | null
+          window_end?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          sequence_order?: number
+          type?: 'pickup' | 'dropoff' | 'waypoint'
+          address?: string
+          latitude?: number | null
+          longitude?: number | null
+          notes?: string | null
+          status?: 'pending' | 'completed' | 'skipped'
+          scheduled_time?: string | null
+          service_duration?: number | null
+          arrival_mode?: 'fixed' | 'window'
+          scheduled_arrival?: string | null
+          window_start?: string | null
+          window_end?: string | null
+          created_at?: string
         }
       }
 
@@ -246,6 +313,7 @@ export interface Database {
       trips: {
         Row: {
           id: string
+          manifest_id: string | null
           job_id: string | null
           driver_id: string | null
           vehicle_id: string | null
@@ -263,6 +331,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          manifest_id?: string | null
           job_id?: string | null
           driver_id?: string | null
           vehicle_id?: string | null
@@ -280,6 +349,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          manifest_id?: string | null
           job_id?: string | null
           driver_id?: string | null
           vehicle_id?: string | null
@@ -451,7 +521,57 @@ export interface Database {
           data?: Json | null
           created_at?: string
         }
+      },
+
+      // ============================================
+      // 11. MANIFESTS
+      // ============================================
+      manifests: {
+        Row: {
+          id: string
+          manifest_number: string | null
+          vehicle_id: string | null
+          driver_id: string | null
+          status: 'draft' | 'planning' | 'scheduled' | 'dispatched' | 'in_transit' | 'completed' | 'cancelled' | null
+          scheduled_date: string | null
+          notes: string | null
+          total_distance_km: number | null
+          total_weight_kg: number | null
+          route_geometry: any | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          manifest_number?: string | null
+          vehicle_id?: string | null
+          driver_id?: string | null
+          status?: 'draft' | 'planning' | 'scheduled' | 'dispatched' | 'in_transit' | 'completed' | 'cancelled' | null
+          scheduled_date?: string | null
+          notes?: string | null
+          total_distance_km?: number | null
+          total_weight_kg?: number | null
+          route_geometry?: any | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          manifest_number?: string | null
+          vehicle_id?: string | null
+          driver_id?: string | null
+          status?: 'draft' | 'planning' | 'scheduled' | 'dispatched' | 'in_transit' | 'completed' | 'cancelled' | null
+          scheduled_date?: string | null
+          notes?: string | null
+          total_distance_km?: number | null
+          total_weight_kg?: number | null
+          route_geometry?: any | null
+          created_at?: string
+          updated_at?: string
+        }
       }
+
+
     }
   }
 }
@@ -466,11 +586,18 @@ export type Vehicle = Database['public']['Tables']['vehicles']['Row']
 export type Driver = Database['public']['Tables']['drivers']['Row']
 export type Route = Database['public']['Tables']['routes']['Row']
 export type Job = Database['public']['Tables']['jobs']['Row']
+export type JobStop = Database['public']['Tables']['job_stops']['Row']
 export type Trip = Database['public']['Tables']['trips']['Row']
 export type ProofOfDelivery = Database['public']['Tables']['proof_of_delivery']['Row']
 export type MaintenanceRecord = Database['public']['Tables']['maintenance_records']['Row']
 export type Document = Database['public']['Tables']['documents']['Row']
 export type Notification = Database['public']['Tables']['notifications']['Row']
+export type Manifest = Database['public']['Tables']['manifests']['Row']
+
+// Extended Job type with stops (for display)
+export type JobWithStops = Job & {
+  job_stops: JobStop[]
+}
 
 // Insert types (for creating data)
 export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
@@ -478,11 +605,13 @@ export type VehicleInsert = Database['public']['Tables']['vehicles']['Insert']
 export type DriverInsert = Database['public']['Tables']['drivers']['Insert']
 export type RouteInsert = Database['public']['Tables']['routes']['Insert']
 export type JobInsert = Database['public']['Tables']['jobs']['Insert']
+export type JobStopInsert = Database['public']['Tables']['job_stops']['Insert']
 export type TripInsert = Database['public']['Tables']['trips']['Insert']
 export type ProofOfDeliveryInsert = Database['public']['Tables']['proof_of_delivery']['Insert']
 export type MaintenanceRecordInsert = Database['public']['Tables']['maintenance_records']['Insert']
 export type DocumentInsert = Database['public']['Tables']['documents']['Insert']
 export type NotificationInsert = Database['public']['Tables']['notifications']['Insert']
+export type ManifestInsert = Database['public']['Tables']['manifests']['Insert']
 
 // Update types (for updating data)
 export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
@@ -495,6 +624,7 @@ export type ProofOfDeliveryUpdate = Database['public']['Tables']['proof_of_deliv
 export type MaintenanceRecordUpdate = Database['public']['Tables']['maintenance_records']['Update']
 export type DocumentUpdate = Database['public']['Tables']['documents']['Update']
 export type NotificationUpdate = Database['public']['Tables']['notifications']['Update']
+export type ManifestUpdate = Database['public']['Tables']['manifests']['Update']
 
 // ============================================
 // JOINED TYPES (for queries with relations)
@@ -523,4 +653,80 @@ export type TripWithRelations = Trip & {
 // Vehicle with current driver
 export type VehicleWithDriver = Vehicle & {
   profiles: Profile | null // via current_driver_id FK
+}
+
+// ============================================
+// COST ESTIMATES
+// ============================================
+export interface CostEstimate {
+  id: string
+  job_id: string | null
+  vehicle_id: string | null
+  driver_id: string | null
+  distance_km: number
+  fuel_efficiency: number | null
+  fuel_price_per_liter: number | null
+  fuel_cost: number
+  toll_cost: number
+  toll_notes: string | null
+  driver_payment_type: 'per_mile' | 'per_trip' | 'hourly' | 'salary' | null
+  driver_rate: number | null
+  driver_cost: number
+  trip_duration_minutes: number | null
+  other_costs: number | null
+  other_costs_notes: string | null
+  total_cost: number
+  status: 'estimate' | 'approved' | 'final'
+  created_by: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface CostEstimateInsert {
+  id?: string
+  job_id?: string | null
+  vehicle_id?: string | null
+  driver_id?: string | null
+  distance_km: number
+  fuel_efficiency?: number | null
+  fuel_price_per_liter?: number | null
+  fuel_cost: number
+  toll_cost?: number
+  toll_notes?: string | null
+  driver_payment_type?: 'per_mile' | 'per_trip' | 'hourly' | 'salary' | null
+  driver_rate?: number | null
+  driver_cost?: number
+  trip_duration_minutes?: number | null
+  other_costs?: number | null
+  other_costs_notes?: string | null
+  total_cost: number
+  status?: 'estimate' | 'approved' | 'final'
+  created_by?: string | null
+}
+
+export interface CostEstimateUpdate {
+  job_id?: string | null
+  vehicle_id?: string | null
+  driver_id?: string | null
+  distance_km?: number
+  fuel_efficiency?: number | null
+  fuel_price_per_liter?: number | null
+  fuel_cost?: number
+  toll_cost?: number
+  toll_notes?: string | null
+  driver_payment_type?: 'per_mile' | 'per_trip' | 'hourly' | 'salary' | null
+  driver_rate?: number | null
+  driver_cost?: number
+  trip_duration_minutes?: number | null
+  other_costs?: number | null
+  other_costs_notes?: string | null
+  total_cost?: number
+  status?: 'estimate' | 'approved' | 'final'
+}
+
+// Cost estimate with related job, vehicle, and driver info
+export type CostEstimateWithRelations = CostEstimate & {
+  jobs: Job | null
+  vehicles: Vehicle | null
+  drivers: DriverWithProfile | null
 }

@@ -4,6 +4,7 @@ import { Truck, Users, Package, Wrench, FileText, TrendingUp, TrendingDown, Aler
 import { useDashboardStats, useFleetMetrics, useJobMetrics, useDriverMetrics } from '@/hooks/useReports'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { StatusChart, ProgressGauge } from '@/components/reports/Charts'
 import { cn } from '@/lib/utils'
 
 export default function ReportsPage() {
@@ -158,18 +159,12 @@ export default function ReportsPage() {
                             </div>
                         ) : (
                             <>
-                                {/* Utilization */}
-                                <div>
-                                    <div className="flex justify-between text-sm mb-1">
-                                        <span>Fleet Utilization</span>
-                                        <span className="font-semibold">{fleetMetrics?.averageUtilization || 0}%</span>
-                                    </div>
-                                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-accent-purple transition-all"
-                                            style={{ width: `${fleetMetrics?.averageUtilization || 0}%` }}
-                                        />
-                                    </div>
+                                {/* Utilization Gauge */}
+                                <div className="flex justify-center">
+                                    <ProgressGauge
+                                        value={fleetMetrics?.averageUtilization || 0}
+                                        label="Fleet Utilization"
+                                    />
                                 </div>
 
                                 {/* Fuel Efficiency */}
@@ -184,25 +179,14 @@ export default function ReportsPage() {
                                     <span className="font-semibold">${(fleetMetrics?.maintenanceCost || 0).toLocaleString()}</span>
                                 </div>
 
-                                {/* Vehicles by Status */}
+                                {/* Vehicles by Status Chart */}
                                 <div>
                                     <p className="text-sm font-medium mb-2">Vehicles by Status</p>
-                                    <div className="flex gap-2 flex-wrap">
-                                        {Object.entries(fleetMetrics?.vehiclesByStatus || {}).map(([status, count]) => (
-                                            <div
-                                                key={status}
-                                                className={cn(
-                                                    "px-3 py-1 rounded-full text-xs font-medium",
-                                                    status === 'available' && "bg-status-success-muted text-status-success",
-                                                    status === 'in_use' && "bg-accent-purple-muted text-accent-purple",
-                                                    status === 'maintenance' && "bg-status-warning-muted text-status-warning",
-                                                    !['available', 'in_use', 'maintenance'].includes(status) && "bg-muted"
-                                                )}
-                                            >
-                                                {status}: {count}
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <StatusChart
+                                        data={fleetMetrics?.vehiclesByStatus || {}}
+                                        type="bar"
+                                        height={150}
+                                    />
                                 </div>
                             </>
                         )}
@@ -225,18 +209,13 @@ export default function ReportsPage() {
                             </div>
                         ) : (
                             <>
-                                {/* Completion Rate */}
-                                <div>
-                                    <div className="flex justify-between text-sm mb-1">
-                                        <span>Completion Rate</span>
-                                        <span className="font-semibold">{jobMetrics?.completionRate || 0}%</span>
-                                    </div>
-                                    <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                        <div
-                                            className="h-full bg-status-success transition-all"
-                                            style={{ width: `${jobMetrics?.completionRate || 0}%` }}
-                                        />
-                                    </div>
+                                {/* Completion Rate Gauge */}
+                                <div className="flex justify-center">
+                                    <ProgressGauge
+                                        value={jobMetrics?.completionRate || 0}
+                                        label="Completion Rate"
+                                        color="hsl(142, 76%, 36%)"
+                                    />
                                 </div>
 
                                 {/* Total Jobs */}
@@ -259,26 +238,14 @@ export default function ReportsPage() {
                                     </div>
                                 </div>
 
-                                {/* Jobs by Status */}
+                                {/* Jobs by Status - Pie Chart */}
                                 <div>
                                     <p className="text-sm font-medium mb-2">Jobs by Status</p>
-                                    <div className="flex gap-2 flex-wrap">
-                                        {Object.entries(jobMetrics?.jobsByStatus || {}).map(([status, count]) => (
-                                            <div
-                                                key={status}
-                                                className={cn(
-                                                    "px-3 py-1 rounded-full text-xs font-medium",
-                                                    status === 'completed' && "bg-status-success-muted text-status-success",
-                                                    status === 'in_progress' && "bg-accent-purple-muted text-accent-purple",
-                                                    status === 'pending' && "bg-status-warning-muted text-status-warning",
-                                                    status === 'assigned' && "bg-status-info-muted text-status-info",
-                                                    !['completed', 'in_progress', 'pending', 'assigned'].includes(status) && "bg-muted"
-                                                )}
-                                            >
-                                                {status}: {count}
-                                            </div>
-                                        ))}
-                                    </div>
+                                    <StatusChart
+                                        data={jobMetrics?.jobsByStatus || {}}
+                                        type="pie"
+                                        height={180}
+                                    />
                                 </div>
                             </>
                         )}

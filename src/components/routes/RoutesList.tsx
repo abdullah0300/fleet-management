@@ -69,7 +69,7 @@ export function RoutesList({ initialData }: RoutesListProps) {
                 <div className="p-3 rounded-xl border bg-status-info-muted/30">
                     <div className="flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-status-info" />
-                        <span className="text-xs text-muted-foreground">Total KM</span>
+                        <span className="text-xs text-muted-foreground">Total Miles</span>
                     </div>
                     <p className="text-2xl font-bold mt-1">{stats.totalDistance.toFixed(0)}</p>
                 </div>
@@ -143,7 +143,7 @@ export function RoutesList({ initialData }: RoutesListProps) {
                                         </div>
                                         <div className="flex flex-col items-end gap-1 shrink-0">
                                             <Badge variant="outline" className="text-xs">
-                                                {route.distance_km || 0} km
+                                                {route.distance_km || 0} mi
                                             </Badge>
                                             <span className="text-xs text-muted-foreground">
                                                 {route.estimated_duration || 0} min

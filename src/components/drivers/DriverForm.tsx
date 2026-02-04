@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
+import { PhoneInput } from '@/components/ui/phone-input'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -24,7 +25,7 @@ interface DriverFormProps {
 }
 
 export function DriverForm({ initialData, onSubmit, isSubmitting }: DriverFormProps) {
-    const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm({
+    const { register, handleSubmit, formState: { errors }, setValue, watch, control } = useForm({
         defaultValues: {
             // Profile fields
             full_name: initialData?.profile?.full_name || '',
@@ -82,10 +83,16 @@ export function DriverForm({ initialData, onSubmit, isSubmitting }: DriverFormPr
 
                     <div className="space-y-2">
                         <Label htmlFor="phone">Phone</Label>
-                        <Input
-                            id="phone"
-                            placeholder="+1 234 567 8900"
-                            {...register('phone')}
+                        <Controller
+                            control={control}
+                            name="phone"
+                            render={({ field }) => (
+                                <PhoneInput
+                                    id="phone"
+                                    value={field.value}
+                                    onChange={field.onChange}
+                                />
+                            )}
                         />
                     </div>
                 </div>

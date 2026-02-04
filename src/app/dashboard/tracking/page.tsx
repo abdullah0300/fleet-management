@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { FleetMap } from '@/components/tracking/FleetMap'
 import { cn } from '@/lib/utils'
 
 export default function TrackingPage() {
@@ -128,72 +129,11 @@ export default function TrackingPage() {
             <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1fr_350px] gap-4 min-h-0">
                 {/* Map Area */}
                 <Card className="relative overflow-hidden">
-                    <div className="absolute inset-0 bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900">
-                        {/* Map Placeholder */}
-                        <div className="absolute inset-0 flex items-center justify-center">
-                            <div className="text-center p-6">
-                                <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-muted flex items-center justify-center">
-                                    <MapPin className="h-10 w-10 text-muted-foreground" />
-                                </div>
-                                <h3 className="text-lg font-semibold text-muted-foreground">Map Integration</h3>
-                                <p className="text-sm text-muted-foreground mt-1 max-w-sm">
-                                    Connect Google Maps or Mapbox API to display live vehicle locations
-                                </p>
-                                <Button variant="outline" className="mt-4 gap-2">
-                                    <MapPin className="h-4 w-4" />
-                                    Configure Maps API
-                                </Button>
-                            </div>
-                        </div>
-
-                        {/* Fake Map Grid */}
-                        <div className="absolute inset-0 opacity-10">
-                            <div className="grid grid-cols-8 h-full">
-                                {[...Array(8)].map((_, i) => (
-                                    <div key={i} className="border-r border-slate-400" />
-                                ))}
-                            </div>
-                            <div className="absolute inset-0 grid grid-rows-6">
-                                {[...Array(6)].map((_, i) => (
-                                    <div key={i} className="border-b border-slate-400" />
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Simulated Vehicle Markers */}
-                        {activeVehicles.slice(0, 3).map((vehicle, index) => {
-                            const positions = [
-                                { left: '30%', top: '40%' },
-                                { left: '60%', top: '25%' },
-                                { left: '45%', top: '60%' },
-                            ]
-                            const pos = positions[index] || positions[0]
-
-                            return (
-                                <div
-                                    key={vehicle.id}
-                                    className={cn(
-                                        "absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer transition-all hover:scale-110",
-                                        selectedVehicle === vehicle.id && "scale-125"
-                                    )}
-                                    style={{ left: pos.left, top: pos.top }}
-                                    onClick={() => setSelectedVehicle(vehicle.id)}
-                                >
-                                    <div className="relative">
-                                        <div className="w-10 h-10 rounded-full bg-status-success flex items-center justify-center shadow-lg animate-pulse">
-                                            <Truck className="h-5 w-5 text-white" />
-                                        </div>
-                                        <div className="absolute -bottom-1 -right-1 w-4 h-4 rounded-full bg-white border-2 border-status-success flex items-center justify-center">
-                                            <Wifi className="h-2 w-2 text-status-success" />
-                                        </div>
-                                    </div>
-                                    <div className="mt-1 px-2 py-0.5 bg-background/90 rounded text-xs font-medium text-center shadow">
-                                        {vehicle.registration_number}
-                                    </div>
-                                </div>
-                            )
-                        })}
-                    </div>
+                    <FleetMap
+                        vehicles={vehicles}
+                        selectedVehicle={selectedVehicle}
+                        onSelectVehicle={setSelectedVehicle}
+                    />
                 </Card>
 
                 {/* Vehicle Sidebar */}
