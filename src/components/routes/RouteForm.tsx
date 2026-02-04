@@ -21,12 +21,22 @@ const routeFormSchema = z.object({
     destination_address: z.string().min(1, 'Destination is required'),
     distance_km: z.number().min(0.1, 'Distance must be positive'),
     estimated_duration: z.number().min(1, 'Duration must be at least 1 minute'),
-    estimated_toll_cost: z.coerce.number(),
-    estimated_fuel_cost: z.coerce.number(),
-    fuel_price_per_liter: z.coerce.number(),
+    estimated_toll_cost: z.number(),
+    estimated_fuel_cost: z.number(),
+    fuel_price_per_liter: z.number(),
 })
 
-type RouteFormData = z.infer<typeof routeFormSchema>
+// Define manually to avoid Zod inference issues with zodResolver
+interface RouteFormData {
+    name: string
+    origin_address: string
+    destination_address: string
+    distance_km: number
+    estimated_duration: number
+    estimated_toll_cost: number
+    estimated_fuel_cost: number
+    fuel_price_per_liter: number
+}
 
 interface RouteFormProps {
     initialData?: Partial<RouteFormData & { id: string; origin?: any; destination?: any }>
