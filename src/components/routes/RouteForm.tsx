@@ -21,9 +21,9 @@ const routeFormSchema = z.object({
     destination_address: z.string().min(1, 'Destination is required'),
     distance_km: z.number().min(0.1, 'Distance must be positive'),
     estimated_duration: z.number().min(1, 'Duration must be at least 1 minute'),
-    estimated_toll_cost: z.number().optional().default(0),
-    estimated_fuel_cost: z.number().optional().default(0),
-    fuel_price_per_liter: z.number().optional().default(4.00), // Now Price per Gallon
+    estimated_toll_cost: z.number().default(0),
+    estimated_fuel_cost: z.number().default(0),
+    fuel_price_per_liter: z.number().default(4.00), // Now Price per Gallon
 })
 
 type RouteFormData = z.infer<typeof routeFormSchema>
