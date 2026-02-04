@@ -43,6 +43,9 @@ export function VehicleDetailPopup({ vehicle, open, onOpenChange, onSelectForMan
     // Get current job from the manifest
     const currentJob = currentManifest?.jobs?.[0] || null
 
+    const pickupAddress = currentJob?.job_stops?.find(s => s.type === 'pickup')?.address || 'Pickup'
+    const deliveryAddress = currentJob?.job_stops?.find(s => s.type === 'dropoff' || s.type === 'delivery')?.address || 'Delivery'
+
     // Filter jobs for this vehicle (last 5)
     const vehicleJobs = allJobs
         .filter(job => job.vehicle_id === vehicle?.id)
@@ -158,14 +161,14 @@ export function VehicleDetailPopup({ vehicle, open, onOpenChange, onSelectForMan
                                                 <div className="flex items-center gap-1">
                                                     <div className="w-2 h-2 rounded-full bg-green-500" />
                                                     <span className="truncate max-w-[150px]">
-                                                        {currentJob.pickup_location?.address || 'Pickup'}
+                                                        {pickupAddress}
                                                     </span>
                                                 </div>
                                                 <ArrowRight className="h-3 w-3 flex-shrink-0" />
                                                 <div className="flex items-center gap-1">
                                                     <div className="w-2 h-2 rounded-full bg-red-500" />
                                                     <span className="truncate max-w-[150px]">
-                                                        {currentJob.delivery_location?.address || 'Delivery'}
+                                                        {deliveryAddress}
                                                     </span>
                                                 </div>
                                             </div>

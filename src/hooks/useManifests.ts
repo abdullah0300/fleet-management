@@ -17,7 +17,7 @@ export const manifestKeys = {
 export type ManifestWithRelations = Manifest & {
     vehicles: { registration_number: string; make: string; model: string } | null
     drivers: { profiles: { full_name: string } | null } | null
-    jobs: Job[]
+    jobs: (Job & { job_stops: { type: string; address: string }[] })[]
 }
 
 // --- FETCHERS ---
@@ -29,7 +29,10 @@ async function fetchManifests(filters?: { status?: string }): Promise<ManifestWi
             *,
             vehicles (registration_number, make, model),
             drivers (profiles (full_name)),
-            jobs (*)
+            jobs (
+                *,
+                job_stops (type, address)
+            )
         `)
         .order('created_at', { ascending: false })
 
@@ -49,7 +52,10 @@ async function fetchManifest(id: string): Promise<ManifestWithRelations> {
             *,
             vehicles (registration_number, make, model),
             drivers (profiles (full_name)),
-            jobs (*)
+            jobs (
+                *,
+                job_stops (type, address)
+            )
         `)
         .eq('id', id)
         .single()

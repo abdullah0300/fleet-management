@@ -43,6 +43,9 @@ export function DriverDetailPopup({ driver, open, onOpenChange, onSelectForManif
     // Get current job from the manifest
     const currentJob = currentManifest?.jobs?.[0] || null
 
+    const pickupAddress = currentJob?.job_stops?.find(s => s.type === 'pickup')?.address || 'Pickup'
+    const deliveryAddress = currentJob?.job_stops?.find(s => s.type === 'dropoff' || s.type === 'delivery')?.address || 'Delivery'
+
     // Filter completed jobs for this driver (last 5)
     const driverJobs = allJobs
         .filter(job => job.driver_id === driver?.id)
@@ -162,14 +165,14 @@ export function DriverDetailPopup({ driver, open, onOpenChange, onSelectForManif
                                                 <div className="flex items-center gap-1">
                                                     <div className="w-2 h-2 rounded-full bg-green-500" />
                                                     <span className="truncate max-w-[150px]">
-                                                        {currentJob.pickup_location?.address || 'Pickup'}
+                                                        {pickupAddress}
                                                     </span>
                                                 </div>
                                                 <ArrowRight className="h-3 w-3 flex-shrink-0" />
                                                 <div className="flex items-center gap-1">
                                                     <div className="w-2 h-2 rounded-full bg-red-500" />
                                                     <span className="truncate max-w-[150px]">
-                                                        {currentJob.delivery_location?.address || 'Delivery'}
+                                                        {deliveryAddress}
                                                     </span>
                                                 </div>
                                             </div>
