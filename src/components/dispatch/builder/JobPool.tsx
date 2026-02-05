@@ -4,8 +4,8 @@ import { useDraggable } from '@dnd-kit/core'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Search, MapPin, Plus } from 'lucide-react'
-import { useState } from 'react'
+import { Search, MapPin, Plus, Calendar, Clock } from 'lucide-react'
+import { useState, useMemo } from 'react'
 import { CSS } from '@dnd-kit/utilities'
 import { JobCreationModal } from './JobCreationModal'
 import { Button } from '@/components/ui/button'
@@ -23,10 +23,23 @@ interface JobPoolProps {
 export function JobPool({ jobs, onJobCreated }: JobPoolProps) {
     const [search, setSearch] = useState('')
 
-    const filteredJobs = jobs.filter(j =>
-        j.job_number?.toLowerCase().includes(search.toLowerCase()) ||
-        j.customer_name?.toLowerCase().includes(search.toLowerCase())
-    )
+    const filteredJobs = useMemo(() => {
+        const result = jobs.filter(j =>
+            j.job_number?.toLowerCase().includes(search.toLowerCase()) ||
+            j.customer_name?.toLowerCase().includes(search.toLowerCase())
+        )
+
+        // Sort by Date then Time
+        return result.sort((a, b) => {
+            const dateA = a.scheduled_date || '9999-12-31'
+            const dateB = b.scheduled_date || '9999-12-31'
+            if (dateA !== dateB) return dateA.localeCompare(dateB)
+
+            const timeA = a.scheduled_time || '23:59'
+            const timeB = b.scheduled_time || '23:59'
+            return timeA.localeCompare(timeB)
+        })
+    }, [jobs, search])
 
     return (
         <Card className="flex flex-col h-full bg-slate-50/50">
@@ -106,7 +119,24 @@ function PoolJobCard({ job }: { job: PoolJob }) {
                     <Badge variant="outline" className="text-[10px] h-4 px-1">{job.status}</Badge>
                 </div>
             </div>
-            <div className="text-xs font-medium truncate mb-0.5">{job.customer_name}</div>
+            <div className="text-xs font-medium truncate mb-1">{job.customer_name}</div>
+
+            {/* Schedule Info */}
+            <div className="flex flex-wrap gap-1 mb-1.5">
+                {job.scheduled_date && (
+                    <Badge variant="secondary" className="text-[10px] h-4 px-1 gap-1 font-normal bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200">
+                        <Calendar className="h-2.5 w-2.5" />
+                        {new Date(job.scheduled_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </Badge>
+                )}
+                {job.scheduled_time && (
+                    <Badge variant="secondary" className="text-[10px] h-4 px-1 gap-1 font-normal">
+                        <Clock className="h-2.5 w-2.5" />
+                        {job.scheduled_time.slice(0, 5)}
+                    </Badge>
+                )}
+            </div>
+
             <div className="text-[10px] text-muted-foreground flex items-center gap-1 truncate">
                 <MapPin className="h-3 w-3 inline" />
                 {deliveryAddress}

@@ -12,7 +12,10 @@ import { useMemo, useCallback, useState } from 'react'
 import { toast } from 'sonner'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { ChevronLeft, ChevronRight, Clock, MapPin, MoreHorizontal } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clock, MapPin, MoreHorizontal, Calendar as CalendarIcon } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Calendar as DatePicker } from '@/components/ui/calendar'
+import { cn } from '@/lib/utils'
 
 // Setup the localizer
 const localizer = momentLocalizer(moment)
@@ -113,13 +116,31 @@ function CustomToolbar(toolbar: any) {
                     <Button variant="ghost" size="sm" onClick={goToCurrent} className="h-7 text-xs font-medium px-2">
                         Today
                     </Button>
-                    <Button variant="ghost" size="icon" onClick={goToNext} className="h-7 w-7">
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
                 </div>
-                <h2 className="text-lg font-semibold ml-2 tracking-tight">
-                    {moment(toolbar.date).format('MMMM YYYY')}
-                </h2>
+                <div className="flex items-center ml-4">
+                    <Popover>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" className="group h-9 px-3 font-normal text-sm bg-white hover:bg-blue-50/50 border-slate-200 shadow-sm min-w-[240px] justify-start text-left cursor-pointer transition-all duration-300 hover:border-blue-300 hover:shadow-md">
+                                <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground shrink-0 transition-all duration-300 group-hover:scale-110 group-hover:text-blue-600" />
+                                <span className="font-semibold text-foreground transition-all duration-300 group-hover:text-blue-700 group-hover:translate-x-0.5">
+                                    {moment(toolbar.date).format('dddd, MMMM D, YYYY')}
+                                </span>
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <DatePicker
+                                mode="single"
+                                selected={toolbar.date}
+                                onSelect={(date) => {
+                                    if (date) {
+                                        toolbar.onNavigate(Navigate.DATE, date)
+                                    }
+                                }}
+                                initialFocus
+                            />
+                        </PopoverContent>
+                    </Popover>
+                </div>
             </div>
 
             <div className="flex gap-3 text-xs">

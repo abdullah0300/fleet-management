@@ -120,6 +120,7 @@ export function RouteForm({ initialData, onSubmit, isSubmitting }: RouteFormProp
 
     const [stops, setStops] = useState<RouteStop[]>(buildInitialStops)
     const [isCalculating, setIsCalculating] = useState(false)
+    const [isFetchingPrice, setIsFetchingPrice] = useState(false)
 
     const {
         register,
@@ -135,9 +136,33 @@ export function RouteForm({ initialData, onSubmit, isSubmitting }: RouteFormProp
             estimated_duration: initialData?.estimated_duration || 0,
             estimated_toll_cost: initialData?.estimated_toll_cost || 0,
             estimated_fuel_cost: initialData?.estimated_fuel_cost || 0,
-            fuel_price_per_liter: 4.00,
+            fuel_price_per_liter: 4.00, // Will be updated by API
         },
     })
+
+    const fetchFuelPrice = async () => {
+        setIsFetchingPrice(true)
+        try {
+            const res = await fetch('/api/fuel-price')
+            if (res.ok) {
+                const data = await res.json()
+                if (data.price) {
+                    setValue('fuel_price_per_liter', data.price, { shouldValidate: true })
+                }
+            }
+        } catch (error) {
+            console.error('Failed to fetch fuel price', error)
+        } finally {
+            setIsFetchingPrice(false)
+        }
+    }
+
+    // Fetch fuel price on mount if no initial data
+    useEffect(() => {
+        if (!initialData?.id) {
+            fetchFuelPrice()
+        }
+    }, [initialData?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const distanceKm = watch('distance_km')
     const fuelPrice = watch('fuel_price_per_liter')
@@ -422,13 +447,27 @@ export function RouteForm({ initialData, onSubmit, isSubmitting }: RouteFormProp
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label className="flex items-center gap-1.5">
-                                    Fuel Price ($/Gal)
-                                    <span className="text-xs text-muted-foreground font-normal">(Avg)</span>
-                                </Label>
+                                <div className="flex items-center justify-between">
+                                    <Label className="flex items-center gap-1.5">
+                                        Fuel Price ($/Gal)
+                                        <span className="text-xs text-muted-foreground font-normal">(Avg)</span>
+                                    </Label>
+                                    <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-5 w-5 text-muted-foreground hover:text-primary"
+                                        onClick={fetchFuelPrice}
+                                        disabled={isFetchingPrice}
+                                        title="Refresh National Average"
+                                    >
+                                        <RefreshCw className={cn("h-3 w-3", isFetchingPrice && "animate-spin")} />
+                                        <span className="sr-only">Refresh Price</span>
+                                    </Button>
+                                </div>
                                 <Input
                                     type="number"
-                                    step="0.01"
+                                    step="0.001"
                                     {...register('fuel_price_per_liter', { valueAsNumber: true })}
                                 />
                             </div>

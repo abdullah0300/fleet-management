@@ -63,13 +63,8 @@ export default async function DispatchPage() {
                 </TabsContent>
 
                 <TabsContent value="calendar" className="flex-1 overflow-auto p-4 mt-0">
-                    <div className="grid grid-cols-12 gap-4 h-full">
-                        <div className="col-span-3">
-                            <UnassignedJobsList />
-                        </div>
-                        <div className="col-span-9">
-                            <VisualDispatchBoard />
-                        </div>
+                    <div className="h-full">
+                        <VisualDispatchBoard />
                     </div>
                 </TabsContent>
             </Tabs>
