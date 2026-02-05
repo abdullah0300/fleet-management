@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
-import { getJobDeliveryAddress, getJobStopCount } from '@/hooks/useJobs'
+import { getJobDeliveryAddress, getJobStopCount, useAssignJob } from '@/hooks/useJobs'
 import { Job } from '@/types/database'
 import { useCreateManifest, useAddJobToManifest } from '@/hooks/useManifests'
 import { toast } from 'sonner'
@@ -62,10 +62,41 @@ export function ManifestCanvas({
     // Supabase hooks
     const createManifest = useCreateManifest()
     const addJob = useAddJobToManifest()
+    const assignJob = useAssignJob()
     const [isDispatching, setIsDispatching] = useState(false)
 
+    // Smart mode detection
+    const isSingleJobMode = jobs.length === 1
     const canDispatch = activeDriver && activeVehicle && jobs.length > 0
 
+    // Single job dispatch - assigns directly without manifest
+    const handleDispatchSingleJob = async () => {
+        if (!canDispatch) {
+            toast.error('Please select a driver, vehicle, and a job')
+            return
+        }
+
+        setIsDispatching(true)
+        try {
+            await assignJob.mutateAsync({
+                jobId: jobs[0].id,
+                driverId: activeDriver.id,
+                vehicleId: activeVehicle.id
+            })
+
+            toast.success(`Job ${jobs[0].job_number} assigned to ${activeDriver.profiles?.full_name}!`)
+
+            // Navigate to jobs page
+            router.push('/dashboard/jobs')
+
+        } catch (error: any) {
+            toast.error(error.message || 'Failed to assign job')
+        } finally {
+            setIsDispatching(false)
+        }
+    }
+
+    // Multi-job dispatch - creates manifest
     const handleDispatchManifest = async () => {
         if (!canDispatch) {
             toast.error('Please select a driver, vehicle, and at least one job')
@@ -103,6 +134,28 @@ export function ManifestCanvas({
         }
     }
 
+    // Smart dispatch handler
+    const handleDispatch = () => {
+        if (jobs.length === 0) {
+            toast.info('Please add a job from the right panel first', {
+                description: 'Drag a job to this area or create a new one'
+            })
+            return
+        }
+        if (isSingleJobMode) {
+            handleDispatchSingleJob()
+        } else {
+            handleDispatchManifest()
+        }
+    }
+
+    // Button text based on job count
+    const getButtonText = () => {
+        if (jobs.length === 0) return 'Dispatch'
+        if (jobs.length === 1) return 'Dispatch Job'
+        return 'Dispatch Manifest'
+    }
+
     return (
         <Card className="flex flex-col h-full border-2 border-primary/20 shadow-lg">
             {/* Header / Manifest Settings */}
@@ -117,9 +170,9 @@ export function ManifestCanvas({
                     <div className="flex-1" />
                     <Button
                         size="sm"
-                        onClick={handleDispatchManifest}
-                        disabled={!canDispatch || isDispatching}
-                        className="gap-2"
+                        onClick={handleDispatch}
+                        disabled={isDispatching}
+                        className={cn("gap-2", jobs.length === 0 && "opacity-50")}
                     >
                         {isDispatching ? (
                             <>
@@ -129,7 +182,7 @@ export function ManifestCanvas({
                         ) : (
                             <>
                                 <Send className="h-4 w-4" />
-                                Dispatch Manifest
+                                {getButtonText()}
                             </>
                         )}
                     </Button>
@@ -305,10 +358,18 @@ export function ManifestCanvas({
                     </div>
                 </SortableContext>
 
-                {/* Quick Add Row - now just informational */}
+                {/* Quick Add Row - contextual hint */}
                 {jobs.length > 0 && (
-                    <div className="mt-4 text-xs text-muted-foreground text-center">
-                        {jobs.length} job{jobs.length > 1 ? 's' : ''} ready to dispatch
+                    <div className="mt-4 text-xs text-center">
+                        {isSingleJobMode ? (
+                            <span className="text-muted-foreground">
+                                Ready to dispatch • <span className="text-blue-600 font-medium">Drag more jobs to create a manifest</span>
+                            </span>
+                        ) : (
+                            <span className="text-muted-foreground">
+                                {jobs.length} jobs ready to dispatch as <span className="font-medium text-primary">manifest</span>
+                            </span>
+                        )}
                     </div>
                 )}
             </CardContent>

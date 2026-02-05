@@ -5,58 +5,42 @@ import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DriverForm } from '@/components/drivers/DriverForm'
-import { createClient } from '@/lib/supabase/client'
+import { createDriver } from '../actions'
 import { DriverInsert, Profile } from '@/types/database'
+import { useQueryClient } from '@tanstack/react-query'
+import { driverKeys } from '@/hooks/useDrivers'
 
 export default function NewDriverPage() {
     const router = useRouter()
     const [isSubmitting, setIsSubmitting] = useState(false)
-    const supabase = createClient()
+    const queryClient = useQueryClient()
 
     const handleSubmit = async (data: { driver: DriverInsert; profile?: Partial<Profile> }) => {
         setIsSubmitting(true)
         try {
-            // First, we need to create a user/profile for the driver
-            // In production, this would involve inviting the user via email
-            // For now, we'll create a placeholder profile
+            // Use server action to create driver (bypasses RLS)
+            const result = await createDriver({
+                email: data.profile?.email || `driver-${Date.now()}@fleet.local`,
+                full_name: data.profile?.full_name || 'New Driver',
+                phone: data.profile?.phone || undefined,
+                license_number: data.driver.license_number || undefined,
+                license_expiry: data.driver.license_expiry || undefined,
+                payment_type: data.driver.payment_type || undefined,
+                rate_amount: data.driver.rate_amount || undefined,
+                status: data.driver.status || undefined,
+            })
 
-            // Generate a unique email for testing if not provided
-            const email = data.profile?.email || `driver-${Date.now()}@fleet.local`
+            if (!result.success) {
+                throw new Error(result.error || 'Unknown error')
+            }
 
-            // Create auth user via admin API would be needed in production
-            // For now, insert directly into profiles table (requires service role in production)
-            const { data: profile, error: profileError } = await supabase
-                .from('profiles')
-                .insert({
-                    id: crypto.randomUUID(),
-                    full_name: data.profile?.full_name || 'New Driver',
-                    email: email,
-                    phone: data.profile?.phone || null,
-                    role: 'driver',
-                })
-                .select()
-                .single()
-
-            if (profileError) throw profileError
-
-            // Now create the driver record linked to the profile
-            const { error: driverError } = await supabase
-                .from('drivers')
-                .insert({
-                    id: profile.id,
-                    license_number: data.driver.license_number,
-                    license_expiry: data.driver.license_expiry,
-                    payment_type: data.driver.payment_type,
-                    rate_amount: data.driver.rate_amount,
-                    status: data.driver.status,
-                })
-
-            if (driverError) throw driverError
+            // Invalidate drivers list cache
+            queryClient.invalidateQueries({ queryKey: driverKeys.lists() })
 
             router.push('/dashboard/drivers')
         } catch (error) {
             console.error('Failed to create driver:', error)
-            alert('Failed to create driver. Please try again.')
+            alert('Failed to create driver: ' + (error instanceof Error ? error.message : 'Unknown error'))
         } finally {
             setIsSubmitting(false)
         }

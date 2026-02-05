@@ -11,8 +11,11 @@ import { LocationPicker } from '@/components/ui/LocationPicker'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useCreateJobWithStops, CreateJobWithStopsInput } from '@/hooks/useJobs'
+import { useRoutes } from '@/hooks/useRoutes'
+import { Route } from '@/types/database'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { MapPin } from 'lucide-react'
 
 // Helper: Get the effective end time of a stop
 // For fixed mode: scheduled_arrival + service_duration
@@ -240,6 +243,11 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page' }: JobCr
     // Scheduling
     const [priority, setPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>('normal')
 
+    // Route Template Selection
+    const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
+    const { data: routesData } = useRoutes()
+    const routes = routesData?.data || []
+
     // Stops
     const [stops, setStops] = useState<{
         id: string,
@@ -261,11 +269,80 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page' }: JobCr
         setWeight('')
         setNotes('')
         setPriority('normal')
+        setSelectedRouteId(null)
         setStops([
             { id: '1', address: '', type: 'pickup', notes: '' },
             { id: '2', address: '', type: 'dropoff', notes: '' }
         ])
         setActiveTab('details')
+    }
+
+    // Handle route template selection - auto-fill stops from route
+    const handleSelectRoute = (routeId: string) => {
+        if (routeId === 'none') {
+            setSelectedRouteId(null)
+            return
+        }
+
+        const route = routes.find((r: Route) => r.id === routeId)
+        if (!route) return
+
+        setSelectedRouteId(routeId)
+
+        // Build stops array from route
+        const newStops: typeof stops = []
+
+        // 1. Add origin as first stop (pickup)
+        const origin = route.origin as { address?: string; lat?: number; lng?: number } | null
+        if (origin?.address) {
+            newStops.push({
+                id: crypto.randomUUID(),
+                address: origin.address,
+                lat: origin.lat,
+                lng: origin.lng,
+                type: 'pickup',
+                notes: ''
+            })
+        }
+
+        // 2. Add waypoints
+        const waypoints = route.waypoints as { address?: string; lat?: number; lng?: number }[] | null
+        if (waypoints && Array.isArray(waypoints)) {
+            waypoints.forEach(wp => {
+                if (wp.address) {
+                    newStops.push({
+                        id: crypto.randomUUID(),
+                        address: wp.address,
+                        lat: wp.lat,
+                        lng: wp.lng,
+                        type: 'waypoint',
+                        notes: ''
+                    })
+                }
+            })
+        }
+
+        // 3. Add destination as last stop (dropoff)
+        const destination = route.destination as { address?: string; lat?: number; lng?: number } | null
+        if (destination?.address) {
+            newStops.push({
+                id: crypto.randomUUID(),
+                address: destination.address,
+                lat: destination.lat,
+                lng: destination.lng,
+                type: 'dropoff',
+                notes: ''
+            })
+        }
+
+        if (newStops.length >= 2) {
+            setStops(newStops)
+            toast.success(`Loaded ${newStops.length} stops from "${route.name || 'Route'}"`, {
+                description: 'You can now add scheduling times to each stop'
+            })
+        } else {
+            toast.error('Route does not have enough stops')
+        }
     }
 
     const addStop = () => {
@@ -359,6 +436,7 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page' }: JobCr
                 status: 'pending',
                 notes: notes || null,
                 weight: weight ? parseFloat(weight) : null,
+                route_id: selectedRouteId || null,
             },
             stops: validStops.map((stop, index) => ({
                 sequence_order: index + 1,
@@ -487,6 +565,36 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page' }: JobCr
                 </TabsContent>
 
                 <TabsContent value="route" className="space-y-4 outline-none">
+                    {/* Route Template Selector */}
+                    {routes.length > 0 && (
+                        <Card className="bg-blue-50/70 border-blue-200">
+                            <CardContent className="pt-4 pb-4">
+                                <div className="flex items-center justify-between gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <MapPin className="h-4 w-4 text-blue-600" />
+                                        <div>
+                                            <Label className="text-sm font-medium">Use Saved Route Template</Label>
+                                            <p className="text-xs text-muted-foreground">Quick-fill stops from a saved route</p>
+                                        </div>
+                                    </div>
+                                    <Select value={selectedRouteId || 'none'} onValueChange={handleSelectRoute}>
+                                        <SelectTrigger className="w-64 bg-white">
+                                            <SelectValue placeholder="Select a route..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">-- No template --</SelectItem>
+                                            {routes.map((route: Route) => (
+                                                <SelectItem key={route.id} value={route.id}>
+                                                    {route.name || 'Unnamed Route'}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    )}
+
                     <div className="flex justify-between items-center mb-2">
                         <Label className="text-base font-semibold">Route Stops</Label>
                         <Button variant="outline" size="sm" onClick={addStop}>

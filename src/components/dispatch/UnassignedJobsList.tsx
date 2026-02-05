@@ -4,9 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useJobs, getJobPickupAddress } from '@/hooks/useJobs'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Plus } from 'lucide-react'
+import { JobCreationModal } from './builder/JobCreationModal'
+import { useQueryClient } from '@tanstack/react-query'
 
 export function UnassignedJobsList() {
     const { data: jobsData } = useJobs(1, 100)
+    const queryClient = useQueryClient()
 
     const unassignedJobs = jobsData?.data.filter(job =>
         job.status === 'pending' || !job.driver_id
@@ -23,10 +28,25 @@ export function UnassignedJobsList() {
             ; (window as any).draggedJobId = job.id
     }
 
+    const handleJobCreated = () => {
+        // Refresh jobs list after creation
+        queryClient.invalidateQueries({ queryKey: ['jobs'] })
+    }
+
     return (
         <Card className="h-[600px] flex flex-col">
             <CardHeader className="py-4">
-                <CardTitle className="text-base">Unassigned Jobs</CardTitle>
+                <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">Unassigned Jobs</CardTitle>
+                    <JobCreationModal
+                        trigger={
+                            <Button size="sm" className="h-7 text-xs">
+                                <Plus className="h-3 w-3 mr-1" /> New Job
+                            </Button>
+                        }
+                        onSave={handleJobCreated}
+                    />
+                </div>
             </CardHeader>
             <CardContent className="flex-1 p-0">
                 <ScrollArea className="h-full">

@@ -63,11 +63,12 @@ export function ManifestList({ initialData }: ManifestListProps) {
                     <p className="text-muted-foreground text-sm">Manage consolidated trips and job groups</p>
                 </div>
                 <Button
-                    onClick={() => router.push('/dashboard/manifests/builder')}
+                    onClick={() => router.push('/dashboard/dispatch')}
+                    variant="outline"
                     className="gap-2 w-full sm:w-auto"
                 >
                     <Plus className="h-4 w-4" />
-                    New Manifest
+                    Create in Dispatch
                 </Button>
             </div>
 

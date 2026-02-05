@@ -6,6 +6,8 @@ import { useRoute, useDeleteRoute } from '@/hooks/useRoutes'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { RouteMap } from '@/components/routes/RouteMap'
+import { useMemo } from 'react'
 
 export default function RouteDetailPage() {
     const params = useParams()
@@ -20,6 +22,36 @@ export default function RouteDetailPage() {
         await deleteMutation.mutateAsync(id)
         router.push('/dashboard/routes')
     }
+
+    const origin = route?.origin as { address?: string; lat?: number; lng?: number } | null
+    const destination = route?.destination as { address?: string; lat?: number; lng?: number } | null
+
+    const mapStops = useMemo(() => {
+        if (!route) return []
+        const stops: { lat: number; lng: number; type: 'origin' | 'waypoint' | 'destination' }[] = []
+
+        // Origin
+        if (origin?.lat && origin?.lng) {
+            stops.push({ lat: origin.lat, lng: origin.lng, type: 'origin' })
+        }
+
+        // Waypoints
+        const waypoints = route?.waypoints as { lat: number; lng: number }[] | null
+        if (waypoints && Array.isArray(waypoints)) {
+            waypoints.forEach(wp => {
+                if (wp.lat && wp.lng) {
+                    stops.push({ lat: wp.lat, lng: wp.lng, type: 'waypoint' })
+                }
+            })
+        }
+
+        // Destination
+        if (destination?.lat && destination?.lng) {
+            stops.push({ lat: destination.lat, lng: destination.lng, type: 'destination' })
+        }
+
+        return stops
+    }, [route, origin, destination])
 
     if (isLoading) {
         return (
@@ -42,9 +74,6 @@ export default function RouteDetailPage() {
     if (error || !route) {
         return <div className="p-8 text-center">Route not found</div>
     }
-
-    const origin = route.origin as { address?: string } | null
-    const destination = route.destination as { address?: string } | null
 
     return (
         <div className="flex flex-col gap-4 sm:gap-6">
@@ -84,16 +113,10 @@ export default function RouteDetailPage() {
                 </div>
             </div>
 
-            {/* Route Map Placeholder */}
-            <Card className="overflow-hidden">
-                <div className="h-[200px] sm:h-[300px] bg-gradient-to-br from-status-info-muted to-accent-purple-muted flex items-center justify-center">
-                    <div className="text-center">
-                        <Navigation className="h-12 w-12 mx-auto mb-2 text-muted-foreground/50" />
-                        <p className="text-sm text-muted-foreground">Map Integration</p>
-                        <p className="text-xs text-muted-foreground/60">Google Maps or Mapbox required</p>
-                    </div>
-                </div>
-            </Card>
+            {/* Route Map */}
+            <div className="h-[300px] sm:h-[400px] rounded-xl overflow-hidden border shadow-sm relative bg-muted">
+                <RouteMap stops={mapStops} className="w-full h-full" />
+            </div>
 
             {/* Details Grid */}
             <div className="grid gap-4 grid-cols-1 md:grid-cols-2">

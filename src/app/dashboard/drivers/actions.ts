@@ -126,3 +126,86 @@ export async function bulkImportDrivers(drivers: DriverImportRow[]): Promise<Imp
 
     return { successful: successCount, failed }
 }
+
+/**
+ * Create a single driver using admin client (bypasses RLS)
+ */
+export async function createDriver(driver: DriverImportRow): Promise<{ success: boolean; error?: string; driverId?: string }> {
+    // Validate service role key
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        return { success: false, error: 'Server configuration error: Missing Service Role Key' }
+    }
+
+    try {
+        let userId: string
+
+        // 1. Check if user exists by email
+        const { data: existingProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .eq('email', driver.email.toLowerCase())
+            .single()
+
+        if (existingProfile) {
+            // User already exists, check if they're already a driver
+            const { data: existingDriver } = await supabaseAdmin
+                .from('drivers')
+                .select('id')
+                .eq('id', existingProfile.id)
+                .single()
+
+            if (existingDriver) {
+                return { success: false, error: 'A driver with this email already exists' }
+            }
+
+            userId = existingProfile.id
+        } else {
+            // 2. Create new auth user
+            const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+                email: driver.email.toLowerCase(),
+                email_confirm: true,
+                user_metadata: {
+                    full_name: driver.full_name,
+                }
+            })
+
+            if (createError) {
+                return { success: false, error: createError.message }
+            }
+            if (!newUser.user) {
+                return { success: false, error: 'Failed to create user' }
+            }
+
+            userId = newUser.user.id
+        }
+
+        // 3. Create driver record
+        const driverData: DriverInsert = {
+            id: userId,
+            license_number: driver.license_number || null,
+            license_expiry: driver.license_expiry || null,
+            payment_type: driver.payment_type || 'per_mile',
+            rate_amount: driver.rate_amount || 0,
+            status: driver.status || 'available',
+        }
+
+        const { error: insertError } = await supabaseAdmin
+            .from('drivers')
+            .insert(driverData)
+
+        if (insertError) {
+            return { success: false, error: insertError.message }
+        }
+
+        // 4. Update profile phone if provided
+        if (driver.phone) {
+            await supabaseAdmin.from('profiles').update({ phone: driver.phone }).eq('id', userId)
+        }
+
+        return { success: true, driverId: userId }
+
+    } catch (error) {
+        console.error('Error creating driver:', error)
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+}

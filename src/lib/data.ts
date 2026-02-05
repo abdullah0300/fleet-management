@@ -173,6 +173,7 @@ export async function getJobs(): Promise<Job[]> {
         .from('jobs')
         .select(`
             *,
+            job_stops (*),
             routes (id, name, distance_km),
             vehicles (id, registration_number, make, model),
             drivers (

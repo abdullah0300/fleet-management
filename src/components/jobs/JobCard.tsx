@@ -1,12 +1,12 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { Package, MapPin, Truck, User, Calendar, Clock, ArrowRight } from 'lucide-react'
+import { MapPin, Truck, User, Calendar, Flame, Layers } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { getJobPickupAddress, getJobDeliveryAddress, getJobStopCount } from '@/hooks/useJobs'
+import { getJobStopCount } from '@/hooks/useJobs'
 import { JobStop } from '@/types/database'
+import { cn } from '@/lib/utils'
 
 interface JobCardProps {
     job: {
@@ -15,172 +15,187 @@ interface JobCardProps {
         status: string
         customer_name: string
         customer_phone?: string | null
+        priority?: 'low' | 'normal' | 'high' | 'urgent' | null
+        weight?: number | null
+        notes?: string | null
         job_stops?: JobStop[]
         scheduled_date?: string | null
         scheduled_time?: string | null
         vehicles?: { registration_number: string; make: string } | null
         drivers?: { profiles: { full_name: string } | null } | null
+        manifests?: { id: string; manifest_number: string | null; status: string | null } | null
     }
     showActions?: boolean
     onViewDetails?: () => void
 }
 
-export function JobCard({ job, showActions = true, onViewDetails }: JobCardProps) {
+export function JobCard({ job, onViewDetails }: JobCardProps) {
     const router = useRouter()
-
-    // Use helper functions for address display
-    const pickupAddress = getJobPickupAddress(job)
-    const deliveryAddress = getJobDeliveryAddress(job)
     const stopCount = getJobStopCount(job)
 
-    const getStatusBadge = () => {
-        switch (job.status) {
-            case 'pending':
-                return <Badge className="badge-warning">Pending</Badge>
-            case 'assigned':
-                return <Badge className="badge-info">Assigned</Badge>
-            case 'in_progress':
-                return <Badge className="badge-purple">In Progress</Badge>
-            case 'completed':
-                return <Badge className="badge-success">Completed</Badge>
-            case 'cancelled':
-                return <Badge className="badge-error">Cancelled</Badge>
-            default:
-                return <Badge className="badge-neutral">{job.status}</Badge>
+    // Priority stripe color
+    const stripeColor = {
+        urgent: 'bg-red-500',
+        high: 'bg-orange-500',
+        normal: 'bg-transparent',
+        low: 'bg-slate-300',
+    }[job.priority || 'normal']
+
+    // Status badge styles
+    const statusStyles: Record<string, string> = {
+        pending: 'bg-amber-100 text-amber-700 hover:bg-amber-100',
+        assigned: 'bg-blue-100 text-blue-700 hover:bg-blue-100',
+        in_progress: 'bg-purple-100 text-purple-700 hover:bg-purple-100',
+        completed: 'bg-green-100 text-green-700 hover:bg-green-100',
+        cancelled: 'bg-red-100 text-red-700 hover:bg-red-100',
+    }
+
+    // Get time display
+    const getTimeDisplay = () => {
+        const firstStop = job.job_stops?.length
+            ? [...job.job_stops].sort((a, b) => a.sequence_order - b.sequence_order)[0]
+            : null
+        const startTime = (firstStop as any)?.scheduled_arrival || (firstStop as any)?.window_start
+
+        if (startTime) {
+            return new Date(startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
         }
+        if (job.scheduled_date) {
+            return new Date(job.scheduled_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        }
+        return null
+    }
+
+    // Helper to extract city from address
+    const getCity = (address: string) => {
+        if (!address) return 'Unknown'
+        const parts = address.split(',').map(p => p.trim())
+        if (parts.length >= 3) return parts[parts.length - 3]
+        if (parts.length === 2) return parts[0]
+        return address.substring(0, 20) + (address.length > 20 ? '...' : '')
+    }
+
+    // Get location summary
+    const getLocationSummary = () => {
+        const stops = job.job_stops?.sort((a, b) => a.sequence_order - b.sequence_order) || []
+        if (stops.length === 0) return null
+
+        const start = getCity(stops[0].address)
+        const end = getCity(stops[stops.length - 1].address)
+        const middleCount = stops.length - 2
+
+        if (stops.length === 1) return <span className="font-medium text-gray-500">{start}</span>
+
+        return (
+            <div className="flex items-center gap-1.5 text-sm text-gray-500 truncate mt-1">
+                <span className="truncate font-medium text-gray-500">{start}</span>
+                <span className="text-gray-400">→</span>
+                <span className="truncate font-medium text-gray-500">{end}</span>
+                {middleCount > 0 && (
+                    <Badge variant="secondary" className="text-[10px] px-1.5 h-5 min-w-0 bg-gray-100 text-gray-500">
+                        +{middleCount}
+                    </Badge>
+                )}
+            </div>
+        )
     }
 
     return (
-        <Card className="hover:shadow-md transition-shadow cursor-pointer" onClick={onViewDetails}>
-            <CardContent className="p-3 sm:p-4">
-                <div className="flex flex-col gap-3">
-                    {/* Header */}
-                    <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-2">
-                            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-accent-purple-muted flex items-center justify-center shrink-0">
-                                <Package className="h-4 w-4 sm:h-5 sm:w-5 text-accent-purple" />
+        <Card
+            className="group hover:shadow-lg transition-all duration-200 cursor-pointer overflow-hidden border-gray-200/60 bg-white"
+            onClick={onViewDetails}
+        >
+            <div className="flex flex-col h-full">
+                <div className="flex flex-1">
+                    {/* Priority Stripe */}
+                    <div className={cn("w-1.5 shrink-0", stripeColor)} />
+
+                    <div className="flex-1 p-4 flex flex-col min-h-0">
+                        {/* Header: ID, Priority, Status */}
+                        <div className="flex items-center justify-between gap-3 mb-3">
+                            <div className="flex items-center gap-2">
+                                <span className="font-mono font-medium text-xs text-gray-500 tracking-tight">
+                                    {job.job_number}
+                                </span>
+                                {job.priority === 'urgent' && (
+                                    <Flame className="h-3.5 w-3.5 text-red-500 fill-red-500/10" />
+                                )}
                             </div>
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="font-mono font-semibold text-sm">{job.job_number}</span>
-                                    {getStatusBadge()}
-                                    {stopCount > 2 && (
-                                        <Badge variant="outline" className="text-[10px]">
-                                            {stopCount} stops
-                                        </Badge>
+                            <Badge className={cn("text-[10px] uppercase font-bold tracking-wide px-2 py-0.5 rounded-md border-0 shadow-none", statusStyles[job.status])}>
+                                {job.status.replace('_', ' ')}
+                            </Badge>
+                        </div>
+
+                        {/* Main Content */}
+                        <div className="space-y-1 mb-3">
+                            <h3 className="font-bold text-gray-900 truncate leading-tight">
+                                {job.customer_name}
+                            </h3>
+                            {getLocationSummary()}
+                        </div>
+
+                        {/* Manifest Badge */}
+                        {job.manifests && (
+                            <div className="mb-3">
+                                <Badge
+                                    variant="outline"
+                                    className="text-[10px] font-medium gap-1.5 py-1 px-2 bg-indigo-50/50 text-indigo-600 border-indigo-100 hover:bg-indigo-100 hover:text-indigo-700 transition-colors group/manifest w-fit cursor-pointer"
+                                    onClick={(e) => {
+                                        e.stopPropagation()
+                                        router.push(`/dashboard/manifests/${job.manifests!.id}`)
+                                    }}
+                                >
+                                    <Layers className="h-3 w-3" />
+                                    {job.manifests.manifest_number || 'Manifest'}
+                                </Badge>
+                            </div>
+                        )}
+
+                        {/* Spacer to push footer down */}
+                        <div className="flex-1" />
+                    </div>
+                </div>
+
+                {/* Footer: Meta Info */}
+                <div className="bg-gray-50/50 border-t border-gray-100 px-4 py-2.5 flex items-center justify-between text-xs text-gray-500">
+                    <div className="flex items-center gap-3">
+                        {stopCount > 0 && (
+                            <div className="flex items-center gap-1.5" title={`${stopCount} stops`}>
+                                <div className="p-1 rounded bg-white shadow-sm border border-gray-100">
+                                    <MapPin className="h-3 w-3 text-gray-400" />
+                                </div>
+                                <span className="font-medium text-gray-700">{stopCount}</span>
+                            </div>
+                        )}
+                        {(job.drivers?.profiles || job.vehicles) && (
+                            <div className="flex items-center gap-1.5">
+                                <div className="p-1 rounded bg-white shadow-sm border border-gray-100">
+                                    <Truck className="h-3 w-3 text-gray-400" />
+                                </div>
+                                <div className="flex flex-col leading-none gap-0.5">
+                                    {job.drivers?.profiles && (
+                                        <span className="font-medium text-gray-700 truncate max-w-[80px]">
+                                            {job.drivers.profiles.full_name.split(' ')[0]}
+                                        </span>
+                                    )}
+                                    {job.vehicles && (
+                                        <span className="text-[10px] text-gray-400 uppercase tracking-wider">
+                                            {job.vehicles.registration_number}
+                                        </span>
                                     )}
                                 </div>
-                                <p className="text-sm text-foreground">{job.customer_name}</p>
                             </div>
-                        </div>
-
-                        {/* Intelligent Time Display */}
-                        <div className="text-right text-xs text-muted-foreground">
-                            {(() => {
-                                // Try to get start time from first stop
-                                const firstStop = job.job_stops && job.job_stops.length > 0 ? job.job_stops.sort((a, b) => a.sequence_order - b.sequence_order)[0] : null;
-                                // Try to get end time from last stop
-                                const lastStop = job.job_stops && job.job_stops.length > 0 ? job.job_stops.sort((a, b) => b.sequence_order - a.sequence_order)[0] : null;
-
-                                const startTime = (firstStop as any)?.arrival_mode === 'fixed' ? (firstStop as any)?.scheduled_arrival
-                                    : (firstStop as any)?.arrival_mode === 'window' ? (firstStop as any)?.window_start
-                                        : null;
-
-                                const endTime = (lastStop as any)?.arrival_mode === 'fixed' ? (lastStop as any)?.scheduled_arrival
-                                    : (lastStop as any)?.arrival_mode === 'window' ? (lastStop as any)?.window_end
-                                        : null;
-
-                                if (startTime) {
-                                    return (
-                                        <div className="flex flex-col items-end gap-0.5">
-                                            <div className="flex items-center gap-1 font-medium text-foreground">
-                                                <Calendar className="h-3 w-3" />
-                                                {new Date(startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                            </div>
-                                            <div className="flex items-center gap-1">
-                                                <Clock className="h-3 w-3" />
-                                                {new Date(startTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
-                                                {endTime && stopCount > 1 && ` - ${new Date(endTime).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}`}
-                                            </div>
-                                        </div>
-                                    );
-                                }
-
-                                // Fallback to Job Schedule
-                                if (job.scheduled_date) {
-                                    return (
-                                        <>
-                                            <div className="flex items-center gap-1 justify-end">
-                                                <Calendar className="h-3 w-3" />
-                                                {new Date(job.scheduled_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                            </div>
-                                            {job.scheduled_time && (
-                                                <div className="flex items-center gap-1 justify-end mt-0.5">
-                                                    <Clock className="h-3 w-3" />
-                                                    {job.scheduled_time}
-                                                </div>
-                                            )}
-                                        </>
-                                    );
-                                }
-                                return null;
-                            })()}
-                        </div>
+                        )}
                     </div>
 
-                    {/* Route Summary */}
-                    <div className="flex items-center gap-2 text-xs sm:text-sm">
-                        <div className="flex items-center gap-1 min-w-0 flex-1">
-                            <MapPin className="h-3 w-3 text-status-success shrink-0" />
-                            <span className="truncate text-muted-foreground">
-                                {pickupAddress}
-                            </span>
-                        </div>
-                        <ArrowRight className="h-3 w-3 text-muted-foreground/50 shrink-0" />
-                        <div className="flex items-center gap-1 min-w-0 flex-1">
-                            <MapPin className="h-3 w-3 text-status-error shrink-0" />
-                            <span className="truncate text-muted-foreground">
-                                {deliveryAddress}
-                            </span>
-                        </div>
-                    </div>
-
-                    {/* Assignment Info */}
-                    {(job.vehicles || job.drivers) && (
-                        <div className="flex items-center gap-4 pt-2 border-t text-xs">
-                            {job.vehicles && (
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                    <Truck className="h-3 w-3" />
-                                    <span>{job.vehicles.make} - {job.vehicles.registration_number}</span>
-                                </div>
-                            )}
-                            {job.drivers?.profiles && (
-                                <div className="flex items-center gap-1 text-muted-foreground">
-                                    <User className="h-3 w-3" />
-                                    <span>{job.drivers.profiles.full_name}</span>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {/* Actions */}
-                    {showActions && (
-                        <div className="flex justify-end pt-2">
-                            <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs"
-                                onClick={(e) => {
-                                    e.stopPropagation()
-                                    router.push(`/dashboard/jobs/${job.id}`)
-                                }}
-                            >
-                                View Details
-                            </Button>
+                    {getTimeDisplay() && (
+                        <div className="flex items-center gap-1.5 font-medium text-gray-600">
+                            <Calendar className="h-3.5 w-3.5 text-gray-400" />
+                            {getTimeDisplay()}
                         </div>
                     )}
                 </div>
-            </CardContent>
+            </div>
         </Card>
     )
 }
