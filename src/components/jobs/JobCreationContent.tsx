@@ -189,7 +189,7 @@ function DateTimeInput({
                 )} />
                 <input
                     type="date"
-                    className={cn(
+                    className={cn( 
                         "h-7 pl-7 pr-1 text-xs w-[115px] rounded-md border focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer",
                         errorClass
                     )}
