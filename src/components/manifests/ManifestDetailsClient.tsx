@@ -123,6 +123,11 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
         return { totalJobs, completedJobs, totalStops }
     }, [manifest?.jobs])
 
+    // Get all job IDs for document aggregation
+    const jobIds = useMemo(() => {
+        return manifest?.jobs?.map((j: any) => j.id) || []
+    }, [manifest?.jobs])
+
     // Mock driver location (in real app, this would come from real-time tracking)
     // For now, show the first waypoint as "last known location" when in transit
     const vehicleLocation = useMemo(() => {
@@ -426,15 +431,24 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                 </TabsContent>
 
                 <TabsContent value="documents" className="flex-1 mt-0">
-                    <Card className="h-full">
-                        <CardHeader>
-                            <CardTitle>Manifest Documents</CardTitle>
-                            <CardDescription>
-                                Upload documents related to this manifest (e.g. bills of lading, trip reports).
-                            </CardDescription>
+                    <Card className="h-full border-none shadow-none p-0">
+                        <CardHeader className="px-0 pt-0 pb-3">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-base">Job Documents</CardTitle>
+                                    <CardDescription>
+                                        Manage documents for jobs in this manifest. All uploads must be linked to a specific job.
+                                    </CardDescription>
+                                </div>
+                            </div>
                         </CardHeader>
-                        <CardContent className="h-[calc(100%-5rem)]">
-                            <EntityDocuments entityId={manifest.id} entityType="manifest" className="h-full" />
+                        <CardContent className="h-full px-0">
+                            <EntityDocuments
+                                entityType="job"
+                                entityIds={jobIds}
+                                relatedJobs={manifest.jobs} // Enables "Smart Upload" to specific jobs
+                                className="h-full"
+                            />
                         </CardContent>
                     </Card>
                 </TabsContent>

@@ -6,15 +6,18 @@ import { Plus, FileText, Trash2, Calendar, ExternalLink, Loader2 } from 'lucide-
 import { toast } from 'sonner'
 
 interface EntityDocumentsProps {
-    entityId: string
+    entityId?: string
     entityType: 'job' | 'manifest' | 'vehicle' | 'driver'
+    entityIds?: string[]
+    relatedJobs?: any[]
     className?: string
 }
 
-export function EntityDocuments({ entityId, entityType, className }: EntityDocumentsProps) {
+export function EntityDocuments({ entityId, entityType, entityIds, relatedJobs, className }: EntityDocumentsProps) {
     const { data: documentsResult, isLoading } = useDocuments({
         entityType,
-        entityId
+        entityId: entityIds ? undefined : entityId,
+        entityIds
     })
 
     // safe access to documents array
@@ -56,9 +59,9 @@ export function EntityDocuments({ entityId, entityType, className }: EntityDocum
                             Add Document
                         </Button>
                     }
-                    entityType={entityType as any} // Cast to any to satisfy strict checking if needed, but UploadDialog accepts 'vehicle'|'driver'|'job'. Wait, checking UploadDialog again.
-                    // UploadDialog accepts 'vehicle' | 'driver' | 'job'. If I use 'manifest', I need to update UploadDialog too.
+                    entityType={entityType as any}
                     entityId={entityId}
+                    relatedJobs={relatedJobs}
                     onSuccess={() => toast.success('Document uploaded successfully')}
                 />
             </div>

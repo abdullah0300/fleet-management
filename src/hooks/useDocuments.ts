@@ -23,7 +23,7 @@ interface DocumentQueryResult {
 /**
  * Fetch all documents with optional filters
  */
-async function fetchDocuments(filters?: { entityType?: string; entityId?: string }): Promise<DocumentQueryResult> {
+async function fetchDocuments(filters?: { entityType?: string; entityId?: string; entityIds?: string[] }): Promise<DocumentQueryResult> {
     let query = supabase
         .from('documents')
         .select('*', { count: 'exact' })
@@ -32,7 +32,9 @@ async function fetchDocuments(filters?: { entityType?: string; entityId?: string
     if (filters?.entityType) {
         query = query.eq('entity_type', filters.entityType)
     }
-    if (filters?.entityId) {
+    if (filters?.entityIds && filters.entityIds.length > 0) {
+        query = query.in('entity_id', filters.entityIds)
+    } else if (filters?.entityId) {
         query = query.eq('entity_id', filters.entityId)
     }
 
@@ -130,7 +132,7 @@ async function uploadDocument(
  * Hook to fetch all documents
  * Uses TanStack Query with 5 minute cache
  */
-export function useDocuments(filters?: { entityType?: string; entityId?: string }) {
+export function useDocuments(filters?: { entityType?: string; entityId?: string; entityIds?: string[] }) {
     return useQuery({
         queryKey: documentKeys.list(filters),
         queryFn: () => fetchDocuments(filters),

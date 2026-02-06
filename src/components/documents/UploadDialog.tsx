@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import { Upload, FileText, X, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -28,8 +29,9 @@ import { cn } from '@/lib/utils'
 interface UploadDialogProps {
     trigger?: React.ReactNode
     onSuccess?: () => void
-    entityType?: 'vehicle' | 'driver' | 'job'
+    entityType?: 'vehicle' | 'driver' | 'job' | 'manifest'
     entityId?: string
+    relatedJobs?: { id: string; job_number: string; customer_name?: string }[]
 }
 
 const documentTypes = [
@@ -44,10 +46,10 @@ const documentTypes = [
     { value: 'other', label: 'Other' },
 ]
 
-export function UploadDialog({ trigger, onSuccess, entityType: initialType, entityId: initialId }: UploadDialogProps) {
+export function UploadDialog({ trigger, onSuccess, entityType: initialType, entityId: initialId, relatedJobs }: UploadDialogProps) {
     const [open, setOpen] = useState(false)
     const [file, setFile] = useState<File | null>(null)
-    const [entityType, setEntityType] = useState<'vehicle' | 'driver' | 'job'>(initialType || 'vehicle')
+    const [entityType, setEntityType] = useState<'vehicle' | 'driver' | 'job' | 'manifest'>(initialType || 'vehicle')
     const [entityId, setEntityId] = useState(initialId || '')
     const [documentType, setDocumentType] = useState('other')
     const [expiryDate, setExpiryDate] = useState('')
@@ -60,6 +62,9 @@ export function UploadDialog({ trigger, onSuccess, entityType: initialType, enti
     const vehicles = vehiclesData?.data || []
     const drivers = driversData?.data || []
 
+    // If relatedJobs are provided (e.g. from Manifest page), we MUST link to a job
+    const isJobSelectionRequired = !!relatedJobs && relatedJobs.length > 0
+
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const selectedFile = e.target.files?.[0]
         if (selectedFile) {
@@ -70,13 +75,14 @@ export function UploadDialog({ trigger, onSuccess, entityType: initialType, enti
     const handleSubmit = async () => {
         if (!file || (!entityId && !initialId) || !documentType) return
 
+        // If linking to a job explicitly, override the entity type
+        const finalEntityType = isJobSelectionRequired ? 'job' : (initialType || entityType)
         const finalEntityId = initialId || entityId
-        const finalEntityType = initialType || entityType
 
         await uploadMutation.mutateAsync({
             file,
             metadata: {
-                entityType: finalEntityType,
+                entityType: finalEntityType as any, // Cast to avoid TS strictness if 'manifest' passed
                 entityId: finalEntityId,
                 documentType,
                 expiryDate: expiryDate || undefined,
@@ -168,7 +174,7 @@ export function UploadDialog({ trigger, onSuccess, entityType: initialType, enti
                     />
 
                     {/* Entity Selection (Hide if fixed) */}
-                    {!isFixedEntity && (
+                    {!isFixedEntity && !isJobSelectionRequired && (
                         <>
                             <div className="grid grid-cols-2 gap-2">
                                 <Button
@@ -219,6 +225,28 @@ export function UploadDialog({ trigger, onSuccess, entityType: initialType, enti
                                 </Select>
                             </div>
                         </>
+                    )}
+
+                    {/* Job Selection (For Manifest Page) */}
+                    {isJobSelectionRequired && (
+                        <div className="space-y-2">
+                            <Label className="text-sm">Select Job *</Label>
+                            <Select value={entityId} onValueChange={setEntityId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a job to attach to..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {relatedJobs?.map((job) => (
+                                        <SelectItem key={job.id} value={job.id}>
+                                            Job #{job.job_number} - {job.customer_name || 'Unknown'}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-[10px] text-muted-foreground">
+                                Document will be saved to the selected job.
+                            </p>
+                        </div>
                     )}
 
                     {/* Document Type */}
