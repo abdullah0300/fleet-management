@@ -105,7 +105,7 @@ export default function JobDetailPage() {
         return <div className="p-8 text-center">Job not found</div>
     }
 
-    const status = statusConfig[job.status] || statusConfig.pending
+    const status = statusConfig[job.status || 'pending'] || statusConfig.pending
     const StatusIcon = status.icon
     const mapPoints = getJobMapPoints(job)
     const stopCount = getJobStopCount(job)
@@ -231,16 +231,16 @@ export default function JobDetailPage() {
                                             <div key={stop.id} className="relative z-10 flex gap-3">
                                                 <div className="flex-none flex flex-col items-center">
                                                     <div className={`h-7 w-7 rounded-full border-2 flex items-center justify-center text-[10px] font-bold ${stop.type === 'pickup' ? 'bg-white border-green-500 text-green-600' :
-                                                            stop.type === 'dropoff' ? 'bg-white border-red-500 text-red-600' :
-                                                                'bg-white border-blue-500 text-blue-600'
+                                                        stop.type === 'dropoff' ? 'bg-white border-red-500 text-red-600' :
+                                                            'bg-white border-blue-500 text-blue-600'
                                                         }`}>
                                                         {index + 1}
                                                     </div>
                                                 </div>
                                                 <div className="flex-1 min-w-0 pb-4">
                                                     <div className={`text-xs font-semibold uppercase tracking-wider mb-0.5 ${stop.type === 'pickup' ? 'text-green-600' :
-                                                            stop.type === 'dropoff' ? 'text-red-600' :
-                                                                'text-blue-600'
+                                                        stop.type === 'dropoff' ? 'text-red-600' :
+                                                            'text-blue-600'
                                                         }`}>
                                                         {stop.type}
                                                     </div>
