@@ -180,7 +180,7 @@ export default function DriverDetailPage() {
                             <DriverForm
                                 initialData={{
                                     driver: driver,
-                                    profile: driver.profiles
+                                    profile: driver.profiles || undefined
                                 }}
                                 onSubmit={handleUpdate}
                                 isSubmitting={isUpdating} // Connected to local state
