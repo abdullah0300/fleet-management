@@ -5,7 +5,7 @@ import { Vehicle, Driver, Job, Route, MaintenanceRecord, Document, Manifest } fr
  * Server-side data fetching functions
  * These run on the server and return data to Server Components
  * NO 'use client' - these are pure server functions
- */
+ */ 
 
 // ==========================================
 // VEHICLES
