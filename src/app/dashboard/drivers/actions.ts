@@ -24,6 +24,7 @@ export type DriverImportRow = {
     payment_type?: 'per_mile' | 'per_trip' | 'hourly' | 'salary'
     rate_amount?: number
     status?: 'available' | 'on_trip' | 'off_duty'
+    login_pin?: string
 }
 
 export type ImportResult = {
@@ -44,9 +45,7 @@ export async function bulkImportDrivers(drivers: DriverImportRow[]): Promise<Imp
         try {
             let userId: string
 
-
             // 1. Check if user exists
-            // Standard approach: Try to fetch profile by email using admin client (bypass RLS)
             const { data: profiles } = await supabaseAdmin
                 .from('profiles')
                 .select('id')
@@ -59,9 +58,8 @@ export async function bulkImportDrivers(drivers: DriverImportRow[]): Promise<Imp
                 // 2. Create new user
                 const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
                     email: driver.email,
-                    email_confirm: true, // Auto-confirm for bulk import flexibility? Or false? Standard is usually true for employee imports + password reset/invite logic.
-                    // For now, let's confirm them so they can just "Forgot Password" or we can send invite link.
-                    // Actually, best is inviteUserByEmail if we want them to set password.
+                    password: driver.login_pin ? driver.login_pin + 'fleet' : undefined, // Set PIN+suffix as password if provided
+                    email_confirm: true,
                     user_metadata: {
                         full_name: driver.full_name,
                     }
@@ -74,7 +72,6 @@ export async function bulkImportDrivers(drivers: DriverImportRow[]): Promise<Imp
             }
 
             // 3. Create/Update Driver Record
-            // Check if driver record already exists
             const { data: existingDriver } = await supabaseAdmin
                 .from('drivers')
                 .select('id')
@@ -88,11 +85,10 @@ export async function bulkImportDrivers(drivers: DriverImportRow[]): Promise<Imp
                 payment_type: driver.payment_type || 'per_mile',
                 rate_amount: driver.rate_amount || 0,
                 status: driver.status || 'available',
-                // assigned_vehicle_id: null // Explicitly handle if needed
+                login_pin: driver.login_pin || null
             }
 
             if (existingDriver) {
-                // Update existing
                 const { error: updateError } = await supabaseAdmin
                     .from('drivers')
                     .update(driverData)
@@ -100,7 +96,6 @@ export async function bulkImportDrivers(drivers: DriverImportRow[]): Promise<Imp
 
                 if (updateError) throw updateError
             } else {
-                // Insert new
                 const { error: insertError } = await supabaseAdmin
                     .from('drivers')
                     .insert(driverData)
@@ -108,18 +103,27 @@ export async function bulkImportDrivers(drivers: DriverImportRow[]): Promise<Imp
                 if (insertError) throw insertError
             }
 
-            // Optional: Update profile phone number if provided and different?
+            // Optional: Update profile phone
             if (driver.phone) {
                 await supabaseAdmin.from('profiles').update({ phone: driver.phone }).eq('id', userId)
             }
 
+            // Should also update password if user existed and we consistently want PIN=password?
+            // For bulk import, maybe skip forcing password reset on existing users to avoid disruption.
+
             successCount++
 
-        } catch (error) {
+        } catch (error: any) {
             console.error(`Error importing driver ${driver.email}:`, error)
+            // Handle Unique PIN Error
+            let errorMessage = error instanceof Error ? error.message : 'Unknown error'
+            if (error?.code === '23505' && error?.message?.includes('login_pin')) {
+                errorMessage = `PIN '${driver.login_pin}' is already assigned to another driver.`
+            }
+
             failed.push({
                 email: driver.email,
-                error: error instanceof Error ? error.message : 'Unknown error'
+                error: errorMessage
             })
         }
     }
@@ -147,7 +151,7 @@ export async function createDriver(driver: DriverImportRow): Promise<{ success: 
             .single()
 
         if (existingProfile) {
-            // User already exists, check if they're already a driver
+            // User already exists
             const { data: existingDriver } = await supabaseAdmin
                 .from('drivers')
                 .select('id')
@@ -158,11 +162,19 @@ export async function createDriver(driver: DriverImportRow): Promise<{ success: 
                 return { success: false, error: 'A driver with this email already exists' }
             }
 
+            // Sync password if PIN provided
+            if (driver.login_pin) {
+                await supabaseAdmin.auth.admin.updateUserById(existingProfile.id, {
+                    password: driver.login_pin + 'fleet'
+                })
+            }
+
             userId = existingProfile.id
         } else {
             // 2. Create new auth user
             const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
                 email: driver.email.toLowerCase(),
+                password: driver.login_pin ? driver.login_pin + 'fleet' : undefined, // Set PIN+suffix as password
                 email_confirm: true,
                 user_metadata: {
                     full_name: driver.full_name,
@@ -187,6 +199,7 @@ export async function createDriver(driver: DriverImportRow): Promise<{ success: 
             payment_type: driver.payment_type || 'per_mile',
             rate_amount: driver.rate_amount || 0,
             status: driver.status || 'available',
+            login_pin: driver.login_pin || null
         }
 
         const { error: insertError } = await supabaseAdmin
@@ -194,6 +207,10 @@ export async function createDriver(driver: DriverImportRow): Promise<{ success: 
             .insert(driverData)
 
         if (insertError) {
+            // Check for duplicate PIN
+            if (insertError.code === '23505' && insertError.message.includes('login_pin')) {
+                return { success: false, error: 'This PIN is already assigned to another driver.' }
+            }
             return { success: false, error: insertError.message }
         }
 
@@ -204,8 +221,59 @@ export async function createDriver(driver: DriverImportRow): Promise<{ success: 
 
         return { success: true, driverId: userId }
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Error creating driver:', error)
+        return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
+    }
+}
+
+
+export async function updateDriver(
+    driverId: string,
+    updates: DriverInsert,
+    profileUpdates?: { email?: string; full_name?: string; phone?: string }
+): Promise<{ success: boolean; error?: string }> {
+    // Validate service role key
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+        return { success: false, error: 'Server configuration error: Missing Service Role Key' }
+    }
+
+    try {
+        // 1. Update Driver Record
+        const { error: updateError } = await supabaseAdmin
+            .from('drivers')
+            .update(updates)
+            .eq('id', driverId)
+
+        if (updateError) {
+            if (updateError.code === '23505' && updateError.message.includes('login_pin')) {
+                return { success: false, error: 'This PIN is already assigned to another driver.' }
+            }
+            throw updateError
+        }
+
+        // 2. Update Profile if provided
+        if (profileUpdates) {
+            const { error: profileError } = await supabaseAdmin
+                .from('profiles')
+                .update(profileUpdates)
+                .eq('id', driverId)
+
+            if (profileError) throw profileError
+        }
+
+        // 3. SYNC PASSWORD if PIN is changed
+        if (updates.login_pin) {
+            const { error: passwordError } = await supabaseAdmin.auth.admin.updateUserById(driverId, {
+                password: updates.login_pin + 'fleet'
+            })
+            if (passwordError) throw passwordError
+        }
+
+        return { success: true }
+
+    } catch (error: any) {
+        console.error('Error updating driver:', error)
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
 }

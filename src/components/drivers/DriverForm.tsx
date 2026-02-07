@@ -38,6 +38,7 @@ export function DriverForm({ initialData, onSubmit, isSubmitting }: DriverFormPr
             payment_type: initialData?.driver?.payment_type || 'per_mile',
             rate_amount: initialData?.driver?.rate_amount || 0,
             status: initialData?.driver?.status || 'available',
+            login_pin: initialData?.driver?.login_pin || '',
         }
     })
 
@@ -52,6 +53,7 @@ export function DriverForm({ initialData, onSubmit, isSubmitting }: DriverFormPr
             payment_type: data.payment_type,
             rate_amount: data.rate_amount,
             status: data.status,
+            login_pin: data.login_pin,
         }
 
         const profileData = {
@@ -106,6 +108,25 @@ export function DriverForm({ initialData, onSubmit, isSubmitting }: DriverFormPr
                         placeholder="driver@company.com"
                         {...register('email')}
                     />
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="login_pin">Login PIN (4-6 digits) *</Label>
+                    <Input
+                        id="login_pin"
+                        type="text"
+                        maxLength={6}
+                        placeholder="1234"
+                        {...register('login_pin', {
+                            required: 'PIN is required',
+                            minLength: { value: 4, message: 'PIN must be at least 4 digits' },
+                            maxLength: { value: 6, message: 'PIN must be max 6 digits' }
+                        })}
+                    />
+                    <p className="text-xs text-muted-foreground">Used for mobile app login</p>
+                    {errors.login_pin && (
+                        <p className="text-xs text-red-500">{errors.login_pin.message as string}</p>
+                    )}
                 </div>
             </div>
 

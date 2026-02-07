@@ -111,6 +111,7 @@ export interface Database {
           rate_amount: number | null
           assigned_vehicle_id: string | null
           status: 'available' | 'on_trip' | 'off_duty' | null
+          login_pin: string | null
           created_at: string
           updated_at: string
         }
@@ -122,6 +123,7 @@ export interface Database {
           rate_amount?: number | null
           assigned_vehicle_id?: string | null
           status?: 'available' | 'on_trip' | 'off_duty' | null
+          login_pin?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -133,6 +135,7 @@ export interface Database {
           rate_amount?: number | null
           assigned_vehicle_id?: string | null
           status?: 'available' | 'on_trip' | 'off_duty' | null
+          login_pin?: string | null
           created_at?: string
           updated_at?: string
         }

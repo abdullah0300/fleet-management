@@ -3,25 +3,71 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { ArrowLeft, Edit, Trash2, User, Phone, CreditCard, Truck, IdCard, Calendar, Mail } from 'lucide-react'
-import { useDriver, useDeleteDriver } from '@/hooks/useDrivers'
+import { useDriver, useDeleteDriver, useUpdateDriver } from '@/hooks/useDrivers'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { DriverForm } from '@/components/drivers/DriverForm'
+import { toast } from 'sonner'
+import { DriverInsert, Profile } from '@/types/database'
+import { updateDriver } from '../actions'
+import { useQueryClient } from '@tanstack/react-query'
+import { driverKeys } from '@/hooks/useDrivers'
 
 export default function DriverDetailPage() {
     const params = useParams()
     const router = useRouter()
     const id = params.id as string
+    const [isEditing, setIsEditing] = useState(false)
+    const [isUpdating, setIsUpdating] = useState(false)
 
     // Use the single driver hook - fetches only this driver, uses cache if available
     const { data: driver, isLoading, error } = useDriver(id)
     const deleteMutation = useDeleteDriver()
+    const queryClient = useQueryClient()
+    // const updateMutation = useUpdateDriver() // No longer using client side update for main form to support PIN sync
 
     const handleDelete = async () => {
         if (!confirm('Are you sure you want to delete this driver?')) return
         await deleteMutation.mutateAsync(id)
         router.push('/dashboard/drivers')
+    }
+
+    const handleUpdate = async (data: { driver: DriverInsert; profile?: Partial<Profile> }) => {
+        setIsUpdating(true)
+        try {
+            const result = await updateDriver(id, {
+                ...data.driver,
+                login_pin: data.driver.login_pin || undefined
+            }, {
+                email: data.profile?.email,
+                full_name: data.profile?.full_name,
+                phone: data.profile?.phone || undefined
+            })
+
+            if (!result.success) {
+                throw new Error(result.error)
+            }
+
+            // Invalidate cache
+            queryClient.invalidateQueries({ queryKey: driverKeys.detail(id) })
+            queryClient.invalidateQueries({ queryKey: driverKeys.lists() })
+
+            setIsEditing(false)
+            toast.success('Driver updated successfully')
+        } catch (error: any) {
+            console.error(error)
+            // Check for duplicate PIN error (already handled in action but safety check)
+            if (error?.message?.includes('PIN')) {
+                toast.error(error.message)
+            } else {
+                toast.error('Failed to update driver: ' + (error.message || 'Unknown error'))
+            }
+        } finally {
+            setIsUpdating(false)
+        }
     }
 
     const getStatusBadge = (status: string | null) => {
@@ -120,10 +166,27 @@ export default function DriverDetailPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2 ml-10 sm:ml-0">
-                    <Button variant="outline" className="gap-2">
-                        <Edit className="h-4 w-4" />
-                        <span className="hidden sm:inline">Edit</span>
-                    </Button>
+                    <Dialog open={isEditing} onOpenChange={setIsEditing}>
+                        <DialogTrigger asChild>
+                            <Button variant="outline" className="gap-2">
+                                <Edit className="h-4 w-4" />
+                                <span className="hidden sm:inline">Edit</span>
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                            <DialogHeader>
+                                <DialogTitle>Edit Driver</DialogTitle>
+                            </DialogHeader>
+                            <DriverForm
+                                initialData={{
+                                    driver: driver,
+                                    profile: driver.profiles
+                                }}
+                                onSubmit={handleUpdate}
+                                isSubmitting={isUpdating} // Connected to local state
+                            />
+                        </DialogContent>
+                    </Dialog>
                     <Button
                         variant="destructive"
                         size="icon"

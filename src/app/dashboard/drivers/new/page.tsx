@@ -28,6 +28,7 @@ export default function NewDriverPage() {
                 payment_type: data.driver.payment_type || undefined,
                 rate_amount: data.driver.rate_amount || undefined,
                 status: data.driver.status || undefined,
+                login_pin: data.driver.login_pin || undefined,
             })
 
             if (!result.success) {
