@@ -42,8 +42,8 @@ export default function DriverDetailPage() {
                 ...data.driver,
                 login_pin: data.driver.login_pin || undefined
             }, {
-                email: data.profile?.email,
-                full_name: data.profile?.full_name,
+                email: data.profile?.email || undefined,
+                full_name: data.profile?.full_name || undefined,
                 phone: data.profile?.phone || undefined
             })
 
