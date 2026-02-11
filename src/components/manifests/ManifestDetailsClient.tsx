@@ -21,6 +21,7 @@ import { ProofOfDeliveryMap } from '@/components/manifests/ProofOfDeliveryMap'
 import { format } from 'date-fns'
 import { useRealtimeUpdate } from '@/hooks/useRealtimeUpdate'
 import { manifestKeys } from '@/hooks/useManifests'
+import { formatDate, formatTime, parseTime } from '@/lib/utils'
 
 interface ManifestDetailsClientProps {
     manifest: any
@@ -197,12 +198,8 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                     <div className="flex items-center gap-4 text-sm text-muted-foreground">
                         <div className="flex items-center gap-1.5">
                             <Calendar className="h-4 w-4" />
-                            <span>{manifest.scheduled_date ? new Date(manifest.scheduled_date).toLocaleDateString('en-US', {
-                                weekday: 'short',
-                                year: 'numeric',
-                                month: 'short',
-                                day: 'numeric'
-                            }) : 'No Date Set'}</span>
+                            <Calendar className="h-4 w-4" />
+                            <span>{manifest.scheduled_date ? formatDate(manifest.scheduled_date) : 'No Date Set'}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <Package className="h-4 w-4" />
@@ -416,8 +413,12 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                                                                                         </div>
                                                                                         <div>
                                                                                             <span className="font-semibold block text-xs uppercase tracking-wider">Actual Arrival</span>
-                                                                                            <span className={stop.actual_arrival_time && stop.scheduled_arrival && new Date(stop.actual_arrival_time) > new Date(stop.scheduled_arrival) ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
-                                                                                                {stop.actual_arrival_time ? format(new Date(stop.actual_arrival_time), 'h:mm a') : '--:--'}
+                                                                                            <span className={(() => {
+                                                                                                const actualDate = parseTime(stop.actual_arrival_time)
+                                                                                                const scheduledDate = parseTime(stop.scheduled_arrival)
+                                                                                                return actualDate && scheduledDate && actualDate > scheduledDate ? "text-red-600 font-medium" : "text-green-600 font-medium"
+                                                                                            })()}>
+                                                                                                {formatTime(stop.actual_arrival_time) || '--:--'}
                                                                                             </span>
                                                                                         </div>
                                                                                     </div>
@@ -434,28 +435,32 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                                                                     {(stop.arrival_mode === 'window' && stop.window_start && stop.window_end) ? (
                                                                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
                                                                             <Clock className="w-3 h-3 mr-1" />
-                                                                            {new Date(stop.window_start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - {new Date(stop.window_end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                                                                            {formatTime(stop.window_start)} - {formatTime(stop.window_end)}
                                                                         </span>
                                                                     ) : (stop.arrival_mode === 'fixed' && stop.scheduled_arrival) ? (
                                                                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-50 text-orange-700 border border-orange-200">
                                                                             <Clock className="w-3 h-3 mr-1" />
-                                                                            {new Date(stop.scheduled_arrival).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                                                                            {formatTime(stop.scheduled_arrival)}
                                                                         </span>
                                                                     ) : stop.scheduled_time ? (
                                                                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-700">
                                                                             <Clock className="w-3 h-3 mr-1" />
-                                                                            {stop.scheduled_time.slice(0, 5)}
+                                                                            {formatTime(stop.scheduled_time)}
                                                                         </span>
                                                                     ) : null}
 
                                                                     {/* Actual Time Badge */}
                                                                     {stop.actual_arrival_time && (
-                                                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${stop.scheduled_arrival && new Date(stop.actual_arrival_time) > new Date(stop.scheduled_arrival)
-                                                                            ? 'bg-red-50 text-red-700 border-red-200'
-                                                                            : 'bg-green-50 text-green-700 border-green-200'
+                                                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${(() => {
+                                                                            const actualDate = parseTime(stop.actual_arrival_time)
+                                                                            const scheduledDate = parseTime(stop.scheduled_arrival)
+                                                                            return actualDate && scheduledDate && actualDate > scheduledDate
+                                                                                ? 'bg-red-50 text-red-700 border-red-200'
+                                                                                : 'bg-green-50 text-green-700 border-green-200'
+                                                                        })()
                                                                             }`}>
                                                                             <CheckCircle2 className="w-3 h-3 mr-1" />
-                                                                            {format(new Date(stop.actual_arrival_time), 'h:mm a')}
+                                                                            {formatTime(stop.actual_arrival_time)}
                                                                         </span>
                                                                     )}
                                                                 </div>

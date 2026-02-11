@@ -6,7 +6,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { getJobStopCount } from '@/hooks/useJobs'
 import { JobStop } from '@/types/database'
-import { cn } from '@/lib/utils'
+import { cn, formatDate } from '@/lib/utils'
 
 interface JobCardProps {
     job: {
@@ -61,7 +61,8 @@ export function JobCard({ job, onViewDetails }: JobCardProps) {
             return new Date(startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
         }
         if (job.scheduled_date) {
-            return new Date(job.scheduled_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            // Use local formatter to avoid UTC shift
+            return formatDate(job.scheduled_date)
         }
         return null
     }

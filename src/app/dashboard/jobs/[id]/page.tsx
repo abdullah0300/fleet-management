@@ -20,6 +20,7 @@ import { ProofOfDeliveryMap } from '@/components/manifests/ProofOfDeliveryMap'
 import { format } from 'date-fns'
 import { useRealtimeUpdate } from '@/hooks/useRealtimeUpdate'
 import { jobKeys } from '@/hooks/useJobs'
+import { formatDate, formatTime } from '@/lib/utils'
 
 // Status config for consistent UI
 const statusConfig: Record<string, {
@@ -151,9 +152,7 @@ export default function JobDetailPage() {
                         </div>
                         <div className="flex items-center gap-1.5">
                             <Calendar className="h-4 w-4" />
-                            <span>{job.scheduled_date ? new Date(job.scheduled_date).toLocaleDateString('en-US', {
-                                weekday: 'short', year: 'numeric', month: 'short', day: 'numeric'
-                            }) : 'No Date Set'}</span>
+                            <span>{job.scheduled_date ? formatDate(job.scheduled_date) : 'No Date Set'}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <Package className="h-4 w-4" />
@@ -197,7 +196,6 @@ export default function JobDetailPage() {
                 </AlertDescription>
             </Alert>
 
-            {/* Main Content */}
             <Tabs defaultValue="overview" className="flex-1 flex flex-col min-h-0">
                 <TabsList className="grid w-[400px] grid-cols-2 mb-4">
                     <TabsTrigger value="overview">Overview</TabsTrigger>
@@ -249,16 +247,16 @@ export default function JobDetailPage() {
 
                                         // Scheduled Time Display
                                         const scheduledTime = stop.arrival_mode === 'window' && stop.window_start && stop.window_end
-                                            ? `${format(new Date(stop.window_start), 'h:mm a')} - ${format(new Date(stop.window_end), 'h:mm a')}`
+                                            ? `${formatTime(stop.window_start)} - ${formatTime(stop.window_end)}`
                                             : stop.scheduled_arrival
-                                                ? format(new Date(stop.scheduled_arrival), 'h:mm a')
+                                                ? formatTime(stop.scheduled_arrival)
                                                 : stop.scheduled_time
-                                                    ? format(new Date(stop.scheduled_time), 'h:mm a')
+                                                    ? formatTime(stop.scheduled_time)
                                                     : 'Not Scheduled'
 
                                         // Actual Time Display
                                         const actualTime = stop.actual_arrival_time
-                                            ? format(new Date(stop.actual_arrival_time), 'h:mm a')
+                                            ? formatTime(stop.actual_arrival_time)
                                             : null
 
                                         // Status Color Logic for Time
