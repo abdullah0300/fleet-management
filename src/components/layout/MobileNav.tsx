@@ -69,7 +69,7 @@ export function MobileNav() {
                 <SheetHeader className="border-b px-4 py-4">
                     <SheetTitle className="flex items-center gap-2">
                         <Package2 className="h-6 w-6" />
-                        Fleet SaaS
+                        Trucker'sCall
                     </SheetTitle>
                 </SheetHeader>
                 <nav className="grid gap-1 p-4">

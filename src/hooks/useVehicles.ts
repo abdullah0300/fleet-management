@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { useCompanyId } from './useCurrentUser'
 import { Vehicle, VehicleInsert, VehicleUpdate, Profile } from '@/types/database'
 
 // Vehicle with driver profile joined
@@ -198,9 +199,13 @@ export function useVehicle(id: string) {
  */
 export function useCreateVehicle() {
     const queryClient = useQueryClient()
+    const companyId = useCompanyId()
 
     return useMutation({
-        mutationFn: createVehicleApi,
+        mutationFn: (vehicle: VehicleInsert) => {
+            if (!companyId) throw new Error('Company ID is required')
+            return createVehicleApi({ ...vehicle, company_id: companyId })
+        },
         onSuccess: (newVehicle) => {
             // Invalidate list to refetch
             queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() })
@@ -285,9 +290,14 @@ export function useDeleteVehicle() {
  */
 export function useBulkCreateVehicles() {
     const queryClient = useQueryClient()
+    const companyId = useCompanyId()
 
     return useMutation({
-        mutationFn: bulkCreateVehiclesApi,
+        mutationFn: (vehicles: VehicleInsert[]) => {
+            if (!companyId) throw new Error('Company ID is required')
+            const vehiclesWithCompany = vehicles.map(v => ({ ...v, company_id: companyId }))
+            return bulkCreateVehiclesApi(vehiclesWithCompany)
+        },
         onSuccess: (result) => {
             // Invalidate list to refetch all new vehicles
             queryClient.invalidateQueries({ queryKey: vehicleKeys.lists() })

@@ -38,7 +38,11 @@ export function useCurrentUser() {
  */
 export function useHasPermission(permission: Permission): boolean {
     const { data: user } = useCurrentUser()
-    return hasPermission(user?.role as UserRole | null, permission)
+    return hasPermission(
+        user?.role as UserRole | null,
+        permission,
+        user?.is_platform_admin || false
+    )
 }
 
 /**
@@ -46,7 +50,11 @@ export function useHasPermission(permission: Permission): boolean {
  */
 export function useCanAccessRoute(pathname: string): boolean {
     const { data: user } = useCurrentUser()
-    return canAccessRoute(user?.role as UserRole | null, pathname)
+    return canAccessRoute(
+        user?.role as UserRole | null,
+        pathname,
+        user?.is_platform_admin || false
+    )
 }
 
 /**
@@ -55,4 +63,20 @@ export function useCanAccessRoute(pathname: string): boolean {
 export function useUserRole(): UserRole | null {
     const { data: user } = useCurrentUser()
     return (user?.role as UserRole) || null
+}
+
+/**
+ * Hook to get user company ID
+ */
+export function useCompanyId(): string | null {
+    const { data: user } = useCurrentUser()
+    return user?.company_id || null
+}
+
+/**
+ * Hook to check if user is platform admin
+ */
+export function useIsPlatformAdmin(): boolean {
+    const { data: user } = useCurrentUser()
+    return user?.is_platform_admin || false
 }

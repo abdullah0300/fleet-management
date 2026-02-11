@@ -7,6 +7,7 @@
 -- Create cost_estimates table
 CREATE TABLE IF NOT EXISTS public.cost_estimates (
   id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  company_id uuid DEFAULT get_user_company_id(), -- Multi-tenancy
   job_id uuid,
   vehicle_id uuid,
   driver_id uuid,
@@ -43,6 +44,7 @@ CREATE TABLE IF NOT EXISTS public.cost_estimates (
   updated_at timestamp with time zone DEFAULT now(),
   
   CONSTRAINT cost_estimates_pkey PRIMARY KEY (id),
+  CONSTRAINT cost_estimates_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id),
   CONSTRAINT cost_estimates_job_id_fkey FOREIGN KEY (job_id) REFERENCES public.jobs(id) ON DELETE SET NULL,
   CONSTRAINT cost_estimates_vehicle_id_fkey FOREIGN KEY (vehicle_id) REFERENCES public.vehicles(id) ON DELETE SET NULL,
   CONSTRAINT cost_estimates_driver_id_fkey FOREIGN KEY (driver_id) REFERENCES public.drivers(id) ON DELETE SET NULL,
@@ -50,6 +52,7 @@ CREATE TABLE IF NOT EXISTS public.cost_estimates (
 );
 
 -- Create indexes for common queries
+CREATE INDEX IF NOT EXISTS cost_estimates_company_id_idx ON public.cost_estimates(company_id);
 CREATE INDEX IF NOT EXISTS cost_estimates_job_id_idx ON public.cost_estimates(job_id);
 CREATE INDEX IF NOT EXISTS cost_estimates_vehicle_id_idx ON public.cost_estimates(vehicle_id);
 CREATE INDEX IF NOT EXISTS cost_estimates_driver_id_idx ON public.cost_estimates(driver_id);
@@ -59,12 +62,20 @@ CREATE INDEX IF NOT EXISTS cost_estimates_status_idx ON public.cost_estimates(st
 -- Enable RLS
 ALTER TABLE public.cost_estimates ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
-CREATE POLICY "Users can view all cost estimates" ON public.cost_estimates
-  FOR SELECT USING (true);
+-- RLS Policies (Multi-Tenant)
 
-CREATE POLICY "Admins and managers can insert cost estimates" ON public.cost_estimates
+CREATE POLICY "Platform admin sees all cost estimates" ON public.cost_estimates
+  FOR SELECT USING (is_platform_admin());
+
+CREATE POLICY "Company users can view own cost estimates" ON public.cost_estimates
+  FOR SELECT USING (
+    company_id = get_user_company_id()
+  );
+
+CREATE POLICY "Company admins and managers can insert cost estimates" ON public.cost_estimates
   FOR INSERT WITH CHECK (
+    (is_platform_admin() OR company_id = get_user_company_id())
+    AND
     EXISTS (
       SELECT 1 FROM public.profiles
       WHERE id = auth.uid()
@@ -72,8 +83,10 @@ CREATE POLICY "Admins and managers can insert cost estimates" ON public.cost_est
     )
   );
 
-CREATE POLICY "Admins and managers can update cost estimates" ON public.cost_estimates
+CREATE POLICY "Company admins and managers can update own cost estimates" ON public.cost_estimates
   FOR UPDATE USING (
+    (is_platform_admin() OR company_id = get_user_company_id())
+    AND
     EXISTS (
       SELECT 1 FROM public.profiles
       WHERE id = auth.uid()
@@ -81,8 +94,10 @@ CREATE POLICY "Admins and managers can update cost estimates" ON public.cost_est
     )
   );
 
-CREATE POLICY "Only admins can delete cost estimates" ON public.cost_estimates
+CREATE POLICY "Company admins can delete own cost estimates" ON public.cost_estimates
   FOR DELETE USING (
+    (is_platform_admin() OR company_id = get_user_company_id())
+    AND
     EXISTS (
       SELECT 1 FROM public.profiles
       WHERE id = auth.uid()

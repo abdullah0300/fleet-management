@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Fleet SaaS - Fleet Management System",
+  title: "Trucker'sCall - Fleet Management System",
   description: "Manage your fleet of vehicles and drivers efficiently",
 };
 

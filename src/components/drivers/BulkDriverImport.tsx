@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Download, Loader2 } from 'lucide-react'
 import {
     Dialog,
@@ -42,6 +42,11 @@ export function BulkDriverImport({ trigger }: BulkDriverImportProps) {
     } | null>(null)
 
     const queryClient = useQueryClient()
+    const [isMounted, setIsMounted] = useState(false)
+
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
 
     const parseCSV = (text: string): ParsedDriver[] => {
         const lines = text.trim().split('\n')
@@ -208,6 +213,17 @@ export function BulkDriverImport({ trigger }: BulkDriverImportProps) {
 
     const validCount = parsedDrivers.filter(d => d._errors.length === 0).length
     const invalidCount = parsedDrivers.filter(d => d._errors.length > 0).length
+
+    if (!isMounted) {
+        return (
+            trigger || (
+                <Button variant="outline" className="gap-2">
+                    <Upload className="h-4 w-4" />
+                    Bulk Import
+                </Button>
+            )
+        )
+    }
 
     return (
         <Dialog open={isOpen} onOpenChange={setIsOpen}>

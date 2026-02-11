@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { useCompanyId } from './useCurrentUser'
 import { Manifest, ManifestInsert, ManifestUpdate, Job } from '@/types/database'
 
 const supabase = createClient()
@@ -87,11 +88,14 @@ export function useManifest(id: string) {
 
 export function useCreateManifest() {
     const queryClient = useQueryClient()
+    const companyId = useCompanyId()
+
     return useMutation({
         mutationFn: async (manifest: ManifestInsert) => {
+            if (!companyId) throw new Error('Company ID is required')
             const { data, error } = await supabase
                 .from('manifests')
-                .insert(manifest)
+                .insert({ ...manifest, company_id: companyId })
                 .select()
                 .single()
             if (error) throw error

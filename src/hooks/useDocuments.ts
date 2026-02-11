@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { useCompanyId } from './useCurrentUser'
 import { Document, DocumentInsert, DocumentUpdate } from '@/types/database'
 
 const supabase = createClient()
@@ -86,7 +87,8 @@ async function uploadDocument(
         entityId: string
         documentType: string
         expiryDate?: string
-    }
+    },
+    companyId?: string
 ): Promise<Document> {
     const timestamp = Date.now()
     const fileExt = file.name.split('.').pop()
@@ -116,6 +118,7 @@ async function uploadDocument(
             document_type: metadata.documentType,
             file_url: urlData.publicUrl,
             expiry_date: metadata.expiryDate || null,
+            ...(companyId && { company_id: companyId })
         })
         .select()
         .single()
@@ -172,6 +175,7 @@ export function useExpiringDocuments() {
  */
 export function useUploadDocument() {
     const queryClient = useQueryClient()
+    const companyId = useCompanyId()
 
     return useMutation({
         mutationFn: async ({
@@ -186,7 +190,8 @@ export function useUploadDocument() {
                 expiryDate?: string
             }
         }) => {
-            return uploadDocument(file, metadata)
+            if (!companyId) throw new Error("Company ID is required to upload a document.")
+            return uploadDocument(file, metadata, companyId)
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: documentKeys.lists() })
@@ -200,12 +205,14 @@ export function useUploadDocument() {
  */
 export function useCreateDocument() {
     const queryClient = useQueryClient()
+    const companyId = useCompanyId()
 
     return useMutation({
         mutationFn: async (doc: DocumentInsert) => {
+            if (!companyId) throw new Error("Company ID is required to create a document.")
             const { data, error } = await supabase
                 .from('documents')
-                .insert(doc)
+                .insert({ ...doc, company_id: companyId })
                 .select()
                 .single()
 

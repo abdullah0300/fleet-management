@@ -9,15 +9,19 @@ import { createDriver } from '../actions'
 import { DriverInsert, Profile } from '@/types/database'
 import { useQueryClient } from '@tanstack/react-query'
 import { driverKeys } from '@/hooks/useDrivers'
+import { useCompanyId } from '@/hooks/useCurrentUser'
 
 export default function NewDriverPage() {
     const router = useRouter()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const queryClient = useQueryClient()
+    const companyId = useCompanyId()
 
     const handleSubmit = async (data: { driver: DriverInsert; profile?: Partial<Profile> }) => {
         setIsSubmitting(true)
         try {
+            if (!companyId) throw new Error('Company ID is required')
+
             // Use server action to create driver (bypasses RLS)
             const result = await createDriver({
                 email: data.profile?.email || `driver-${Date.now()}@fleet.local`,
@@ -29,6 +33,7 @@ export default function NewDriverPage() {
                 rate_amount: data.driver.rate_amount || undefined,
                 status: data.driver.status || undefined,
                 login_pin: data.driver.login_pin || undefined,
+                company_id: companyId,
             })
 
             if (!result.success) {

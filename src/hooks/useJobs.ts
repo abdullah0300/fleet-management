@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { useCompanyId } from './useCurrentUser'
 import { Job, JobInsert, JobUpdate, JobStop, JobStopInsert, JobWithStops, Vehicle, Route } from '@/types/database'
 import { DriverWithProfile } from './useDrivers'
 import { vehicleKeys } from './useVehicles'
@@ -429,9 +430,16 @@ export function useJob(id: string) {
  */
 export function useCreateJobWithStops() {
     const queryClient = useQueryClient()
+    const companyId = useCompanyId()
 
     return useMutation({
-        mutationFn: createJobWithStopsApi,
+        mutationFn: (input: CreateJobWithStopsInput) => {
+            if (!companyId) throw new Error('Company ID is required')
+            return createJobWithStopsApi({
+                ...input,
+                job: { ...input.job, company_id: companyId }
+            })
+        },
         onSuccess: (newJob) => {
             queryClient.invalidateQueries({ queryKey: jobKeys.lists() })
             queryClient.setQueryData(jobKeys.detail(newJob.id), newJob)
@@ -459,9 +467,13 @@ export function useUpdateJobWithStops() {
  */
 export function useCreateJob() {
     const queryClient = useQueryClient()
+    const companyId = useCompanyId()
 
     return useMutation({
-        mutationFn: createJobApi,
+        mutationFn: (job: JobInsert) => {
+            if (!companyId) throw new Error('Company ID is required')
+            return createJobApi({ ...job, company_id: companyId })
+        },
         onSuccess: (newJob) => {
             queryClient.invalidateQueries({ queryKey: jobKeys.lists() })
             queryClient.setQueryData(jobKeys.detail(newJob.id), newJob)

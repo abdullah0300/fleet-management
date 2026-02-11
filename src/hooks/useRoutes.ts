@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { useCompanyId } from './useCurrentUser'
 import { Route, RouteInsert, RouteUpdate } from '@/types/database'
 
 // Query keys for cache management
@@ -122,9 +123,13 @@ export function useRoute(id: string) {
  */
 export function useCreateRoute() {
     const queryClient = useQueryClient()
+    const companyId = useCompanyId()
 
     return useMutation({
-        mutationFn: createRouteApi,
+        mutationFn: (route: RouteInsert) => {
+            if (!companyId) throw new Error('Company ID is required')
+            return createRouteApi({ ...route, company_id: companyId })
+        },
         onSuccess: (newRoute) => {
             queryClient.invalidateQueries({ queryKey: routeKeys.lists() })
             queryClient.setQueryData(routeKeys.detail(newRoute.id), newRoute)

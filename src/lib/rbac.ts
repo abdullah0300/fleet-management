@@ -13,6 +13,10 @@ export type Permission =
     | 'manage:jobs'
     | 'view:routes'
     | 'manage:routes'
+    | 'view:dispatch'   // NEW
+    | 'manage:dispatch' // NEW
+    | 'view:manifests'  // NEW
+    | 'manage:manifests'// NEW
     | 'view:tracking'
     | 'view:maintenance'
     | 'manage:maintenance'
@@ -21,26 +25,31 @@ export type Permission =
     | 'view:reports'
     | 'view:settings'
     | 'manage:settings'
+    | 'view:companies'
+    | 'manage:companies'
 
 // Role-Permission Matrix
 const rolePermissions: Record<UserRole, Permission[]> = {
     admin: [
         'view:dashboard', 'view:vehicles', 'manage:vehicles',
         'view:drivers', 'manage:drivers', 'view:jobs', 'manage:jobs',
-        'view:routes', 'manage:routes', 'view:tracking',
+        'view:routes', 'manage:routes', 'view:dispatch', 'manage:dispatch',
+        'view:manifests', 'manage:manifests', 'view:tracking',
         'view:maintenance', 'manage:maintenance', 'view:documents',
         'manage:documents', 'view:reports', 'view:settings', 'manage:settings'
     ],
     fleet_manager: [
         'view:dashboard', 'view:vehicles', 'manage:vehicles',
         'view:drivers', 'manage:drivers', 'view:jobs', 'manage:jobs',
-        'view:routes', 'manage:routes', 'view:tracking',
+        'view:routes', 'manage:routes', 'view:dispatch', 'manage:dispatch',
+        'view:manifests', 'manage:manifests', 'view:tracking',
         'view:maintenance', 'manage:maintenance', 'view:documents',
         'manage:documents', 'view:reports', 'view:settings'
     ],
     dispatcher: [
         'view:dashboard', 'view:vehicles', 'view:drivers',
         'view:jobs', 'manage:jobs', 'view:routes', 'manage:routes',
+        'view:dispatch', 'manage:dispatch', 'view:manifests', 'manage:manifests',
         'view:tracking', 'view:maintenance', 'view:documents'
     ],
     driver: [
@@ -48,24 +57,27 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     ],
     accountant: [
         'view:dashboard', 'view:reports', 'view:drivers',
-        'view:jobs', 'view:maintenance'
+        'view:jobs', 'view:maintenance', 'view:manifests'
     ]
 }
 
 // Check if a role has a specific permission
-export function hasPermission(role: UserRole | null, permission: Permission): boolean {
+export function hasPermission(role: UserRole | null, permission: Permission, isPlatformAdmin: boolean = false): boolean {
+    if (isPlatformAdmin) return true
     if (!role) return false
     return rolePermissions[role]?.includes(permission) ?? false
 }
 
 // Check if a role has any of the specified permissions
-export function hasAnyPermission(role: UserRole | null, permissions: Permission[]): boolean {
+export function hasAnyPermission(role: UserRole | null, permissions: Permission[], isPlatformAdmin: boolean = false): boolean {
+    if (isPlatformAdmin) return true
     if (!role) return false
     return permissions.some(p => hasPermission(role, p))
 }
 
 // Check if a role has all of the specified permissions
-export function hasAllPermissions(role: UserRole | null, permissions: Permission[]): boolean {
+export function hasAllPermissions(role: UserRole | null, permissions: Permission[], isPlatformAdmin: boolean = false): boolean {
+    if (isPlatformAdmin) return true
     if (!role) return false
     return permissions.every(p => hasPermission(role, p))
 }
@@ -73,6 +85,7 @@ export function hasAllPermissions(role: UserRole | null, permissions: Permission
 // Get route access requirements
 const routePermissions: Record<string, Permission> = {
     '/dashboard': 'view:dashboard',
+    '/dashboard/companies': 'view:companies',
     '/dashboard/vehicles': 'view:vehicles',
     '/dashboard/vehicles/new': 'manage:vehicles',
     '/dashboard/drivers': 'view:drivers',
@@ -81,6 +94,9 @@ const routePermissions: Record<string, Permission> = {
     '/dashboard/jobs/new': 'manage:jobs',
     '/dashboard/routes': 'view:routes',
     '/dashboard/routes/new': 'manage:routes',
+    '/dashboard/dispatch': 'view:dispatch', // NEW
+    '/dashboard/manifests': 'view:manifests', // NEW
+    '/dashboard/manifests/new': 'manage:manifests', // NEW
     '/dashboard/tracking': 'view:tracking',
     '/dashboard/maintenance': 'view:maintenance',
     '/dashboard/maintenance/new': 'manage:maintenance',
@@ -91,11 +107,12 @@ const routePermissions: Record<string, Permission> = {
 }
 
 // Check if a user can access a specific route
-export function canAccessRoute(role: UserRole | null, pathname: string): boolean {
+export function canAccessRoute(role: UserRole | null, pathname: string, isPlatformAdmin: boolean = false): boolean {
+    if (isPlatformAdmin) return true
     if (!role) return false
 
-    // Admin can access everything
-    if (role === 'admin') return true
+    // Admin (company admin) can access everything EXCEPT companies page (unless platform admin)
+    if (role === 'admin' && !pathname.startsWith('/dashboard/companies')) return true
 
     // Check exact match first
     const requiredPermission = routePermissions[pathname]
@@ -115,13 +132,16 @@ export function canAccessRoute(role: UserRole | null, pathname: string): boolean
 }
 
 // Get sidebar items based on role
-export function getAccessibleRoutes(role: UserRole | null) {
+export function getAccessibleRoutes(role: UserRole | null, isPlatformAdmin: boolean = false) {
     const allRoutes = [
         { path: '/dashboard', name: 'Dashboard', permission: 'view:dashboard' as Permission },
-        { path: '/dashboard/vehicles', name: 'Vehicles', permission: 'view:vehicles' as Permission },
-        { path: '/dashboard/drivers', name: 'Drivers', permission: 'view:drivers' as Permission },
+        { path: '/dashboard/companies', name: 'Companies', permission: 'view:companies' as Permission },
+        { path: '/dashboard/dispatch', name: 'Dispatch', permission: 'view:dispatch' as Permission }, // NEW
         { path: '/dashboard/jobs', name: 'Jobs', permission: 'view:jobs' as Permission },
         { path: '/dashboard/routes', name: 'Routes', permission: 'view:routes' as Permission },
+        { path: '/dashboard/manifests', name: 'Manifests', permission: 'view:manifests' as Permission }, // NEW
+        { path: '/dashboard/vehicles', name: 'Vehicles', permission: 'view:vehicles' as Permission },
+        { path: '/dashboard/drivers', name: 'Drivers', permission: 'view:drivers' as Permission },
         { path: '/dashboard/tracking', name: 'Tracking', permission: 'view:tracking' as Permission },
         { path: '/dashboard/maintenance', name: 'Maintenance', permission: 'view:maintenance' as Permission },
         { path: '/dashboard/documents', name: 'Documents', permission: 'view:documents' as Permission },
@@ -130,5 +150,5 @@ export function getAccessibleRoutes(role: UserRole | null) {
         { path: '/dashboard/settings', name: 'Settings', permission: 'view:settings' as Permission },
     ]
 
-    return allRoutes.filter(route => hasPermission(role, route.permission))
+    return allRoutes.filter(route => hasPermission(role, route.permission, isPlatformAdmin))
 }

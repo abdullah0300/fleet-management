@@ -10,6 +10,48 @@ export interface Database {
   public: {
     Tables: {
       // ============================================
+      // 0. COMPANIES (New)
+      // ============================================
+      companies: {
+        Row: {
+          id: string
+          name: string
+          slug: string
+          logo_url: string | null
+          address: string | null
+          phone: string | null
+          email: string | null
+          status: 'active' | 'suspended' | 'trial' | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          slug: string
+          logo_url?: string | null
+          address?: string | null
+          phone?: string | null
+          email?: string | null
+          status?: 'active' | 'suspended' | 'trial' | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          slug?: string
+          logo_url?: string | null
+          address?: string | null
+          phone?: string | null
+          email?: string | null
+          status?: 'active' | 'suspended' | 'trial' | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+
+      // ============================================
       // 1. PROFILES (extends auth.users)
       // ============================================
       profiles: {
@@ -20,6 +62,8 @@ export interface Database {
           role: 'admin' | 'fleet_manager' | 'dispatcher' | 'driver' | 'accountant'
           phone: string | null
           avatar_url: string | null
+          company_id: string | null
+          is_platform_admin: boolean | null
           created_at: string
           updated_at: string
         }
@@ -30,6 +74,8 @@ export interface Database {
           role?: 'admin' | 'fleet_manager' | 'dispatcher' | 'driver' | 'accountant'
           phone?: string | null
           avatar_url?: string | null
+          company_id?: string | null
+          is_platform_admin?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -40,6 +86,8 @@ export interface Database {
           role?: 'admin' | 'fleet_manager' | 'dispatcher' | 'driver' | 'accountant'
           phone?: string | null
           avatar_url?: string | null
+          company_id?: string | null
+          is_platform_admin?: boolean | null
           created_at?: string
           updated_at?: string
         }
@@ -51,6 +99,7 @@ export interface Database {
       vehicles: {
         Row: {
           id: string
+          company_id: string | null
           registration_number: string
           make: string
           model: string
@@ -67,6 +116,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          company_id?: string | null
           registration_number: string
           make: string
           model: string
@@ -83,6 +133,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          company_id?: string | null
           registration_number?: string
           make?: string
           model?: string
@@ -105,6 +156,7 @@ export interface Database {
       drivers: {
         Row: {
           id: string
+          company_id: string | null
           license_number: string | null
           license_expiry: string | null
           payment_type: 'per_mile' | 'per_trip' | 'hourly' | 'salary' | null
@@ -117,6 +169,7 @@ export interface Database {
         }
         Insert: {
           id: string // Required - FK to profiles.id
+          company_id?: string | null
           license_number?: string | null
           license_expiry?: string | null
           payment_type?: 'per_mile' | 'per_trip' | 'hourly' | 'salary' | null
@@ -129,6 +182,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          company_id?: string | null
           license_number?: string | null
           license_expiry?: string | null
           payment_type?: 'per_mile' | 'per_trip' | 'hourly' | 'salary' | null
@@ -147,6 +201,7 @@ export interface Database {
       routes: {
         Row: {
           id: string
+          company_id: string | null
           name: string | null
           origin: Json
           destination: Json
@@ -160,6 +215,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          company_id?: string | null
           name?: string | null
           origin: Json
           destination: Json
@@ -173,6 +229,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          company_id?: string | null
           name?: string | null
           origin?: Json
           destination?: Json
@@ -192,6 +249,7 @@ export interface Database {
       jobs: {
         Row: {
           id: string
+          company_id: string | null
           job_number: string | null
           manifest_id: string | null
           sequence_order: number | null
@@ -212,6 +270,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          company_id?: string | null
           job_number?: string | null
           manifest_id?: string | null
           route_id?: string | null
@@ -231,6 +290,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          company_id?: string | null
           job_number?: string | null
           manifest_id?: string | null
           route_id?: string | null
@@ -550,6 +610,7 @@ export interface Database {
       manifests: {
         Row: {
           id: string
+          company_id: string | null
           manifest_number: string | null
           vehicle_id: string | null
           driver_id: string | null
@@ -564,6 +625,7 @@ export interface Database {
         }
         Insert: {
           id?: string
+          company_id?: string | null
           manifest_number?: string | null
           vehicle_id?: string | null
           driver_id?: string | null
@@ -578,6 +640,7 @@ export interface Database {
         }
         Update: {
           id?: string
+          company_id?: string | null
           manifest_number?: string | null
           vehicle_id?: string | null
           driver_id?: string | null
@@ -636,11 +699,13 @@ export interface Database {
   }
 }
 
+
 // ============================================
 // HELPER TYPES FOR COMMON USE
 // ============================================
 
 // Table row types (for reading data)
+export type Company = Database['public']['Tables']['companies']['Row']
 export type Profile = Database['public']['Tables']['profiles']['Row']
 export type Vehicle = Database['public']['Tables']['vehicles']['Row']
 export type Driver = Database['public']['Tables']['drivers']['Row']
@@ -660,6 +725,7 @@ export type JobWithStops = Job & {
 }
 
 // Insert types (for creating data)
+export type CompanyInsert = Database['public']['Tables']['companies']['Insert']
 export type ProfileInsert = Database['public']['Tables']['profiles']['Insert']
 export type VehicleInsert = Database['public']['Tables']['vehicles']['Insert']
 export type DriverInsert = Database['public']['Tables']['drivers']['Insert']
@@ -674,6 +740,7 @@ export type NotificationInsert = Database['public']['Tables']['notifications']['
 export type ManifestInsert = Database['public']['Tables']['manifests']['Insert']
 
 // Update types (for updating data)
+export type CompanyUpdate = Database['public']['Tables']['companies']['Update']
 export type ProfileUpdate = Database['public']['Tables']['profiles']['Update']
 export type VehicleUpdate = Database['public']['Tables']['vehicles']['Update']
 export type DriverUpdate = Database['public']['Tables']['drivers']['Update']

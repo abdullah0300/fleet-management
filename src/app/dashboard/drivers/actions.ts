@@ -25,6 +25,7 @@ export type DriverImportRow = {
     rate_amount?: number
     status?: 'available' | 'on_trip' | 'off_duty'
     login_pin?: string
+    company_id?: string // Added for multi-tenancy
 }
 
 export type ImportResult = {
@@ -62,6 +63,7 @@ export async function bulkImportDrivers(drivers: DriverImportRow[]): Promise<Imp
                     email_confirm: true,
                     user_metadata: {
                         full_name: driver.full_name,
+                        company_id: driver.company_id,
                     }
                 })
 
@@ -85,7 +87,8 @@ export async function bulkImportDrivers(drivers: DriverImportRow[]): Promise<Imp
                 payment_type: driver.payment_type || 'per_mile',
                 rate_amount: driver.rate_amount || 0,
                 status: driver.status || 'available',
-                login_pin: driver.login_pin || null
+                login_pin: driver.login_pin || null,
+                ...(driver.company_id ? { company_id: driver.company_id } : {}) // Inject company_id
             }
 
             if (existingDriver) {
@@ -178,6 +181,7 @@ export async function createDriver(driver: DriverImportRow): Promise<{ success: 
                 email_confirm: true,
                 user_metadata: {
                     full_name: driver.full_name,
+                    company_id: driver.company_id,
                 }
             })
 
@@ -199,7 +203,8 @@ export async function createDriver(driver: DriverImportRow): Promise<{ success: 
             payment_type: driver.payment_type || 'per_mile',
             rate_amount: driver.rate_amount || 0,
             status: driver.status || 'available',
-            login_pin: driver.login_pin || null
+            login_pin: driver.login_pin || null,
+            ...(driver.company_id ? { company_id: driver.company_id } : {}) // Inject company_id
         }
 
         const { error: insertError } = await supabaseAdmin
@@ -277,3 +282,5 @@ export async function updateDriver(
         return { success: false, error: error instanceof Error ? error.message : 'Unknown error' }
     }
 }
+
+
