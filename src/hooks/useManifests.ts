@@ -99,6 +99,27 @@ export function useCreateManifest() {
                 .select()
                 .single()
             if (error) throw error
+
+            // Sync driver and vehicle status if both are present
+            if (manifest.driver_id && manifest.vehicle_id) {
+                await Promise.all([
+                    supabase
+                        .from('drivers')
+                        .update({
+                            status: 'on_trip',
+                            assigned_vehicle_id: manifest.vehicle_id
+                        })
+                        .eq('id', manifest.driver_id),
+                    supabase
+                        .from('vehicles')
+                        .update({
+                            status: 'in_use',
+                            current_driver_id: manifest.driver_id
+                        })
+                        .eq('id', manifest.vehicle_id)
+                ])
+            }
+
             return data
         },
         onSuccess: () => {
@@ -140,8 +161,9 @@ export function useUpdateManifest() {
                     console.error('Failed to sync manifest updates to jobs:', jobError)
                 }
 
-                // If driver assigned, also update driver status
+                // If driver assigned, also update driver status AND vehicle current_driver
                 if (updates.driver_id) {
+                    // 1. Update Driver
                     await supabase
                         .from('drivers')
                         .update({
@@ -149,6 +171,17 @@ export function useUpdateManifest() {
                             assigned_vehicle_id: updates.vehicle_id
                         })
                         .eq('id', updates.driver_id)
+
+                    // 2. Update Vehicle (Critical for tracking)
+                    if (updates.vehicle_id) {
+                        await supabase
+                            .from('vehicles')
+                            .update({
+                                status: 'in_use',
+                                current_driver_id: updates.driver_id
+                            })
+                            .eq('id', updates.vehicle_id)
+                    }
                 }
             }
 

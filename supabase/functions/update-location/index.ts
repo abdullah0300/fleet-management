@@ -65,21 +65,23 @@ serve(async (req) => {
             )
         }
 
-        // 3. Find the driver record for this user
+        // 3. Find the vehicle assigned to this user (Driver)
         // Use Admin Client to bypass RLS
-        const { data: driverData, error: driverError } = await supabaseAdmin
-            .from('drivers')
-            .select('assigned_vehicle_id')
-            .eq('id', user.id)
-            .single()
+        const { data: vehicleData, error: vehicleError } = await supabaseAdmin
+            .from('vehicles')
+            .select('id')
+            .eq('current_driver_id', user.id)
+            .maybeSingle()
 
-        if (driverError || !driverData?.assigned_vehicle_id) {
-            console.error("Driver Lookup Error:", driverError)
+        if (vehicleError || !vehicleData) {
+            console.error("Vehicle Lookup Error:", vehicleError)
             return new Response(
-                JSON.stringify({ error: 'Driver not found or no vehicle assigned' }),
+                JSON.stringify({ error: 'No vehicle assigned to this driver' }),
                 { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             )
         }
+
+        const vehicleId = vehicleData.id
 
         // 4. Update the vehicle's location and add to history
         const locationData = {
@@ -100,13 +102,13 @@ serve(async (req) => {
             supabaseAdmin
                 .from('vehicles')
                 .update({ current_location: locationData })
-                .eq('id', driverData.assigned_vehicle_id),
+                .eq('id', vehicleId),
 
             // Insert into history (Non-critical but important for POD)
             supabaseAdmin
                 .from('vehicle_location_history')
                 .insert({
-                    vehicle_id: driverData.assigned_vehicle_id,
+                    vehicle_id: vehicleId,
                     driver_id: user.id,
                     lat,
                     lng,
@@ -127,7 +129,7 @@ serve(async (req) => {
         }
 
         return new Response(
-            JSON.stringify({ success: true, vehicle_id: driverData.assigned_vehicle_id }),
+            JSON.stringify({ success: true, vehicle_id: vehicleId }),
             { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         )
 
