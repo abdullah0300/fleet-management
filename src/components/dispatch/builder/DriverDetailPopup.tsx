@@ -1,6 +1,6 @@
 'use client'
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,6 +8,9 @@ import { User, Truck, MapPin, Calendar, Package, Clock, CheckCircle2, AlertCircl
 import { useJobs } from '@/hooks/useJobs'
 import { useVehicles } from '@/hooks/useVehicles'
 import { useManifests } from '@/hooks/useManifests'
+import { JobRouteMap } from '@/components/jobs/JobRouteMap'
+import { useVehicleLocation } from '@/hooks/useVehicleLocation'
+import { Wifi, WifiOff } from 'lucide-react'
 
 interface DriverDetailPopupProps {
     driver: any
@@ -50,6 +53,12 @@ export function DriverDetailPopup({ driver, open, onOpenChange, onSelectForManif
     const driverJobs = allJobs
         .filter(job => job.driver_id === driver?.id)
         .slice(0, 5)
+
+    // Listen to real-time location for the assigned vehicle
+    const { location: liveLocation } = useVehicleLocation(assignedVehicle?.id)
+
+    // Determine effective location (live > db)
+    const displayLocation = liveLocation || assignedVehicle?.current_location
 
     if (!driver) return null
 
@@ -99,6 +108,9 @@ export function DriverDetailPopup({ driver, open, onOpenChange, onSelectForManif
                                 <DialogTitle className="text-xl">
                                     {driver.profiles?.full_name || 'Unknown Driver'}
                                 </DialogTitle>
+                                <DialogDescription className="text-sm text-muted-foreground">
+                                    {driver.profiles?.email || 'Driver Details'}
+                                </DialogDescription>
                                 <div className="flex items-center gap-2 mt-1">
                                     <Badge className={statusColor}>
                                         {driver.status || 'available'}
@@ -198,21 +210,51 @@ export function DriverDetailPopup({ driver, open, onOpenChange, onSelectForManif
                         </CardContent>
                     </Card>
 
-                    {/* Location Map Placeholder */}
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                                <MapPin className="h-4 w-4" /> Last Known Location
+                    {/* Live Tracking Map */}
+                    <Card className="overflow-hidden">
+                        <CardHeader className="pb-2 bg-slate-50 border-b">
+                            <CardTitle className="text-sm flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <MapPin className="h-4 w-4" /> Live Location
+                                </div>
+                                <div className="flex flex-col items-end">
+                                    {assignedVehicle && (
+                                        <span className="text-xs font-normal text-muted-foreground">
+                                            Veh: {assignedVehicle.registration_number}
+                                        </span>
+                                    )}
+                                    {liveLocation?.timestamp ? (
+                                        <div className="flex items-center gap-1 text-[10px] text-status-success mt-0.5">
+                                            <Wifi className="h-3 w-3" />
+                                            <span>Signal: {new Date(liveLocation.timestamp).toLocaleTimeString()}</span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground mt-0.5">
+                                            <WifiOff className="h-3 w-3" />
+                                            <span>No active signal</span>
+                                        </div>
+                                    )}
+                                </div>
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="h-40 bg-slate-100 rounded-lg flex items-center justify-center text-muted-foreground text-sm">
-                                <div className="text-center">
-                                    <Navigation className="h-8 w-8 mx-auto mb-2 text-slate-400" />
-                                    <p>GPS tracking available in Phase 2</p>
-                                    <p className="text-xs">Real-time location will be shown here</p>
+                        <CardContent className="p-0">
+                            {assignedVehicle ? (
+                                <div className="h-64 w-full">
+                                    <JobRouteMap
+                                        // Pass null for vehicleId to avoid double subscription since we handle it here
+                                        vehicleId={null}
+                                        vehicleLocation={displayLocation as any}
+                                    />
                                 </div>
-                            </div>
+                            ) : (
+                                <div className="h-40 bg-slate-100 flex items-center justify-center text-muted-foreground text-sm">
+                                    <div className="text-center p-4">
+                                        <Truck className="h-8 w-8 mx-auto mb-2 text-slate-400" />
+                                        <p>No vehicle assigned</p>
+                                        <p className="text-xs">Assign a vehicle to track location</p>
+                                    </div>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 

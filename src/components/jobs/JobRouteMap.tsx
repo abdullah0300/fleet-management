@@ -5,6 +5,7 @@ import Map, { Marker, NavigationControl, FullscreenControl, Source, Layer, MapRe
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { Truck, MapPin, Flag, Layers, AlertCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useVehicleLocation } from '@/hooks/useVehicleLocation'
 
 interface Waypoint {
     lat: number
@@ -20,14 +21,21 @@ interface JobRouteMapProps {
     delivery?: { lat: number; lng: number; address?: string }
     waypoints?: Waypoint[]
     vehicleLocation?: { lat: number; lng: number }
+    vehicleId?: string | null
 }
 
-export function JobRouteMap({ pickup, delivery, waypoints: externalWaypoints, vehicleLocation }: JobRouteMapProps) {
+export function JobRouteMap({ pickup, delivery, waypoints: externalWaypoints, vehicleLocation: initialVehicleLocation, vehicleId }: JobRouteMapProps) {
     const mapRef = useRef<MapRef>(null)
     const [mapboxToken, setMapboxToken] = useState<string>('')
     const [routeGeoJSON, setRouteGeoJSON] = useState<any>(null)
     const [showTraffic, setShowTraffic] = useState(false)
     const [mapLoaded, setMapLoaded] = useState(false)
+
+    // Real-time location hook
+    const { location: liveLocation } = useVehicleLocation(vehicleId)
+
+    // Merge live location with initial location
+    const vehicleLocation = liveLocation || initialVehicleLocation
 
     useEffect(() => {
         const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
@@ -231,7 +239,7 @@ export function JobRouteMap({ pickup, delivery, waypoints: externalWaypoints, ve
                 )}
 
                 {/* Route Line */}
-                {routeGeoJSON && (
+                {routeGeoJSON && waypoints.length >= 2 && (
                     <Source id="route" type="geojson" data={routeGeoJSON}>
                         <Layer
                             id="route-layer"
@@ -294,14 +302,18 @@ export function JobRouteMap({ pickup, delivery, waypoints: externalWaypoints, ve
 
             {/* Legend */}
             <div className="absolute bottom-4 left-4 bg-white/95 rounded-lg shadow-lg p-2 text-xs space-y-1">
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full border-2 border-green-500" />
-                    <span>Pickup</span>
-                </div>
-                <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full border-2 border-red-500" />
-                    <span>Dropoff</span>
-                </div>
+                {waypoints.length > 0 && (
+                    <>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full border-2 border-green-500" />
+                            <span>Pickup</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full border-2 border-red-500" />
+                            <span>Dropoff</span>
+                        </div>
+                    </>
+                )}
                 {vehicleLocation && (
                     <div className="flex items-center gap-2">
                         <div className="w-3 h-3 rounded-full bg-blue-600" />
@@ -310,14 +322,14 @@ export function JobRouteMap({ pickup, delivery, waypoints: externalWaypoints, ve
                 )}
             </div>
 
-            {/* No waypoints message */}
-            {waypoints.length === 0 && (
+            {/* No waypoints message - Only show if NO waypoints AND NO vehicle location */}
+            {waypoints.length === 0 && !vehicleLocation && (
                 <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
                     <div className="bg-white rounded-lg shadow-lg p-4 text-center max-w-xs">
                         <AlertCircle className="h-6 w-6 text-amber-500 mx-auto mb-2" />
-                        <p className="font-medium text-sm">No Route Available</p>
+                        <p className="font-medium text-sm">No Location Data</p>
                         <p className="text-xs text-muted-foreground mt-1">
-                            This job doesn't have location coordinates.
+                            This job/vehicle doesn't have location coordinates.
                         </p>
                     </div>
                 </div>

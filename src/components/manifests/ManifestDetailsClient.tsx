@@ -16,6 +16,11 @@ import {
 } from 'lucide-react'
 import { useStartTrip, useCompleteTrip } from '@/hooks/useTrips'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { ProofOfDeliveryMap } from '@/components/manifests/ProofOfDeliveryMap'
+import { format } from 'date-fns'
+import { useRealtimeUpdate } from '@/hooks/useRealtimeUpdate'
+import { manifestKeys } from '@/hooks/useManifests'
 
 interface ManifestDetailsClientProps {
     manifest: any
@@ -85,6 +90,18 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
     const startTrip = useStartTrip()
     const completeTrip = useCompleteTrip()
     const [isActionLoading, setIsActionLoading] = useState(false)
+
+    // --- Real-time Updates ---
+    // 1. Listen for changes to THIS manifest
+    useRealtimeUpdate('manifests', manifestKeys.detail(manifest.id), `id=eq.${manifest.id}`)
+
+    // 2. Listen for changes to jobs in this manifest
+    useRealtimeUpdate('jobs', manifestKeys.detail(manifest.id), `manifest_id=eq.${manifest.id}`)
+
+    // 3. Listen for stop changes (broad listener for simplicity)
+    useRealtimeUpdate('job_stops', manifestKeys.detail(manifest.id))
+    // Note: We ideally want to filter by job_id, but supabase realtime filters are simple.
+    // Invalidating the manifest detail query will refresh everything (jobs + stops) which is what we want.
 
     // Get status config
     const status = statusConfig[manifest.status] || statusConfig.draft
@@ -333,7 +350,7 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                                                     const isStopCompleted = stop.status === 'completed'
 
                                                     return (
-                                                        <div key={stop.id} className={`flex gap-3 mb-3 ${isStopCompleted ? 'opacity-60' : ''}`}>
+                                                        <div key={stop.id} className={`flex gap-3 mb-3 ${isStopCompleted ? 'opacity-100' : ''}`}>
                                                             <div className="flex-none flex flex-col items-center">
                                                                 <div className={`h-7 w-7 rounded-full border-2 flex items-center justify-center text-[10px] font-bold transition-colors ${isStopCompleted
                                                                     ? 'bg-green-500 border-green-500 text-white'
@@ -351,16 +368,65 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                                                                 </div>
                                                             </div>
                                                             <div className="flex-1 min-w-0">
-                                                                <div className={`text-xs font-semibold uppercase tracking-wider mb-0.5 ${isStopCompleted
-                                                                    ? 'text-green-600'
-                                                                    : stop.type === 'pickup'
+                                                                <div className="flex justify-between items-start">
+                                                                    <div className={`text-xs font-semibold uppercase tracking-wider mb-0.5 ${isStopCompleted
                                                                         ? 'text-green-600'
-                                                                        : stop.type === 'dropoff'
-                                                                            ? 'text-red-600'
-                                                                            : 'text-blue-600'
-                                                                    }`}>
-                                                                    {isStopCompleted && '✓ '}{stop.type}
+                                                                        : stop.type === 'pickup'
+                                                                            ? 'text-green-600'
+                                                                            : stop.type === 'dropoff'
+                                                                                ? 'text-red-600'
+                                                                                : 'text-blue-600'
+                                                                        }`}>
+                                                                        {isStopCompleted && '✓ '}{stop.type}
+                                                                    </div>
+
+                                                                    {/* POD Verification Mockup */}
+                                                                    {isStopCompleted && (stop.actual_arrival_lat || stop.actual_completion_lat) && (
+                                                                        <Dialog>
+                                                                            <DialogTrigger asChild>
+                                                                                <Button variant="ghost" size="sm" className="h-5 px-1.5 text-[10px] text-blue-600 hover:text-blue-800 hover:bg-blue-50">
+                                                                                    <MapPin className="h-3 w-3 mr-1" />
+                                                                                    Verify
+                                                                                </Button>
+                                                                            </DialogTrigger>
+                                                                            <DialogContent className="sm:max-w-md">
+                                                                                <DialogHeader>
+                                                                                    <DialogTitle>Proof of Delivery - {stop.type}</DialogTitle>
+                                                                                </DialogHeader>
+                                                                                <div className="aspect-video w-full mt-2">
+                                                                                    <ProofOfDeliveryMap
+                                                                                        plannedLocation={{
+                                                                                            lat: stop.latitude || 0,
+                                                                                            lng: stop.longitude || 0
+                                                                                        }}
+                                                                                        actualLocation={stop.actual_completion_lat ? {
+                                                                                            lat: stop.actual_completion_lat,
+                                                                                            lng: stop.actual_completion_lng,
+                                                                                            timestamp: stop.actual_arrival_time
+                                                                                        } : undefined}
+                                                                                        completionType={stop.type}
+                                                                                        flagged={stop.flagged_location}
+                                                                                    />
+                                                                                </div>
+                                                                                <div className="text-sm text-muted-foreground mt-2">
+                                                                                    <div className="grid grid-cols-2 gap-2">
+                                                                                        <div>
+                                                                                            <span className="font-semibold block text-xs uppercase tracking-wider">Address</span>
+                                                                                            <span className="truncate block" title={stop.address}>{stop.address}</span>
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <span className="font-semibold block text-xs uppercase tracking-wider">Actual Arrival</span>
+                                                                                            <span className={stop.actual_arrival_time && stop.scheduled_arrival && new Date(stop.actual_arrival_time) > new Date(stop.scheduled_arrival) ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
+                                                                                                {stop.actual_arrival_time ? format(new Date(stop.actual_arrival_time), 'h:mm a') : '--:--'}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </DialogContent>
+                                                                        </Dialog>
+                                                                    )}
                                                                 </div>
+
                                                                 <p className="text-sm font-medium truncate">{stop.address}</p>
 
                                                                 {/* Time Info */}
@@ -381,6 +447,17 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                                                                             {stop.scheduled_time.slice(0, 5)}
                                                                         </span>
                                                                     ) : null}
+
+                                                                    {/* Actual Time Badge */}
+                                                                    {stop.actual_arrival_time && (
+                                                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${stop.scheduled_arrival && new Date(stop.actual_arrival_time) > new Date(stop.scheduled_arrival)
+                                                                            ? 'bg-red-50 text-red-700 border-red-200'
+                                                                            : 'bg-green-50 text-green-700 border-green-200'
+                                                                            }`}>
+                                                                            <CheckCircle2 className="w-3 h-3 mr-1" />
+                                                                            {format(new Date(stop.actual_arrival_time), 'h:mm a')}
+                                                                        </span>
+                                                                    )}
                                                                 </div>
 
                                                                 {stop.notes && (

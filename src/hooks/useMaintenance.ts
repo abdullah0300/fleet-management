@@ -8,7 +8,7 @@ const supabase = createClient()
 export const maintenanceKeys = {
     all: ['maintenance'] as const,
     lists: () => [...maintenanceKeys.all, 'list'] as const,
-    list: (filters?: { vehicleId?: string; status?: string }) =>
+    list: (filters?: { vehicleId?: string; status?: string; limit?: number }) =>
         [...maintenanceKeys.lists(), filters] as const,
     details: () => [...maintenanceKeys.all, 'detail'] as const,
     detail: (id: string) => [...maintenanceKeys.details(), id] as const,
@@ -35,7 +35,7 @@ interface MaintenanceQueryResult {
 /**
  * Fetch all maintenance records with vehicle info
  */
-async function fetchMaintenance(filters?: { vehicleId?: string; status?: string }): Promise<MaintenanceQueryResult> {
+async function fetchMaintenance(filters?: { vehicleId?: string; status?: string; limit?: number }): Promise<MaintenanceQueryResult> {
     let query = supabase
         .from('maintenance_records')
         .select(`
@@ -55,6 +55,9 @@ async function fetchMaintenance(filters?: { vehicleId?: string; status?: string 
     }
     if (filters?.status) {
         query = query.eq('status', filters.status)
+    }
+    if (filters?.limit) {
+        query = query.limit(filters.limit)
     }
 
     const { data, error, count } = await query
@@ -147,7 +150,7 @@ async function fetchOverdueMaintenance(): Promise<MaintenanceWithVehicle[]> {
  * Hook to fetch all maintenance records
  * Uses TanStack Query with 5 minute cache
  */
-export function useMaintenance(filters?: { vehicleId?: string; status?: string }) {
+export function useMaintenance(filters?: { vehicleId?: string; status?: string; limit?: number }) {
     return useQuery({
         queryKey: maintenanceKeys.list(filters),
         queryFn: () => fetchMaintenance(filters),

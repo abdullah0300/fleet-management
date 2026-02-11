@@ -357,7 +357,7 @@ export function useJobsForCost() {
 /**
  * Fetch cost summary statistics
  */
-export function useCostSummary(period?: 'week' | 'month' | 'year') {
+export function useCostSummary(period?: 'day' | 'week' | 'month' | 'year') {
     return useQuery({
         queryKey: ['costSummary', period],
         queryFn: async () => {
@@ -371,6 +371,9 @@ export function useCostSummary(period?: 'week' | 'month' | 'year') {
                 const now = new Date()
                 let startDate: Date
                 switch (period) {
+                    case 'day':
+                        startDate = new Date(now.setHours(0, 0, 0, 0))
+                        break
                     case 'week':
                         startDate = new Date(now.setDate(now.getDate() - 7))
                         break

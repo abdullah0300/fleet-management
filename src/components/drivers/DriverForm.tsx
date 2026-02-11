@@ -111,11 +111,11 @@ export function DriverForm({ initialData, onSubmit, isSubmitting }: DriverFormPr
                 </div>
 
                 <div className="space-y-2">
-                    <Label htmlFor="login_pin">Login PIN (4-6 digits) *</Label>
+                    <Label htmlFor="login_pin">Login PIN (4 digits) *</Label>
                     <Input
                         id="login_pin"
                         type="text"
-                        maxLength={6}
+                        maxLength={4}
                         placeholder="1234"
                         {...register('login_pin', {
                             required: 'PIN is required',

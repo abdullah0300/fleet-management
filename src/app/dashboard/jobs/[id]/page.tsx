@@ -15,6 +15,11 @@ import { JobRouteMap } from '@/components/jobs/JobRouteMap'
 import { EntityDocuments } from '@/components/documents/EntityDocuments'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { ProofOfDeliveryMap } from '@/components/manifests/ProofOfDeliveryMap'
+import { format } from 'date-fns'
+import { useRealtimeUpdate } from '@/hooks/useRealtimeUpdate'
+import { jobKeys } from '@/hooks/useJobs'
 
 // Status config for consistent UI
 const statusConfig: Record<string, {
@@ -69,6 +74,20 @@ export default function JobDetailPage() {
     const { data: job, isLoading, error } = useJob(id)
     const updateMutation = useUpdateJob()
     const deleteMutation = useDeleteJob()
+
+    // --- Real-time Updates ---
+    // --- Real-time Updates ---
+    // 1. Listen for changes to THIS job
+    // We pass the filter only if job exists, handled by the hook or passing a dummy filter if needed.
+    // However, our hook doesn't support 'skip', so we'll pass a filter that matches nothing if job is null, or just let it run.
+    // Better pattern: The hook should just do nothing if filter is undefined? 
+    // Actually, let's just properly use the ID if we have it, but we MUST call the hook unconditionally.
+
+    // We can use the 'id' from params even before the job data loads
+    useRealtimeUpdate('jobs', jobKeys.detail(id), `id=eq.${id}`)
+
+    // 2. Listen for stop changes
+    useRealtimeUpdate('job_stops', jobKeys.detail(id), `job_id=eq.${id}`)
 
     const handleDelete = async () => {
         if (!confirm('Are you sure you want to delete this job?')) return
@@ -227,8 +246,26 @@ export default function JobDetailPage() {
                                     <div className="absolute left-[1.75rem] top-0 bottom-0 w-0.5 bg-slate-200" />
                                     {job.job_stops?.map((stop: any, index: number) => {
                                         const isCompleted = stop.status === 'completed'
+
+                                        // Scheduled Time Display
+                                        const scheduledTime = stop.arrival_mode === 'window' && stop.window_start && stop.window_end
+                                            ? `${format(new Date(stop.window_start), 'h:mm a')} - ${format(new Date(stop.window_end), 'h:mm a')}`
+                                            : stop.scheduled_arrival
+                                                ? format(new Date(stop.scheduled_arrival), 'h:mm a')
+                                                : stop.scheduled_time
+                                                    ? format(new Date(stop.scheduled_time), 'h:mm a')
+                                                    : 'Not Scheduled'
+
+                                        // Actual Time Display
+                                        const actualTime = stop.actual_arrival_time
+                                            ? format(new Date(stop.actual_arrival_time), 'h:mm a')
+                                            : null
+
+                                        // Status Color Logic for Time
+                                        const isLate = stop.actual_arrival_time && stop.scheduled_arrival && new Date(stop.actual_arrival_time) > new Date(stop.scheduled_arrival)
+
                                         return (
-                                            <div key={stop.id} className="relative z-10 flex gap-3">
+                                            <div key={stop.id} className="relative z-10 flex gap-3 pb-6 last:pb-0">
                                                 <div className="flex-none flex flex-col items-center">
                                                     <div className={`h-7 w-7 rounded-full border-2 flex items-center justify-center text-[10px] font-bold ${stop.type === 'pickup' ? 'bg-white border-green-500 text-green-600' :
                                                         stop.type === 'dropoff' ? 'bg-white border-red-500 text-red-600' :
@@ -237,14 +274,77 @@ export default function JobDetailPage() {
                                                         {index + 1}
                                                     </div>
                                                 </div>
-                                                <div className="flex-1 min-w-0 pb-4">
-                                                    <div className={`text-xs font-semibold uppercase tracking-wider mb-0.5 ${stop.type === 'pickup' ? 'text-green-600' :
-                                                        stop.type === 'dropoff' ? 'text-red-600' :
-                                                            'text-blue-600'
-                                                        }`}>
-                                                        {stop.type}
+                                                <div className="flex-1 min-w-0">
+                                                    <div className="flex justify-between items-start">
+                                                        <div>
+                                                            <div className={`text-xs font-semibold uppercase tracking-wider mb-0.5 ${stop.type === 'pickup' ? 'text-green-600' :
+                                                                stop.type === 'dropoff' ? 'text-red-600' :
+                                                                    'text-blue-600'
+                                                                }`}>
+                                                                {stop.type}
+                                                                {stop.status === 'completed' && <span className="ml-2 text-green-600 normal-case bg-green-50 px-1.5 py-0.5 rounded text-[10px]">✓ Done</span>}
+                                                            </div>
+                                                            <p className="text-sm font-medium">{stop.address}</p>
+                                                        </div>
+
+                                                        {/* POD Map / Verification Button */}
+                                                        {stop.status === 'completed' && (stop.actual_arrival_lat || stop.actual_completion_lat) && (
+                                                            <Dialog>
+                                                                <DialogTrigger asChild>
+                                                                    <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50">
+                                                                        <MapPin className="h-3 w-3 mr-1" />
+                                                                        Verify
+                                                                    </Button>
+                                                                </DialogTrigger>
+                                                                <DialogContent className="sm:max-w-md">
+                                                                    <DialogHeader>
+                                                                        <DialogTitle>Proof of Delivery - Stop #{index + 1}</DialogTitle>
+                                                                    </DialogHeader>
+                                                                    <div className="aspect-video w-full mt-2">
+                                                                        <ProofOfDeliveryMap
+                                                                            plannedLocation={{
+                                                                                lat: stop.latitude || 0,
+                                                                                lng: stop.longitude || 0
+                                                                            }}
+                                                                            actualLocation={stop.actual_completion_lat ? {
+                                                                                lat: stop.actual_completion_lat,
+                                                                                lng: stop.actual_completion_lng,
+                                                                                timestamp: stop.actual_arrival_time
+                                                                            } : undefined}
+                                                                            completionType={stop.type}
+                                                                            flagged={stop.flagged_location}
+                                                                        />
+                                                                    </div>
+                                                                    <div className="text-sm text-muted-foreground mt-2 grid grid-cols-2 gap-2">
+                                                                        <div>
+                                                                            <span className="font-semibold block text-xs uppercase tracking-wider">Scheduled</span>
+                                                                            {scheduledTime}
+                                                                        </div>
+                                                                        <div>
+                                                                            <span className="font-semibold block text-xs uppercase tracking-wider">Actual Arrival</span>
+                                                                            <span className={isLate ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
+                                                                                {actualTime || '--:--'}
+                                                                            </span>
+                                                                        </div>
+                                                                    </div>
+                                                                </DialogContent>
+                                                            </Dialog>
+                                                        )}
                                                     </div>
-                                                    <p className="text-sm font-medium">{stop.address}</p>
+
+                                                    <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+                                                        <div className="flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded">
+                                                            <Clock className="h-3 w-3" />
+                                                            <span>Sched: {scheduledTime}</span>
+                                                        </div>
+                                                        {actualTime && (
+                                                            <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${isLate ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
+                                                                <CheckCircle2 className="h-3 w-3" />
+                                                                <span>Arrived: {actualTime}</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
                                                     {stop.notes && (
                                                         <p className="text-xs text-muted-foreground mt-1 bg-muted/50 p-1.5 rounded">{stop.notes}</p>
                                                     )}

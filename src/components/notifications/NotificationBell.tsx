@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Bell, Check, CheckCheck, X, Trash2 } from 'lucide-react'
 import {
     useNotifications,
@@ -20,12 +20,20 @@ import {
 import { cn } from '@/lib/utils'
 
 export function NotificationBell() {
+    const [isMounted, setIsMounted] = useState(false)
     const [open, setOpen] = useState(false)
     const { data: notifications = [] } = useNotifications()
     const { data: unreadCount = 0 } = useUnreadCount()
     const markAsReadMutation = useMarkAsRead()
     const markAllMutation = useMarkAllAsRead()
     const deleteMutation = useDeleteNotification()
+
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
+
+    if (!isMounted) return null // Prevent hydration mismatch from Popover IDs
+
 
     const handleMarkAsRead = (id: string) => {
         markAsReadMutation.mutate(id)

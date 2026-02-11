@@ -8,6 +8,7 @@ import { Truck, User, MapPin, Calendar, Fuel, Gauge, Wrench, Package, CheckCircl
 import { useJobs } from '@/hooks/useJobs'
 import { useDrivers } from '@/hooks/useDrivers'
 import { useManifests } from '@/hooks/useManifests'
+import { JobRouteMap } from '@/components/jobs/JobRouteMap'
 
 interface VehicleDetailPopupProps {
     vehicle: any
@@ -194,20 +195,24 @@ export function VehicleDetailPopup({ vehicle, open, onOpenChange, onSelectForMan
                         </CardContent>
                     </Card>
 
-                    {/* Location Map Placeholder */}
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm flex items-center gap-2">
-                                <MapPin className="h-4 w-4" /> Last Known Location
+                    {/* Live Tracking Map */}
+                    <Card className="overflow-hidden">
+                        <CardHeader className="pb-2 bg-slate-50 border-b">
+                            <CardTitle className="text-sm flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <MapPin className="h-4 w-4" /> Live Location
+                                </div>
+                                <span className="text-xs font-normal text-muted-foreground">
+                                    {vehicle.status}
+                                </span>
                             </CardTitle>
                         </CardHeader>
-                        <CardContent>
-                            <div className="h-40 bg-slate-100 rounded-lg flex items-center justify-center text-muted-foreground text-sm">
-                                <div className="text-center">
-                                    <Navigation className="h-8 w-8 mx-auto mb-2 text-slate-400" />
-                                    <p>GPS tracking available in Phase 2</p>
-                                    <p className="text-xs">Real-time location will be shown here</p>
-                                </div>
+                        <CardContent className="p-0">
+                            <div className="h-64 w-full">
+                                <JobRouteMap
+                                    vehicleId={vehicle.id}
+                                    vehicleLocation={vehicle.current_location as any}
+                                />
                             </div>
                         </CardContent>
                     </Card>

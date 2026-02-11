@@ -8,7 +8,7 @@ import { ManifestCanvas } from './ManifestCanvas'
 import { JobPool } from './JobPool'
 import { createPortal } from 'react-dom'
 import { CSS } from '@dnd-kit/utilities'
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useId } from 'react'
 import { useDrivers } from '@/hooks/useDrivers'
 import { useVehicles } from '@/hooks/useVehicles'
 
@@ -69,8 +69,11 @@ export function DispatchCommandCenter({ initialDrivers, initialVehicles, initial
         }
     }, [removeFromManifest])
 
+    const dndContextId = useId()
+
     return (
         <DndContext
+            id={dndContextId}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}

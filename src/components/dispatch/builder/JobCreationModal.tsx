@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '@/components/ui/dialog'
 import { JobCreationContent } from '@/components/jobs/JobCreationContent'
 
 interface JobCreationModalProps {
@@ -32,6 +32,9 @@ export function JobCreationModal({ onClose, onSave, defaultOpen, trigger }: JobC
             <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col bg-white p-0 gap-0 outline-none">
                 <DialogHeader className="px-6 py-4 bg-white border-b shrink-0">
                     <DialogTitle>Create New Job</DialogTitle>
+                    <DialogDescription className="sr-only">
+                        Form to create a new job and assign it to a driver.
+                    </DialogDescription>
                 </DialogHeader>
 
                 <div className="flex-1 overflow-y-auto p-6">

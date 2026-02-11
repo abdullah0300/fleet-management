@@ -11,7 +11,7 @@ import { PhoneInput } from '@/components/ui/phone-input'
 import { LocationPicker } from '@/components/ui/LocationPicker'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { useCreateJobWithStops, CreateJobWithStopsInput } from '@/hooks/useJobs'
+import { useCreateJobWithStops, useUpdateJobWithStops, CreateJobWithStopsInput, JobWithRelations } from '@/hooks/useJobs'
 import { useRoutes } from '@/hooks/useRoutes'
 import { Route } from '@/types/database'
 import { toast } from 'sonner'
@@ -189,7 +189,7 @@ function DateTimeInput({
                 )} />
                 <input
                     type="date"
-                    className={cn( 
+                    className={cn(
                         "h-7 pl-7 pr-1 text-xs w-[115px] rounded-md border focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:inset-0 [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:cursor-pointer",
                         errorClass
                     )}
@@ -225,27 +225,30 @@ interface JobCreationContentProps {
     onSave?: (job: any) => void
     onCancel?: () => void
     variant?: 'modal' | 'page'
+    initialData?: JobWithRelations
+    isEditing?: boolean
 }
 
-export function JobCreationContent({ onSave, onCancel, variant = 'page' }: JobCreationContentProps) {
+export function JobCreationContent({ onSave, onCancel, variant = 'page', initialData, isEditing = false }: JobCreationContentProps) {
     const [activeTab, setActiveTab] = useState('details')
 
     // Use the new hook for creating jobs with stops
     const createJobMutation = useCreateJobWithStops()
+    const updateJobMutation = useUpdateJobWithStops()
 
     // Core Job Data
-    const [jobNumber, setJobNumber] = useState('')
-    const [customerName, setCustomerName] = useState('')
-    const [customerPhone, setCustomerPhone] = useState('')
-    const [customerEmail, setCustomerEmail] = useState('')
-    const [weight, setWeight] = useState('')
-    const [notes, setNotes] = useState('')
+    const [jobNumber, setJobNumber] = useState(initialData?.job_number || '')
+    const [customerName, setCustomerName] = useState(initialData?.customer_name || '')
+    const [customerPhone, setCustomerPhone] = useState(initialData?.customer_phone || '')
+    const [customerEmail, setCustomerEmail] = useState(initialData?.customer_email || '')
+    const [weight, setWeight] = useState(initialData?.weight?.toString() || '')
+    const [notes, setNotes] = useState(initialData?.notes || '')
 
     // Scheduling
-    const [priority, setPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>('normal')
+    const [priority, setPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>((initialData?.priority as any) || 'normal')
 
     // Route Template Selection
-    const [selectedRouteId, setSelectedRouteId] = useState<string | null>(null)
+    const [selectedRouteId, setSelectedRouteId] = useState<string | null>(initialData?.route_id || null)
     const { data: routesData } = useRoutes()
     const routes = routesData?.data || []
 
@@ -256,11 +259,34 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page' }: JobCr
         lat?: number,
         lng?: number,
         type: 'pickup' | 'dropoff' | 'waypoint',
-        notes: string
-    }[]>([
-        { id: '1', address: '', type: 'pickup', notes: '' },
-        { id: '2', address: '', type: 'dropoff', notes: '' }
-    ])
+        notes: string,
+        // Schedule fields
+        arrival_mode?: 'fixed' | 'window',
+        scheduled_arrival?: string,
+        window_start?: string,
+        window_end?: string,
+        service_duration?: number
+    }[]>(() => {
+        if (initialData?.job_stops && initialData.job_stops.length > 0) {
+            return initialData.job_stops.map(s => ({
+                id: s.id,
+                address: s.address,
+                lat: s.latitude || undefined,
+                lng: s.longitude || undefined,
+                type: s.type,
+                notes: s.notes || '',
+                arrival_mode: (s.arrival_mode as any) || 'fixed',
+                scheduled_arrival: s.scheduled_arrival || undefined,
+                window_start: s.window_start || undefined,
+                window_end: s.window_end || undefined,
+                service_duration: s.service_duration || 0
+            }))
+        }
+        return [
+            { id: '1', address: '', type: 'pickup', notes: '' },
+            { id: '2', address: '', type: 'dropoff', notes: '' }
+        ]
+    })
 
     const resetForm = () => {
         setJobNumber('')
@@ -456,17 +482,25 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page' }: JobCr
         }
 
         try {
-            const newJob = await createJobMutation.mutateAsync(input)
-            toast.success('Job created successfully!')
-
-            // Call onSave if provided
-            if (onSave) onSave(newJob)
-
-            // Reset form
-            resetForm()
+            if (isEditing && initialData) {
+                // Update existing job
+                const updatedJob = await updateJobMutation.mutateAsync({
+                    id: initialData.id,
+                    job: input.job,
+                    stops: input.stops
+                })
+                toast.success('Job updated successfully!')
+                if (onSave) onSave(updatedJob)
+            } else {
+                // Create new job
+                const newJob = await createJobMutation.mutateAsync(input)
+                toast.success('Job created successfully!')
+                if (onSave) onSave(newJob)
+                resetForm()
+            }
         } catch (error) {
-            console.error('Failed to create job:', error)
-            toast.error('Failed to create job. Please try again.')
+            console.error('Failed to save job:', error)
+            toast.error(isEditing ? 'Failed to update job.' : 'Failed to create job.')
         }
     }
 

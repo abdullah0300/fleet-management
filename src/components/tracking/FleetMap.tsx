@@ -6,6 +6,7 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { Truck, MapPin } from 'lucide-react'
 import { VehicleWithDriver } from '@/hooks/useVehicles'
 import { cn } from '@/lib/utils'
+import { useVehicleLocation } from '@/hooks/useVehicleLocation'
 
 interface FleetMapProps {
     vehicles: VehicleWithDriver[]
@@ -24,6 +25,9 @@ export function FleetMap({ vehicles, selectedVehicle, onSelectVehicle }: FleetMa
     const [popupInfo, setPopupInfo] = useState<VehicleWithDriver | null>(null)
     const [mapboxToken, setMapboxToken] = useState<string>('')
 
+    // Subscribe to ALL vehicle updates
+    const { locations: liveLocations } = useVehicleLocation()
+
     useEffect(() => {
         // Get Mapbox token from environment
         const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
@@ -32,15 +36,20 @@ export function FleetMap({ vehicles, selectedVehicle, onSelectVehicle }: FleetMa
 
     // Extract vehicle locations from current_location JSONB
     const getVehicleLocation = (vehicle: VehicleWithDriver) => {
+        // Check for live update first
+        const liveLoc = liveLocations[vehicle.id]
+        if (liveLoc && liveLoc.lat && liveLoc.lng) {
+            return { latitude: liveLoc.lat, longitude: liveLoc.lng }
+        }
+
+        // Fallback to initial DB data
         const location = vehicle.current_location as { lat?: number; lng?: number } | null
         if (location?.lat && location?.lng) {
             return { latitude: location.lat, longitude: location.lng }
         }
-        // Generate random position around default center for demo
-        return {
-            latitude: DEFAULT_CENTER.latitude + (Math.random() - 0.5) * 0.1,
-            longitude: DEFAULT_CENTER.longitude + (Math.random() - 0.5) * 0.1
-        }
+
+        // Return null if no location data
+        return null
     }
 
     const getMarkerColor = (status: string | null) => {
@@ -92,6 +101,8 @@ export function FleetMap({ vehicles, selectedVehicle, onSelectVehicle }: FleetMa
                 const location = getVehicleLocation(vehicle)
                 const isSelected = selectedVehicle === vehicle.id
 
+                if (!location) return null
+
                 return (
                     <Marker
                         key={vehicle.id}
@@ -125,11 +136,11 @@ export function FleetMap({ vehicles, selectedVehicle, onSelectVehicle }: FleetMa
                 )
             })}
 
-            {popupInfo && (
+            {popupInfo && getVehicleLocation(popupInfo) && (
                 <Popup
                     anchor="top"
-                    longitude={getVehicleLocation(popupInfo).longitude}
-                    latitude={getVehicleLocation(popupInfo).latitude}
+                    longitude={getVehicleLocation(popupInfo)!.longitude}
+                    latitude={getVehicleLocation(popupInfo)!.latitude}
                     onClose={() => setPopupInfo(null)}
                     closeButton={true}
                     closeOnClick={false}

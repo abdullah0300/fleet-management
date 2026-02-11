@@ -1,5 +1,6 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Menu, Package2 } from 'lucide-react'
@@ -46,6 +47,15 @@ const navigation = [
 
 export function MobileNav() {
     const pathname = usePathname()
+    const [isMounted, setIsMounted] = useState(false)
+
+    useEffect(() => {
+        setIsMounted(true)
+    }, [])
+
+    if (!isMounted) {
+        return <Button variant="ghost" size="icon" className="md:hidden"><Menu className="h-5 w-5" /></Button>
+    }
 
     return (
         <Sheet>

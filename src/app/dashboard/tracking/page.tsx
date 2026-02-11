@@ -10,12 +10,16 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { FleetMap } from '@/components/tracking/FleetMap'
 import { cn } from '@/lib/utils'
+import { useVehicleLocation } from '@/hooks/useVehicleLocation'
 
 export default function TrackingPage() {
-    const { data: vehiclesData, isLoading: vehiclesLoading } = useVehicles()
-    const { data: jobsData, isLoading: jobsLoading } = useJobs()
+    const { data: vehiclesData, isLoading: vehiclesLoading } = useVehicles(1, 100)
+    const { data: jobsData, isLoading: jobsLoading } = useJobs(1, 100)
     const [selectedVehicle, setSelectedVehicle] = useState<string | null>(null)
     const [viewMode, setViewMode] = useState<'map' | 'list'>('map')
+
+    // Subscribe to ALL vehicle updates
+    const { locations: liveLocations } = useVehicleLocation()
 
     const vehicles = vehiclesData?.data || []
     const jobs = jobsData?.data || []
@@ -140,9 +144,14 @@ export default function TrackingPage() {
                 <div className="flex flex-col gap-3 overflow-hidden">
                     <div className="flex items-center justify-between shrink-0">
                         <h2 className="font-semibold">Fleet Status</h2>
-                        <Badge variant="outline" className="gap-1">
-                            <span className="w-2 h-2 rounded-full bg-status-success animate-pulse" />
-                            Live
+                        <Badge variant="outline" className={cn("gap-1", Object.keys(liveLocations).length > 0 ? "border-status-success/50" : "")}>
+                            <span className={cn(
+                                "w-2 h-2 rounded-full",
+                                Object.keys(liveLocations).length > 0 ? "bg-status-success animate-pulse" : "bg-muted-foreground"
+                            )} />
+                            {Object.keys(liveLocations).length > 0
+                                ? `${Object.keys(liveLocations).length} Online`
+                                : "No Signals"}
                         </Badge>
                     </div>
 
@@ -163,7 +172,12 @@ export default function TrackingPage() {
                             vehicles.map((vehicle) => {
                                 const status = getVehicleStatus(vehicle.status)
                                 const activeJob = activeJobs.find(j => j.vehicle_id === vehicle.id)
-                                const location = vehicle.current_location as { address?: string } | null
+
+                                // Logic: Use live data if available, else DB data
+                                const liveLoc = liveLocations[vehicle.id]
+                                const location = (liveLoc && liveLoc.lat)
+                                    ? { address: `Lat: ${liveLoc.lat.toFixed(4)}, Lng: ${liveLoc.lng.toFixed(4)}` }
+                                    : vehicle.current_location as { address?: string } | null
 
                                 return (
                                     <Card
@@ -218,10 +232,24 @@ export default function TrackingPage() {
                                                             </span>
                                                         </div>
                                                     )}
-                                                    {location?.address && (
-                                                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                                                            <MapPin className="h-3 w-3" />
-                                                            <span className="truncate">{location.address}</span>
+                                                    {/* Location display logic */}
+                                                    {location?.address ? (
+                                                        <div className="mt-1">
+                                                            <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                                                <MapPin className="h-3 w-3" />
+                                                                <span className="truncate">{location.address}</span>
+                                                            </p>
+                                                            {liveLoc?.timestamp && (
+                                                                <p className="text-[10px] text-status-success flex items-center gap-1 ml-4 mt-0.5">
+                                                                    <Wifi className="h-2.5 w-2.5" />
+                                                                    Signal received {new Date(liveLoc.timestamp).toLocaleTimeString()}
+                                                                </p>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1 italic">
+                                                            <WifiOff className="h-3 w-3" />
+                                                            <span>Waiting for signal...</span>
                                                         </p>
                                                     )}
                                                 </div>

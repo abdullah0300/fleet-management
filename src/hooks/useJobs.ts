@@ -206,6 +206,63 @@ async function createJobWithStopsApi(input: CreateJobWithStopsInput): Promise<Jo
     return fetchJob(jobData.id)
 }
 
+// Update job with stops (transaction pattern)
+export async function updateJobWithStopsApi(input: {
+    id: string
+    job: JobUpdate
+    stops: Omit<JobStopInsert, 'job_id'>[]
+}): Promise<JobWithRelations> {
+    const { id, job, stops } = input
+
+    // 1. Update the job details
+    const { error: jobError } = await supabase
+        .from('jobs')
+        .update(job)
+        .eq('id', id)
+
+    if (jobError) throw jobError
+
+    // 2. Handle stops synchronization
+    // Strategy: Delete all existing stops and re-insert them
+    // This is safer/easier than diffing since we have the complete new state
+    // and stop IDs might change or be re-ordered.
+    // Ideally we would upsert, but re-creating ensures sequence is perfect.
+
+    // First, delete existing stops
+    const { error: deleteError } = await supabase
+        .from('job_stops')
+        .delete()
+        .eq('job_id', id)
+
+    if (deleteError) throw deleteError
+
+    // Then insert new stops
+    if (stops.length > 0) {
+        const stopsWithJobId: JobStopInsert[] = stops.map((stop, index) => ({
+            ...stop,
+            job_id: id,
+            sequence_order: index + 1,
+            // Ensure all fields are mapped correctly
+            arrival_mode: stop.arrival_mode,
+            scheduled_arrival: stop.scheduled_arrival,
+            window_start: stop.window_start,
+            window_end: stop.window_end,
+            service_duration: stop.service_duration
+        }))
+
+        const { error: stopsError } = await supabase
+            .from('job_stops')
+            .insert(stopsWithJobId)
+
+        if (stopsError) throw stopsError
+    }
+
+    // 3. Fetch the complete job with all relations
+    return fetchJob(id)
+}
+
+
+
 // Legacy create job (for backward compatibility)
 async function createJobApi(job: JobInsert): Promise<JobWithRelations> {
     const { data, error } = await supabase
@@ -378,6 +435,21 @@ export function useCreateJobWithStops() {
         onSuccess: (newJob) => {
             queryClient.invalidateQueries({ queryKey: jobKeys.lists() })
             queryClient.setQueryData(jobKeys.detail(newJob.id), newJob)
+        },
+    })
+}
+
+/**
+ * Hook to update a job with stops
+ */
+export function useUpdateJobWithStops() {
+    const queryClient = useQueryClient()
+
+    return useMutation({
+        mutationFn: updateJobWithStopsApi,
+        onSuccess: (updatedJob) => {
+            queryClient.setQueryData(jobKeys.detail(updatedJob.id), updatedJob)
+            queryClient.invalidateQueries({ queryKey: jobKeys.lists() })
         },
     })
 }

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from 'react'
 import Map, { Marker, NavigationControl, FullscreenControl, Source, Layer, MapRef } from 'react-map-gl/mapbox'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { Truck, MapPin, Flag, CircleDot, Layers, AlertCircle } from 'lucide-react'
+import { Truck, MapPin, Flag, CircleDot, Layers, AlertCircle, Clock } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface Waypoint {
@@ -19,14 +19,40 @@ interface ManifestRouteMapProps {
     waypoints: Waypoint[]
     vehicleLocation?: { lat: number; lng: number } | null
     driverName?: string
+    vehicleId?: string | null
 }
 
-export function ManifestRouteMap({ waypoints, vehicleLocation, driverName }: ManifestRouteMapProps) {
+import { useVehicleLocation } from '@/hooks/useVehicleLocation'
+import { useVehicleHistory } from '@/hooks/useVehicleHistory'
+
+export function ManifestRouteMap({ waypoints, vehicleLocation: initialVehicleLocation, driverName, vehicleId }: ManifestRouteMapProps) {
     const mapRef = useRef<MapRef>(null)
     const [mapboxToken, setMapboxToken] = useState<string>('')
     const [routeGeoJSON, setRouteGeoJSON] = useState<any>(null)
     const [showTraffic, setShowTraffic] = useState(false)
+    const [showHistory, setShowHistory] = useState(false)
     const [mapLoaded, setMapLoaded] = useState(false)
+
+    // Real-time location hook
+    const { location: liveLocation } = useVehicleLocation(vehicleId)
+    // History hook
+    const { data: historyData } = useVehicleHistory(vehicleId, undefined, undefined) // Auto-fetches recent history
+
+    // Prepare history GeoJSON
+    const historyGeoJSON = useMemo(() => {
+        if (!historyData || historyData.length < 2) return null
+        return {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+                type: 'LineString',
+                coordinates: historyData.map(h => [h.lng, h.lat])
+            }
+        }
+    }, [historyData])
+
+    // Merge live location with initial location
+    const vehicleLocation = liveLocation || initialVehicleLocation
 
     useEffect(() => {
         const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
@@ -156,6 +182,20 @@ export function ManifestRouteMap({ waypoints, vehicleLocation, driverName }: Man
                     </button>
                 </div>
 
+                {/* History Toggle Button */}
+                <div className="absolute top-2 left-12 z-10">
+                    <button
+                        onClick={() => setShowHistory(!showHistory)}
+                        className={cn(
+                            "bg-background/90 p-2 rounded-md shadow-md border hover:bg-muted transition-colors",
+                            showHistory && "bg-purple-600 text-white hover:bg-purple-700"
+                        )}
+                        title="Toggle Route History"
+                    >
+                        <Clock className="h-4 w-4" />
+                    </button>
+                </div>
+
                 {/* "Fit All" Button */}
                 <div className="absolute top-14 left-2 z-10">
                     <button
@@ -168,84 +208,92 @@ export function ManifestRouteMap({ waypoints, vehicleLocation, driverName }: Man
                 </div>
 
                 {/* Traffic Layer */}
-                {showTraffic && (
-                    <Source id="mapbox-traffic" type="vector" url="mapbox://mapbox.mapbox-traffic-v1">
-                        <Layer
-                            id="traffic-layer"
-                            source-layer="traffic"
-                            type="line"
-                            paint={{
-                                'line-width': 2,
-                                'line-color': [
-                                    'case',
-                                    ['==', ['get', 'congestion'], 'low'], '#4ade80',
-                                    ['==', ['get', 'congestion'], 'moderate'], '#facc15',
-                                    ['==', ['get', 'congestion'], 'heavy'], '#f87171',
-                                    ['==', ['get', 'congestion'], 'severe'], '#b91c1c',
-                                    '#000000'
-                                ],
-                                'line-offset': 1
-                            }}
-                        />
-                    </Source>
-                )}
+                {
+                    showTraffic && (
+                        <Source id="mapbox-traffic" type="vector" url="mapbox://mapbox.mapbox-traffic-v1">
+                            <Layer
+                                id="traffic-layer"
+                                source-layer="traffic"
+                                type="line"
+                                paint={{
+                                    'line-width': 2,
+                                    'line-color': [
+                                        'case',
+                                        ['==', ['get', 'congestion'], 'low'], '#4ade80',
+                                        ['==', ['get', 'congestion'], 'moderate'], '#facc15',
+                                        ['==', ['get', 'congestion'], 'heavy'], '#f87171',
+                                        ['==', ['get', 'congestion'], 'severe'], '#b91c1c',
+                                        '#000000'
+                                    ],
+                                    'line-offset': 1
+                                }}
+                            />
+                        </Source>
+                    )
+                }
 
                 {/* Route Line */}
-                {routeGeoJSON && (
-                    <Source id="route" type="geojson" data={routeGeoJSON}>
-                        <Layer
-                            id="route-layer"
-                            type="line"
-                            layout={{
-                                'line-join': 'round',
-                                'line-cap': 'round'
-                            }}
-                            paint={{
-                                'line-color': '#0ea5e9',
-                                'line-width': 5,
-                                'line-opacity': 0.8
-                            }}
-                        />
-                    </Source>
-                )}
+                {
+                    routeGeoJSON && (
+                        <Source id="route" type="geojson" data={routeGeoJSON}>
+                            <Layer
+                                id="route-layer"
+                                type="line"
+                                layout={{
+                                    'line-join': 'round',
+                                    'line-cap': 'round'
+                                }}
+                                paint={{
+                                    'line-color': '#0ea5e9',
+                                    'line-width': 5,
+                                    'line-opacity': 0.8
+                                }}
+                            />
+                        </Source>
+                    )
+                }
 
                 {/* Waypoint Markers */}
-                {waypoints.map((point, index) => (
-                    <Marker key={index} longitude={point.lng} latitude={point.lat} anchor="bottom">
-                        <div className="flex flex-col items-center">
-                            <div className={cn(
-                                "bg-white p-1.5 rounded-full shadow-lg border-2",
-                                point.type === 'pickup' ? "border-green-500 text-green-600" :
-                                    point.type === 'dropoff' || point.type === 'delivery' ? "border-red-500 text-red-600" :
-                                        "border-blue-500 text-blue-600"
-                            )}>
-                                <span className="text-xs font-bold w-4 h-4 flex items-center justify-center">
-                                    {index + 1}
-                                </span>
+                {
+                    waypoints.map((point, index) => (
+                        <Marker key={index} longitude={point.lng} latitude={point.lat} anchor="bottom">
+                            <div className="flex flex-col items-center">
+                                <div className={cn(
+                                    "bg-white p-1.5 rounded-full shadow-lg border-2",
+                                    point.type === 'pickup' ? "border-green-500 text-green-600" :
+                                        point.type === 'dropoff' || point.type === 'delivery' ? "border-red-500 text-red-600" :
+                                            "border-blue-500 text-blue-600"
+                                )}>
+                                    <span className="text-xs font-bold w-4 h-4 flex items-center justify-center">
+                                        {index + 1}
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                    </Marker>
-                ))}
+                        </Marker>
+                    ))
+                }
 
                 {/* Vehicle/Driver Location Marker */}
-                {vehicleLocation && (
-                    <Marker longitude={vehicleLocation.lng} latitude={vehicleLocation.lat} anchor="bottom">
-                        <div className="flex flex-col items-center">
-                            <div className="bg-blue-600 text-white p-2 rounded-full shadow-lg animate-pulse ring-4 ring-blue-500/30">
-                                <Truck className="h-5 w-5 fill-current" />
-                            </div>
-                            {driverName && (
-                                <div className="mt-1 bg-white px-2 py-0.5 rounded shadow text-xs font-medium whitespace-nowrap">
-                                    {driverName}
+                {
+                    vehicleLocation && (
+                        <Marker longitude={vehicleLocation.lng} latitude={vehicleLocation.lat} anchor="bottom">
+                            <div className="flex flex-col items-center">
+                                <div className="bg-blue-600 text-white p-2 rounded-full shadow-lg animate-pulse ring-4 ring-blue-500/30">
+                                    <Truck className="h-5 w-5 fill-current" />
                                 </div>
-                            )}
-                        </div>
-                    </Marker>
-                )}
+                                {driverName && (
+                                    <div className="mt-1 bg-white px-2 py-0.5 rounded shadow text-xs font-medium whitespace-nowrap">
+                                        {driverName}
+                                    </div>
+                                )}
+                            </div>
+                        </Marker>
+                    )
+                }
             </Map>
 
             {/* Legend */}
-            <div className="absolute bottom-4 left-4 bg-white/95 rounded-lg shadow-lg p-3 text-xs space-y-2">
+            < div className="absolute bottom-4 left-4 bg-white/95 rounded-lg shadow-lg p-3 text-xs space-y-2" >
                 <div className="font-semibold text-gray-700">Legend</div>
                 <div className="flex items-center gap-2">
                     <div className="w-3 h-3 rounded-full border-2 border-green-500" />
@@ -255,30 +303,42 @@ export function ManifestRouteMap({ waypoints, vehicleLocation, driverName }: Man
                     <div className="w-3 h-3 rounded-full border-2 border-red-500" />
                     <span>Dropoff</span>
                 </div>
-                {vehicleLocation && (
-                    <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 rounded-full bg-blue-600" />
-                        <span>Driver Location</span>
-                    </div>
-                )}
+                {
+                    vehicleLocation && (
+                        <div className="flex items-center gap-2">
+                            <div className="w-3 h-3 rounded-full bg-blue-600" />
+                            <span>Driver Location</span>
+                        </div>
+                    )
+                }
                 <div className="flex items-center gap-2">
                     <div className="w-6 h-1 bg-sky-500 rounded" />
                     <span>Route</span>
                 </div>
-            </div>
+                {
+                    showHistory && (
+                        <div className="flex items-center gap-2">
+                            <div className="w-6 h-1 bg-purple-600 rounded border-dashed border-white" />
+                            <span>Actual Path</span>
+                        </div>
+                    )
+                }
+            </div >
 
             {/* No waypoints message */}
-            {waypoints.length === 0 && (
-                <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
-                    <div className="bg-white rounded-lg shadow-lg p-6 text-center max-w-sm">
-                        <AlertCircle className="h-8 w-8 text-amber-500 mx-auto mb-2" />
-                        <p className="font-medium">No Route Available</p>
-                        <p className="text-sm text-muted-foreground mt-1">
-                            Jobs in this manifest don't have location coordinates set.
-                        </p>
+            {
+                waypoints.length === 0 && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
+                        <div className="bg-white rounded-lg shadow-lg p-6 text-center max-w-sm">
+                            <AlertCircle className="h-8 w-8 text-amber-500 mx-auto mb-2" />
+                            <p className="font-medium">No Route Available</p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Jobs in this manifest don't have location coordinates set.
+                            </p>
+                        </div>
                     </div>
-                </div>
-            )}
-        </div>
+                )
+            }
+        </div >
     )
 }

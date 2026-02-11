@@ -270,6 +270,12 @@ export interface Database {
           scheduled_arrival: string | null
           window_start: string | null
           window_end: string | null
+          actual_arrival_time: string | null
+          actual_arrival_lat: number | null
+          actual_arrival_lng: number | null
+          actual_completion_lat: number | null
+          actual_completion_lng: number | null
+          flagged_location: boolean | null
           created_at: string
         }
         Insert: {
@@ -288,6 +294,12 @@ export interface Database {
           scheduled_arrival?: string | null
           window_start?: string | null
           window_end?: string | null
+          actual_arrival_time?: string | null
+          actual_arrival_lat?: number | null
+          actual_arrival_lng?: number | null
+          actual_completion_lat?: number | null
+          actual_completion_lng?: number | null
+          flagged_location?: boolean | null
           created_at?: string
         }
         Update: {
@@ -306,6 +318,12 @@ export interface Database {
           scheduled_arrival?: string | null
           window_start?: string | null
           window_end?: string | null
+          actual_arrival_time?: string | null
+          actual_arrival_lat?: number | null
+          actual_arrival_lng?: number | null
+          actual_completion_lat?: number | null
+          actual_completion_lng?: number | null
+          flagged_location?: boolean | null
           created_at?: string
         }
       }
@@ -574,6 +592,45 @@ export interface Database {
         }
       }
 
+
+      // ============================================
+      // 12. VEHICLE_LOCATION_HISTORY
+      // ============================================
+      vehicle_location_history: {
+        Row: {
+          id: string
+          vehicle_id: string
+          driver_id: string | null
+          lat: number
+          lng: number
+          heading: number | null
+          speed: number | null
+          timestamp: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          vehicle_id: string
+          driver_id?: string | null
+          lat: number
+          lng: number
+          heading?: number | null
+          speed?: number | null
+          timestamp?: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          vehicle_id?: string
+          driver_id?: string | null
+          lat?: number
+          lng?: number
+          heading?: number | null
+          speed?: number | null
+          timestamp?: string
+          created_at?: string
+        }
+      }
 
     }
   }
