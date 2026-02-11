@@ -327,180 +327,137 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                                         Ordered list of pickups and deliveries
                                     </CardDescription>
                                 </CardHeader>
-                                <CardContent className="space-y-4 relative max-h-[400px] overflow-auto">
-                                    <div className="absolute left-[1.75rem] top-0 bottom-0 w-0.5 bg-slate-200" />
+                                {manifest.jobs?.length === 0 && (
+                                    <div className="text-center py-12 text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
+                                        <Package className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                                        <p className="text-sm font-medium">No jobs assigned</p>
+                                        <p className="text-xs text-slate-400 mt-1">Add jobs to this manifest to see them here.</p>
+                                    </div>
+                                )}
 
-                                    {manifest.jobs?.length === 0 && (
-                                        <div className="text-center py-8 text-muted-foreground">
-                                            <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                            <p className="text-sm">No jobs in this manifest</p>
-                                        </div>
-                                    )}
+                                {manifest.jobs?.map((job: any, jobIndex: number) => {
+                                    const stops = job.job_stops || []
+                                    const isJobCompleted = job.status === 'completed'
 
-                                    {manifest.jobs?.map((job: any, jobIndex: number) => {
-                                        const stops = job.job_stops || []
-                                        const isJobCompleted = job.status === 'completed'
-
-                                        return (
-                                            <div key={job.id} className="relative z-10">
-                                                {stops.length > 0 ? stops.map((stop: any, stopIndex: number) => {
-                                                    const isStopCompleted = stop.status === 'completed'
-
-                                                    return (
-                                                        <div key={stop.id} className={`flex gap-3 mb-3 ${isStopCompleted ? 'opacity-100' : ''}`}>
-                                                            <div className="flex-none flex flex-col items-center">
-                                                                <div className={`h-7 w-7 rounded-full border-2 flex items-center justify-center text-[10px] font-bold transition-colors ${isStopCompleted
-                                                                    ? 'bg-green-500 border-green-500 text-white'
-                                                                    : stop.type === 'pickup'
-                                                                        ? 'bg-white border-green-500 text-green-600'
-                                                                        : stop.type === 'dropoff'
-                                                                            ? 'bg-white border-red-500 text-red-600'
-                                                                            : 'bg-white border-blue-500 text-blue-600'
-                                                                    }`}>
-                                                                    {isStopCompleted ? (
-                                                                        <CheckCircle2 className="h-4 w-4" />
-                                                                    ) : (
-                                                                        `${jobIndex + 1}.${stopIndex + 1}`
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                            <div className="flex-1 min-w-0">
-                                                                <div className="flex justify-between items-start">
-                                                                    <div className={`text-xs font-semibold uppercase tracking-wider mb-0.5 ${isStopCompleted
-                                                                        ? 'text-green-600'
-                                                                        : stop.type === 'pickup'
-                                                                            ? 'text-green-600'
-                                                                            : stop.type === 'dropoff'
-                                                                                ? 'text-red-600'
-                                                                                : 'text-blue-600'
-                                                                        }`}>
-                                                                        {isStopCompleted && '✓ '}{stop.type} <span className="text-muted-foreground normal-case ml-1">• Job #{job.job_number}</span>
-                                                                    </div>
-
-                                                                    {/* POD Verification Mockup */}
-                                                                    {isStopCompleted && (stop.actual_arrival_lat || stop.actual_completion_lat) && (
-                                                                        <Dialog>
-                                                                            <DialogTrigger asChild>
-                                                                                <Button variant="ghost" size="sm" className="h-5 px-1.5 text-[10px] text-blue-600 hover:text-blue-800 hover:bg-blue-50">
-                                                                                    <MapPin className="h-3 w-3 mr-1" />
-                                                                                    Verify
-                                                                                </Button>
-                                                                            </DialogTrigger>
-                                                                            <DialogContent className="sm:max-w-md">
-                                                                                <DialogHeader>
-                                                                                    <DialogTitle>Proof of Delivery - {stop.type}</DialogTitle>
-                                                                                </DialogHeader>
-                                                                                <div className="aspect-video w-full mt-2">
-                                                                                    <ProofOfDeliveryMap
-                                                                                        plannedLocation={{
-                                                                                            lat: stop.latitude || 0,
-                                                                                            lng: stop.longitude || 0
-                                                                                        }}
-                                                                                        actualLocation={stop.actual_completion_lat ? {
-                                                                                            lat: stop.actual_completion_lat,
-                                                                                            lng: stop.actual_completion_lng,
-                                                                                            timestamp: stop.actual_arrival_time
-                                                                                        } : undefined}
-                                                                                        completionType={stop.type}
-                                                                                        flagged={stop.flagged_location}
-                                                                                    />
-                                                                                </div>
-                                                                                <div className="text-sm text-muted-foreground mt-2">
-                                                                                    <div className="grid grid-cols-2 gap-2">
-                                                                                        <div>
-                                                                                            <span className="font-semibold block text-xs uppercase tracking-wider">Address</span>
-                                                                                            <span className="truncate block" title={stop.address}>{stop.address}</span>
-                                                                                        </div>
-                                                                                        <div>
-                                                                                            <span className="font-semibold block text-xs uppercase tracking-wider">Actual Arrival</span>
-                                                                                            <span className={(() => {
-                                                                                                const actualDate = parseTime(stop.actual_arrival_time)
-                                                                                                const scheduledDate = parseTime(stop.scheduled_arrival)
-                                                                                                return actualDate && scheduledDate && actualDate > scheduledDate ? "text-red-600 font-medium" : "text-green-600 font-medium"
-                                                                                            })()}>
-                                                                                                {formatTime(stop.actual_arrival_time) || '--:--'}
-                                                                                            </span>
-                                                                                        </div>
-                                                                                    </div>
-                                                                                </div>
-                                                                            </DialogContent>
-                                                                        </Dialog>
-                                                                    )}
-                                                                </div>
-
-                                                                <p className="text-sm font-medium truncate">{stop.address}</p>
-
-                                                                {/* Time Info */}
-                                                                <div className="mt-1 flex flex-wrap gap-2">
-                                                                    {(stop.arrival_mode === 'window' && stop.window_start && stop.window_end) ? (
-                                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
-                                                                            <Clock className="w-3 h-3 mr-1" />
-                                                                            {formatTime(stop.window_start)} - {formatTime(stop.window_end)}
-                                                                        </span>
-                                                                    ) : (stop.arrival_mode === 'fixed' && stop.scheduled_arrival) ? (
-                                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-50 text-orange-700 border border-orange-200">
-                                                                            <Clock className="w-3 h-3 mr-1" />
-                                                                            {formatTime(stop.scheduled_arrival)}
-                                                                        </span>
-                                                                    ) : stop.scheduled_time ? (
-                                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-gray-100 text-gray-700">
-                                                                            <Clock className="w-3 h-3 mr-1" />
-                                                                            {formatTime(stop.scheduled_time)}
-                                                                        </span>
-                                                                    ) : null}
-
-                                                                    {/* Actual Time Badge */}
-                                                                    {stop.actual_arrival_time && (
-                                                                        <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${(() => {
-                                                                            const actualDate = parseTime(stop.actual_arrival_time)
-                                                                            const scheduledDate = parseTime(stop.scheduled_arrival)
-                                                                            return actualDate && scheduledDate && actualDate > scheduledDate
-                                                                                ? 'bg-red-50 text-red-700 border-red-200'
-                                                                                : 'bg-green-50 text-green-700 border-green-200'
-                                                                        })()
-                                                                            }`}>
-                                                                            <CheckCircle2 className="w-3 h-3 mr-1" />
-                                                                            {formatTime(stop.actual_arrival_time)}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-
-                                                                {stop.notes && (
-                                                                    <p className="text-xs text-muted-foreground mt-1 truncate max-w-[90%]">
-                                                                        <span className="font-semibold">Note:</span> {stop.notes}
-                                                                    </p>
-                                                                )}
-                                                                {stopIndex === stops.length - 1 && (
-                                                                    <div className="mt-1.5 text-xs text-muted-foreground flex items-center gap-1">
-                                                                        <span>Job #{job.job_number}</span>
-                                                                        <span>•</span>
-                                                                        <span className="truncate">{job.customer_name}</span>
-                                                                        <Button variant="link" className="h-4 p-0 ml-2 text-xs text-blue-600" onClick={() => router.push(`/dashboard/jobs/${job.id}`)}>
-                                                                            View Job <ArrowRight className="h-3 w-3 ml-1" />
-                                                                        </Button>
-                                                                    </div>
-                                                                )}
-                                                            </div>
+                                    return (
+                                        <div key={job.id} className="mb-6 last:mb-0">
+                                            <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
+                                                {/* Job Header */}
+                                                <div className="bg-slate-50/80 px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="bg-slate-200 text-slate-600 text-[10px] font-bold px-1.5 py-0.5 rounded">#{jobIndex + 1}</span>
+                                                            <span className="font-semibold text-slate-800 text-sm">Job #{job.job_number}</span>
                                                         </div>
-                                                    )
-                                                }) : (
-                                                    <div className="flex gap-3 mb-3">
-                                                        <div className="flex-none">
-                                                            <div className="h-7 w-7 rounded-full border-2 border-gray-400 bg-white flex items-center justify-center text-[10px] font-bold text-gray-600">
-                                                                {jobIndex + 1}
-                                                            </div>
-                                                        </div>
-                                                        <div>
-                                                            <p className="text-sm font-medium">Job #{job.job_number}</p>
-                                                            <p className="text-xs text-muted-foreground">{job.customer_name}</p>
-                                                            <p className="text-xs text-amber-600 mt-1">⚠ No stops defined</p>
-                                                        </div>
+                                                        <span className="text-slate-300">/</span>
+                                                        <User className="h-3.5 w-3.5 text-slate-400" />
+                                                        <span className="text-sm text-slate-600 font-medium truncate max-w-[200px]">{job.customer_name}</span>
+                                                        {isJobCompleted && (
+                                                            <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700 hover:bg-green-100 border-none">
+                                                                Completed
+                                                            </Badge>
+                                                        )}
                                                     </div>
-                                                )}
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-7 text-xs font-medium text-slate-500 hover:text-blue-600 hover:bg-white hover:shadow-sm transition-all"
+                                                        onClick={() => router.push(`/dashboard/jobs/${job.id}`)}
+                                                    >
+                                                        View Details <ArrowRight className="h-3 w-3 ml-1.5 opacity-50" />
+                                                    </Button>
+                                                </div>
+
+                                                {/* Stops List */}
+                                                <div className="divide-y divide-slate-50">
+                                                    {stops.length > 0 ? stops.map((stop: any, stopIndex: number) => {
+                                                        const isStopCompleted = stop.status === 'completed'
+
+                                                        return (
+                                                            <div key={stop.id} className={`group flex items-start gap-4 p-4 hover:bg-slate-50/50 transition-colors ${isStopCompleted ? 'bg-slate-50/30' : ''}`}>
+                                                                {/* Column 1: Indicator */}
+                                                                <div className="flex-none pt-0.5">
+                                                                    <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${isStopCompleted
+                                                                        ? 'bg-green-100 text-green-700 ring-4 ring-green-50'
+                                                                        : stop.type === 'pickup'
+                                                                            ? 'bg-blue-100 text-blue-700 ring-4 ring-blue-50'
+                                                                            : stop.type === 'dropoff'
+                                                                                ? 'bg-orange-100 text-orange-700 ring-4 ring-orange-50'
+                                                                                : 'bg-slate-100 text-slate-700'
+                                                                        }`}>
+                                                                        {isStopCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : stopIndex + 1}
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Column 2: Main Info */}
+                                                                <div className="flex-1 min-w-0 grid gap-1">
+                                                                    <div className="flex items-center gap-2 mb-0.5">
+                                                                        <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-sm ${stop.type === 'pickup' ? 'bg-blue-50 text-blue-700' :
+                                                                            stop.type === 'dropoff' ? 'bg-orange-50 text-orange-700' :
+                                                                                'bg-slate-100 text-slate-700'
+                                                                            }`}>
+                                                                            {stop.type}
+                                                                        </span>
+                                                                        {stop.notes && (
+                                                                            <span className="flex items-center text-[10px] text-slate-400 bg-white border border-slate-100 rounded-full px-2 py-0.5 max-w-[150px] truncate">
+                                                                                <Info className="h-2.5 w-2.5 mr-1" />
+                                                                                {stop.notes}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+
+                                                                    <p className={`text-sm font-medium leading-normal ${isStopCompleted ? 'text-slate-500' : 'text-slate-900'}`}>
+                                                                        {stop.address}
+                                                                    </p>
+
+                                                                    {/* Metadata / Times */}
+                                                                    <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-slate-500">
+                                                                        {(stop.arrival_mode === 'window' && stop.window_start && stop.window_end) ? (
+                                                                            <span className="flex items-center bg-slate-50 px-1.5 py-0.5 rounded text-slate-600">
+                                                                                <Clock className="w-3 h-3 mr-1.5 opacity-50" />
+                                                                                {formatTime(stop.window_start)} - {formatTime(stop.window_end)}
+                                                                            </span>
+                                                                        ) : (stop.arrival_mode === 'fixed' && stop.scheduled_arrival) ? (
+                                                                            <span className="flex items-center bg-slate-50 px-1.5 py-0.5 rounded text-slate-600">
+                                                                                <Clock className="w-3 h-3 mr-1.5 opacity-50" />
+                                                                                {formatTime(stop.scheduled_arrival)}
+                                                                            </span>
+                                                                        ) : null}
+
+                                                                        {stop.actual_arrival_time && (
+                                                                            <span className={`flex items-center px-1.5 py-0.5 rounded ${(() => {
+                                                                                const actualDate = parseTime(stop.actual_arrival_time)
+                                                                                const scheduledDate = parseTime(stop.scheduled_arrival)
+                                                                                return actualDate && scheduledDate && actualDate > scheduledDate
+                                                                                    ? 'text-red-700 bg-red-50'
+                                                                                    : 'text-green-700 bg-green-50'
+                                                                            })()}`}>
+                                                                                <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${stop.actual_arrival_time ? (parseTime(stop.actual_arrival_time) && parseTime(stop.scheduled_arrival) && parseTime(stop.actual_arrival_time)! > parseTime(stop.scheduled_arrival)! ? 'bg-red-500' : 'bg-green-500') : 'bg-slate-400'
+                                                                                    }`} />
+                                                                                Arrived: {formatTime(stop.actual_arrival_time)}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+
+                                                                {/* Column 3: Actions */}
+                                                                {isStopCompleted && (stop.actual_arrival_lat || stop.actual_completion_lat) && (
+                                                                    <div className="flex-none self-center">
+                                                                        <ProofOfDeliveryDialog stop={stop} formatTime={formatTime} parseTime={parseTime} />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        )
+                                                    }) : (
+                                                        <div className="p-8 text-center text-slate-400 text-sm">
+                                                            No stops defined
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                        )
-                                    })}
-                                </CardContent>
+                                        </div>
+                                    )
+                                })}
                             </Card>
                         </div>
 
@@ -538,6 +495,55 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                     </Card>
                 </TabsContent>
             </Tabs>
-        </div>
+        </div >
     )
 }
+
+const ProofOfDeliveryDialog = ({ stop, formatTime, parseTime }: { stop: any, formatTime: any, parseTime: any }) => (
+    <Dialog>
+        <DialogTrigger asChild>
+            <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px] text-blue-600 hover:bg-blue-50 -mt-1 -mr-2">
+                <MapPin className="h-3 w-3 mr-1" />
+                Verify
+            </Button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+                <DialogTitle>Proof of Delivery - {stop.type}</DialogTitle>
+            </DialogHeader>
+            <div className="aspect-video w-full mt-2">
+                <ProofOfDeliveryMap
+                    plannedLocation={{
+                        lat: stop.latitude || 0,
+                        lng: stop.longitude || 0
+                    }}
+                    actualLocation={stop.actual_completion_lat ? {
+                        lat: stop.actual_completion_lat,
+                        lng: stop.actual_completion_lng,
+                        timestamp: stop.actual_arrival_time
+                    } : undefined}
+                    completionType={stop.type}
+                    flagged={stop.flagged_location}
+                />
+            </div>
+            <div className="text-sm text-muted-foreground mt-2 grid grid-cols-2 gap-2">
+                <div>
+                    <span className="font-semibold block text-xs uppercase tracking-wider">Scheduled</span>
+                    {(stop.arrival_mode === 'window' && stop.window_start && stop.window_end)
+                        ? `${formatTime(stop.window_start)} - ${formatTime(stop.window_end)}`
+                        : stop.scheduled_arrival ? formatTime(stop.scheduled_arrival) : '--:--'}
+                </div>
+                <div>
+                    <span className="font-semibold block text-xs uppercase tracking-wider">Actual</span>
+                    <span className={(() => {
+                        const actualDate = parseTime(stop.actual_arrival_time)
+                        const scheduledDate = parseTime(stop.scheduled_arrival)
+                        return actualDate && scheduledDate && actualDate > scheduledDate ? "text-red-600 font-medium" : "text-green-600 font-medium"
+                    })()}>
+                        {formatTime(stop.actual_arrival_time) || '--:--'}
+                    </span>
+                </div>
+            </div>
+        </DialogContent>
+    </Dialog>
+)
