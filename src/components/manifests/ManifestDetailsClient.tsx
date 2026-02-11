@@ -317,16 +317,14 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                                 </Card>
                             )}
 
-                            {/* Stops Card */}
-                            <Card>
-                                <CardHeader className="pb-3">
-                                    <CardTitle className="text-sm font-medium">
-                                        Route Stops ({jobStats.totalStops})
-                                    </CardTitle>
-                                    <CardDescription className="text-xs">
-                                        Ordered list of pickups and deliveries
-                                    </CardDescription>
-                                </CardHeader>
+                            {/* Stops Section Header */}
+                            <div className="flex items-center justify-between pt-2 pb-2">
+                                <h3 className="text-sm font-semibold text-slate-900">
+                                    Route Stops <span className="text-slate-400 font-normal ml-1">({jobStats.totalStops})</span>
+                                </h3>
+                            </div>
+
+                            <div className="space-y-6">
                                 {manifest.jobs?.length === 0 && (
                                     <div className="text-center py-12 text-slate-400 bg-slate-50/50 rounded-xl border border-dashed border-slate-200">
                                         <Package className="h-10 w-10 mx-auto mb-3 opacity-20" />
@@ -340,125 +338,125 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                                     const isJobCompleted = job.status === 'completed'
 
                                     return (
-                                        <div key={job.id} className="mb-6 last:mb-0">
-                                            <div className="rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
-                                                {/* Job Header */}
-                                                <div className="bg-slate-50/80 px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-                                                    <div className="flex items-center gap-3">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="bg-slate-200 text-slate-600 text-[10px] font-bold px-1.5 py-0.5 rounded">#{jobIndex + 1}</span>
-                                                            <span className="font-semibold text-slate-800 text-sm">Job #{job.job_number}</span>
-                                                        </div>
-                                                        <span className="text-slate-300">/</span>
-                                                        <User className="h-3.5 w-3.5 text-slate-400" />
-                                                        <span className="text-sm text-slate-600 font-medium truncate max-w-[200px]">{job.customer_name}</span>
-                                                        {isJobCompleted && (
-                                                            <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700 hover:bg-green-100 border-none">
-                                                                Completed
-                                                            </Badge>
-                                                        )}
+                                        <div key={job.id} className="rounded-xl border border-slate-200 bg-white shadow-[0_2px_8px_rgba(0,0,0,0.04)] overflow-hidden transition-all hover:shadow-[0_4px_12px_rgba(0,0,0,0.06)]">
+                                            {/* Job Header */}
+                                            <div className="bg-slate-50/50 px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="bg-slate-800 text-white text-[10px] font-bold px-1.5 py-0.5 rounded shadow-sm">#{jobIndex + 1}</span>
+                                                        <span className="font-bold text-slate-800 text-sm">Job #{job.job_number}</span>
                                                     </div>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="h-7 text-xs font-medium text-slate-500 hover:text-blue-600 hover:bg-white hover:shadow-sm transition-all"
-                                                        onClick={() => router.push(`/dashboard/jobs/${job.id}`)}
-                                                    >
-                                                        View Details <ArrowRight className="h-3 w-3 ml-1.5 opacity-50" />
-                                                    </Button>
-                                                </div>
-
-                                                {/* Stops List */}
-                                                <div className="divide-y divide-slate-50">
-                                                    {stops.length > 0 ? stops.map((stop: any, stopIndex: number) => {
-                                                        const isStopCompleted = stop.status === 'completed'
-
-                                                        return (
-                                                            <div key={stop.id} className={`group flex items-start gap-4 p-4 hover:bg-slate-50/50 transition-colors ${isStopCompleted ? 'bg-slate-50/30' : ''}`}>
-                                                                {/* Column 1: Indicator */}
-                                                                <div className="flex-none pt-0.5">
-                                                                    <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all ${isStopCompleted
-                                                                        ? 'bg-green-100 text-green-700 ring-4 ring-green-50'
-                                                                        : stop.type === 'pickup'
-                                                                            ? 'bg-blue-100 text-blue-700 ring-4 ring-blue-50'
-                                                                            : stop.type === 'dropoff'
-                                                                                ? 'bg-orange-100 text-orange-700 ring-4 ring-orange-50'
-                                                                                : 'bg-slate-100 text-slate-700'
-                                                                        }`}>
-                                                                        {isStopCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : stopIndex + 1}
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Column 2: Main Info */}
-                                                                <div className="flex-1 min-w-0 grid gap-1">
-                                                                    <div className="flex items-center gap-2 mb-0.5">
-                                                                        <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-sm ${stop.type === 'pickup' ? 'bg-blue-50 text-blue-700' :
-                                                                            stop.type === 'dropoff' ? 'bg-orange-50 text-orange-700' :
-                                                                                'bg-slate-100 text-slate-700'
-                                                                            }`}>
-                                                                            {stop.type}
-                                                                        </span>
-                                                                        {stop.notes && (
-                                                                            <span className="flex items-center text-[10px] text-slate-400 bg-white border border-slate-100 rounded-full px-2 py-0.5 max-w-[150px] truncate">
-                                                                                <Info className="h-2.5 w-2.5 mr-1" />
-                                                                                {stop.notes}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-
-                                                                    <p className={`text-sm font-medium leading-normal ${isStopCompleted ? 'text-slate-500' : 'text-slate-900'}`}>
-                                                                        {stop.address}
-                                                                    </p>
-
-                                                                    {/* Metadata / Times */}
-                                                                    <div className="flex flex-wrap items-center gap-3 mt-1 text-xs text-slate-500">
-                                                                        {(stop.arrival_mode === 'window' && stop.window_start && stop.window_end) ? (
-                                                                            <span className="flex items-center bg-slate-50 px-1.5 py-0.5 rounded text-slate-600">
-                                                                                <Clock className="w-3 h-3 mr-1.5 opacity-50" />
-                                                                                {formatTime(stop.window_start)} - {formatTime(stop.window_end)}
-                                                                            </span>
-                                                                        ) : (stop.arrival_mode === 'fixed' && stop.scheduled_arrival) ? (
-                                                                            <span className="flex items-center bg-slate-50 px-1.5 py-0.5 rounded text-slate-600">
-                                                                                <Clock className="w-3 h-3 mr-1.5 opacity-50" />
-                                                                                {formatTime(stop.scheduled_arrival)}
-                                                                            </span>
-                                                                        ) : null}
-
-                                                                        {stop.actual_arrival_time && (
-                                                                            <span className={`flex items-center px-1.5 py-0.5 rounded ${(() => {
-                                                                                const actualDate = parseTime(stop.actual_arrival_time)
-                                                                                const scheduledDate = parseTime(stop.scheduled_arrival)
-                                                                                return actualDate && scheduledDate && actualDate > scheduledDate
-                                                                                    ? 'text-red-700 bg-red-50'
-                                                                                    : 'text-green-700 bg-green-50'
-                                                                            })()}`}>
-                                                                                <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${stop.actual_arrival_time ? (parseTime(stop.actual_arrival_time) && parseTime(stop.scheduled_arrival) && parseTime(stop.actual_arrival_time)! > parseTime(stop.scheduled_arrival)! ? 'bg-red-500' : 'bg-green-500') : 'bg-slate-400'
-                                                                                    }`} />
-                                                                                Arrived: {formatTime(stop.actual_arrival_time)}
-                                                                            </span>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-
-                                                                {/* Column 3: Actions */}
-                                                                {isStopCompleted && (stop.actual_arrival_lat || stop.actual_completion_lat) && (
-                                                                    <div className="flex-none self-center">
-                                                                        <ProofOfDeliveryDialog stop={stop} formatTime={formatTime} parseTime={parseTime} />
-                                                                    </div>
-                                                                )}
-                                                            </div>
-                                                        )
-                                                    }) : (
-                                                        <div className="p-8 text-center text-slate-400 text-sm">
-                                                            No stops defined
-                                                        </div>
+                                                    <span className="text-slate-300">/</span>
+                                                    <div className="flex items-center gap-1.5 text-slate-600">
+                                                        <User className="h-3.5 w-3.5 text-slate-400" />
+                                                        <span className="text-sm font-medium truncate max-w-[180px]">{job.customer_name}</span>
+                                                    </div>
+                                                    {isJobCompleted && (
+                                                        <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700 hover:bg-green-100 border-none shadow-none">
+                                                            Completed
+                                                        </Badge>
                                                     )}
                                                 </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="sm"
+                                                    className="h-7 text-xs font-medium text-slate-500 hover:text-blue-600 hover:bg-white hover:shadow-sm transition-all"
+                                                    onClick={() => router.push(`/dashboard/jobs/${job.id}`)}
+                                                >
+                                                    View Details <ArrowRight className="h-3 w-3 ml-1.5 opacity-50" />
+                                                </Button>
+                                            </div>
+
+                                            {/* Stops List */}
+                                            <div className="divide-y divide-slate-50">
+                                                {stops.length > 0 ? stops.map((stop: any, stopIndex: number) => {
+                                                    const isStopCompleted = stop.status === 'completed'
+
+                                                    return (
+                                                        <div key={stop.id} className={`group flex items-start gap-4 p-4 hover:bg-slate-50/30 transition-colors ${isStopCompleted ? 'bg-slate-50/50' : ''}`}>
+                                                            {/* Column 1: Indicator */}
+                                                            <div className="flex-none pt-1">
+                                                                <div className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-bold transition-all shadow-sm ${isStopCompleted
+                                                                    ? 'bg-green-100 text-green-700 ring-4 ring-green-50'
+                                                                    : stop.type === 'pickup'
+                                                                        ? 'bg-white border-2 border-blue-100 text-blue-700 shadow-blue-100'
+                                                                        : stop.type === 'dropoff'
+                                                                            ? 'bg-white border-2 border-orange-100 text-orange-700 shadow-orange-100'
+                                                                            : 'bg-white border-2 border-slate-100 text-slate-700'
+                                                                    }`}>
+                                                                    {isStopCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : stopIndex + 1}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Column 2: Main Info */}
+                                                            <div className="flex-1 min-w-0 grid gap-1.5">
+                                                                <div className="flex items-center gap-2">
+                                                                    <span className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-sm ${stop.type === 'pickup' ? 'bg-blue-50 text-blue-700' :
+                                                                        stop.type === 'dropoff' ? 'bg-orange-50 text-orange-700' :
+                                                                            'bg-slate-100 text-slate-700'
+                                                                        }`}>
+                                                                        {stop.type}
+                                                                    </span>
+                                                                    {stop.notes && (
+                                                                        <span className="flex items-center text-[10px] text-slate-500 bg-slate-50 px-2 py-0.5 rounded-full max-w-[200px] truncate">
+                                                                            <Info className="h-2.5 w-2.5 mr-1" />
+                                                                            {stop.notes}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+
+                                                                <p className={`text-sm font-medium leading-normal ${isStopCompleted ? 'text-slate-500' : 'text-slate-900'}`}>
+                                                                    {stop.address}
+                                                                </p>
+
+                                                                {/* Metadata / Times */}
+                                                                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                                                                    {(stop.arrival_mode === 'window' && stop.window_start && stop.window_end) ? (
+                                                                        <span className="flex items-center bg-slate-50 px-1.5 py-0.5 rounded text-slate-600 border border-slate-100">
+                                                                            <Clock className="w-3 h-3 mr-1.5 opacity-50" />
+                                                                            {formatTime(stop.window_start)} - {formatTime(stop.window_end)}
+                                                                        </span>
+                                                                    ) : (stop.arrival_mode === 'fixed' && stop.scheduled_arrival) ? (
+                                                                        <span className="flex items-center bg-slate-50 px-1.5 py-0.5 rounded text-slate-600 border border-slate-100">
+                                                                            <Clock className="w-3 h-3 mr-1.5 opacity-50" />
+                                                                            {formatTime(stop.scheduled_arrival)}
+                                                                        </span>
+                                                                    ) : null}
+
+                                                                    {stop.actual_arrival_time && (
+                                                                        <span className={`flex items-center px-1.5 py-0.5 rounded border ${(() => {
+                                                                            const actualDate = parseTime(stop.actual_arrival_time)
+                                                                            const scheduledDate = parseTime(stop.scheduled_arrival)
+                                                                            return actualDate && scheduledDate && actualDate > scheduledDate
+                                                                                ? 'text-red-700 bg-red-50 border-red-100'
+                                                                                : 'text-green-700 bg-green-50 border-green-100'
+                                                                        })()}`}>
+                                                                            <div className={`w-1.5 h-1.5 rounded-full mr-1.5 ${stop.actual_arrival_time ? (parseTime(stop.actual_arrival_time) && parseTime(stop.scheduled_arrival) && parseTime(stop.actual_arrival_time)! > parseTime(stop.scheduled_arrival)! ? 'bg-red-500' : 'bg-green-500') : 'bg-slate-400'
+                                                                                }`} />
+                                                                            Arrived: {formatTime(stop.actual_arrival_time)}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Column 3: Actions */}
+                                                            {isStopCompleted && (stop.actual_arrival_lat || stop.actual_completion_lat) && (
+                                                                <div className="flex-none self-center">
+                                                                    <ProofOfDeliveryDialog stop={stop} formatTime={formatTime} parseTime={parseTime} />
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    )
+                                                }) : (
+                                                    <div className="p-8 text-center text-slate-400 text-sm">
+                                                        No stops defined
+                                                    </div>
+                                                )}
                                             </div>
                                         </div>
                                     )
                                 })}
-                            </Card>
+                            </div>
                         </div>
 
                         {/* Right Panel - Map (takes 2 columns) */}
