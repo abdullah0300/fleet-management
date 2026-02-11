@@ -374,7 +374,7 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                                                                                 ? 'text-red-600'
                                                                                 : 'text-blue-600'
                                                                         }`}>
-                                                                        {isStopCompleted && '✓ '}{stop.type}
+                                                                        {isStopCompleted && '✓ '}{stop.type} <span className="text-muted-foreground normal-case ml-1">• Job #{job.job_number}</span>
                                                                     </div>
 
                                                                     {/* POD Verification Mockup */}
@@ -475,6 +475,9 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                                                                         <span>Job #{job.job_number}</span>
                                                                         <span>•</span>
                                                                         <span className="truncate">{job.customer_name}</span>
+                                                                        <Button variant="link" className="h-4 p-0 ml-2 text-xs text-blue-600" onClick={() => router.push(`/dashboard/jobs/${job.id}`)}>
+                                                                            View Job <ArrowRight className="h-3 w-3 ml-1" />
+                                                                        </Button>
                                                                     </div>
                                                                 )}
                                                             </div>
