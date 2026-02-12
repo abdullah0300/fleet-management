@@ -26,7 +26,7 @@ export function VehicleCard({ vehicle, onEdit }: VehicleCardProps) {
     }
 
     const statusStyle = getStatusStyles(vehicle.status)
-    const registration = vehicle.registration_number
+    const registration = vehicle.license_plate
     const odometer = vehicle.odometer_reading || 0
 
     // Parse current_location JSONB (format: {lat, lng, address})

@@ -277,7 +277,7 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                                         </div>
                                         <div className="flex-1">
                                             <div className="font-semibold">
-                                                {manifest.vehicles ? manifest.vehicles.registration_number : 'No Vehicle Assigned'}
+                                                {manifest.vehicles ? manifest.vehicles.license_plate : 'No Vehicle Assigned'}
                                             </div>
                                             <div className="text-xs text-muted-foreground">
                                                 {manifest.vehicles ? `${manifest.vehicles.make} ${manifest.vehicles.model}` : 'Vehicle'}

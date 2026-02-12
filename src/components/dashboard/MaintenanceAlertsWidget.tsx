@@ -32,7 +32,7 @@ export function MaintenanceAlertsWidget() {
                                 <div key={record.id} className="flex flex-col gap-1 ml-6 pb-2 border-b last:border-0 border-dashed">
                                     <div className="font-medium text-sm">{record.type || 'Maintenance'} overdue</div>
                                     <div className="text-xs text-muted-foreground">
-                                        Vehicle #{record.vehicles?.registration_number}
+                                        Vehicle #{record.vehicles?.license_plate}
                                     </div>
                                     <div className="text-xs text-red-500 font-medium">
                                         {record.next_service_date ? new Date(record.next_service_date).toLocaleDateString() : 'Date Unknown'}
@@ -57,7 +57,7 @@ export function MaintenanceAlertsWidget() {
                                 <div key={record.id} className="flex flex-col gap-1 ml-6 pb-2 border-b last:border-0 border-dashed">
                                     <div className="font-medium text-sm">{record.type || 'Maintenance'}</div>
                                     <div className="text-xs text-muted-foreground">
-                                        Vehicle #{record.vehicles?.registration_number}
+                                        Vehicle #{record.vehicles?.license_plate}
                                     </div>
                                     <div className="text-xs text-muted-foreground">
                                         {record.next_service_date ? new Date(record.next_service_date).toLocaleDateString() : 'Date Unknown'}

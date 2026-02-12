@@ -16,7 +16,7 @@ export const manifestKeys = {
 
 // Types with relations
 export type ManifestWithRelations = Manifest & {
-    vehicles: { registration_number: string; make: string; model: string } | null
+    vehicles: { license_plate: string; make: string; model: string } | null
     drivers: { profiles: { full_name: string } | null } | null
     jobs: (Job & { job_stops: { type: string; address: string }[] })[]
 }
@@ -28,7 +28,7 @@ async function fetchManifests(filters?: { status?: string }): Promise<ManifestWi
         .from('manifests')
         .select(`
             *,
-            vehicles (registration_number, make, model),
+            vehicles (license_plate, make, model),
             drivers (profiles (full_name)),
             jobs (
                 *,
@@ -51,7 +51,7 @@ async function fetchManifest(id: string): Promise<ManifestWithRelations> {
         .from('manifests')
         .select(`
             *,
-            vehicles (registration_number, make, model),
+            vehicles (license_plate, make, model),
             drivers (profiles (full_name)),
             jobs (
                 *,

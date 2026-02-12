@@ -286,7 +286,7 @@ export function ManifestCanvas({
                                         </div>
                                         <span className="truncate">
                                             {activeVehicle
-                                                ? `${activeVehicle.registration_number}`
+                                                ? `${activeVehicle.license_plate}`
                                                 : 'Select vehicle...'}
                                         </span>
                                     </div>
@@ -302,7 +302,7 @@ export function ManifestCanvas({
                                             {vehicles.map((vehicle) => (
                                                 <CommandItem
                                                     key={vehicle.id}
-                                                    value={`${vehicle.registration_number} ${vehicle.make} ${vehicle.model}`}
+                                                    value={`${vehicle.license_plate} ${vehicle.make} ${vehicle.model}`}
                                                     onSelect={() => {
                                                         onSelectVehicle(vehicle.id)
                                                         setVehicleOpen(false)
@@ -311,7 +311,7 @@ export function ManifestCanvas({
                                                 >
                                                     <Truck className="h-4 w-4 text-orange-500" />
                                                     <div className="flex-1">
-                                                        <span className="font-medium">{vehicle.registration_number}</span>
+                                                        <span className="font-medium">{vehicle.license_plate}</span>
                                                         <span className="text-xs text-muted-foreground ml-2">
                                                             {vehicle.make} {vehicle.model}
                                                         </span>

@@ -96,7 +96,7 @@ export function VehicleDetailPopup({ vehicle, open, onOpenChange, onSelectForMan
                             </div>
                             <div>
                                 <DialogTitle className="text-xl">
-                                    {vehicle.registration_number}
+                                    {vehicle.license_plate}
                                 </DialogTitle>
                                 <div className="flex items-center gap-2 mt-1">
                                     <Badge className={statusColor}>
@@ -274,6 +274,16 @@ export function VehicleDetailPopup({ vehicle, open, onOpenChange, onSelectForMan
                                     <Calendar className="h-5 w-5 mx-auto mb-1 text-slate-500" />
                                     <p className="text-muted-foreground text-xs">Year</p>
                                     <p className="font-medium">{vehicle.year || 'N/A'}</p>
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4 text-sm mt-4">
+                                <div>
+                                    <p className="text-muted-foreground text-xs">VIN #</p>
+                                    <p className="font-medium font-mono">{vehicle.vin_number || 'N/A'}</p>
+                                </div>
+                                <div>
+                                    <p className="text-muted-foreground text-xs">RFID Tag</p>
+                                    <p className="font-medium">{vehicle.rfid_tag || 'N/A'}</p>
                                 </div>
                             </div>
                         </CardContent>

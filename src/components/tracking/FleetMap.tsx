@@ -129,7 +129,7 @@ export function FleetMap({ vehicles, selectedVehicle, onSelectVehicle }: FleetMa
                                 <Truck className="h-5 w-5 text-white" />
                             </div>
                             <div className="mt-1 px-2 py-0.5 bg-background/90 rounded text-xs font-medium text-center shadow">
-                                {vehicle.registration_number}
+                                {vehicle.license_plate}
                             </div>
                         </div>
                     </Marker>
@@ -150,7 +150,7 @@ export function FleetMap({ vehicles, selectedVehicle, onSelectVehicle }: FleetMa
                             {popupInfo.make} {popupInfo.model}
                         </h3>
                         <p className="text-xs text-muted-foreground">
-                            {popupInfo.registration_number}
+                            {popupInfo.license_plate}
                         </p>
                         {popupInfo.profiles && (
                             <p className="text-sm mt-1">

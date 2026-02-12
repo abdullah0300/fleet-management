@@ -220,7 +220,7 @@ export function DriverDetailPopup({ driver, open, onOpenChange, onSelectForManif
                                 <div className="flex flex-col items-end">
                                     {assignedVehicle && (
                                         <span className="text-xs font-normal text-muted-foreground">
-                                            Veh: {assignedVehicle.registration_number}
+                                            Veh: {assignedVehicle.license_plate}
                                         </span>
                                     )}
                                     {liveLocation?.timestamp ? (
@@ -272,7 +272,7 @@ export function DriverDetailPopup({ driver, open, onOpenChange, onSelectForManif
                                         <Truck className="h-5 w-5 text-orange-600" />
                                     </div>
                                     <div className="flex-1">
-                                        <p className="font-medium">{assignedVehicle.registration_number}</p>
+                                        <p className="font-medium">{assignedVehicle.license_plate}</p>
                                         <p className="text-sm text-muted-foreground">
                                             {assignedVehicle.make} {assignedVehicle.model} {assignedVehicle.year && `(${assignedVehicle.year})`}
                                         </p>

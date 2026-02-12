@@ -5,6 +5,7 @@ import { useForm, Controller } from 'react-hook-form'
 import { PhoneInput } from '@/components/ui/phone-input'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DatePicker } from '@/components/ui/date-picker'
 
 import { Label } from '@/components/ui/label'
 import {
@@ -146,10 +147,25 @@ export function DriverForm({ initialData, onSubmit, isSubmitting }: DriverFormPr
 
                     <div className="space-y-2">
                         <Label htmlFor="license_expiry">License Expiry</Label>
-                        <Input
-                            id="license_expiry"
-                            type="date"
-                            {...register('license_expiry')}
+                        <Controller
+                            control={control}
+                            name="license_expiry"
+                            render={({ field }) => (
+                                <DatePicker
+                                    date={field.value ? new Date(field.value + 'T00:00:00') : undefined}
+                                    setDate={(date) => {
+                                        if (date) {
+                                            const yyyy = date.getFullYear()
+                                            const mm = String(date.getMonth() + 1).padStart(2, '0')
+                                            const dd = String(date.getDate()).padStart(2, '0')
+                                            field.onChange(`${yyyy}-${mm}-${dd}`)
+                                        } else {
+                                            field.onChange('')
+                                        }
+                                    }}
+                                    placeholder="Select expiry date"
+                                />
+                            )}
                         />
                     </div>
                 </div>

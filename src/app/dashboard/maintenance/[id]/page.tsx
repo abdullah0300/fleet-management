@@ -63,7 +63,7 @@ export default function MaintenanceDetailPage() {
                     {vehicleInfo && (
                         <p className="text-muted-foreground text-xs sm:text-sm flex items-center gap-1">
                             <Truck className="h-3 w-3" />
-                            {vehicleInfo.make} {vehicleInfo.model} - {vehicleInfo.registration_number}
+                            {vehicleInfo.make} {vehicleInfo.model} - {vehicleInfo.license_plate}
                         </p>
                     )}
                 </div>

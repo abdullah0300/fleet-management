@@ -100,7 +100,7 @@ export interface Database {
         Row: {
           id: string
           company_id: string | null
-          registration_number: string
+          license_plate: string
           make: string
           model: string
           year: number | null
@@ -111,13 +111,15 @@ export interface Database {
           current_driver_id: string | null
           current_location: Json | null
           odometer_reading: number | null
+          vin_number: string | null
+          rfid_tag: string | null
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           company_id?: string | null
-          registration_number: string
+          license_plate: string
           make: string
           model: string
           year?: number | null
@@ -128,13 +130,15 @@ export interface Database {
           current_driver_id?: string | null
           current_location?: Json | null
           odometer_reading?: number | null
+          vin_number?: string | null
+          rfid_tag?: string | null
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           company_id?: string | null
-          registration_number?: string
+          license_plate?: string
           make?: string
           model?: string
           year?: number | null
@@ -145,6 +149,8 @@ export interface Database {
           current_driver_id?: string | null
           current_location?: Json | null
           odometer_reading?: number | null
+          vin_number?: string | null
+          rfid_tag?: string | null
           created_at?: string
           updated_at?: string
         }

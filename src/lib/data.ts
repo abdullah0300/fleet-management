@@ -5,7 +5,7 @@ import { Vehicle, Driver, Job, Route, MaintenanceRecord, Document, Manifest } fr
  * Server-side data fetching functions
  * These run on the server and return data to Server Components
  * NO 'use client' - these are pure server functions
- */ 
+ */
 
 // ==========================================
 // VEHICLES
@@ -78,7 +78,7 @@ export async function getDrivers(): Promise<Driver[]> {
             ),
             vehicles:assigned_vehicle_id (
                 id,
-                registration_number,
+                license_plate,
                 make,
                 model
             )
@@ -109,7 +109,7 @@ export async function getDriver(id: string): Promise<Driver | null> {
             ),
             vehicles:assigned_vehicle_id (
                 id,
-                registration_number,
+                license_plate,
                 make,
                 model
             )
@@ -175,7 +175,7 @@ export async function getJobs(): Promise<Job[]> {
             *,
             job_stops (*),
             routes (id, name, distance_km),
-            vehicles (id, registration_number, make, model),
+            vehicles (id, license_plate, make, model),
             drivers (
                 id,
                 profiles (full_name)
@@ -199,7 +199,7 @@ export async function getJob(id: string): Promise<Job | null> {
         .select(`
             *,
             routes (id, name, distance_km, estimated_duration),
-            vehicles (id, registration_number, make, model),
+            vehicles (id, license_plate, make, model),
             drivers (
                 id,
                 profiles (full_name, phone)
@@ -229,7 +229,7 @@ export async function getMaintenanceRecords(): Promise<MaintenanceRecord[]> {
             *,
             vehicles (
                 id,
-                registration_number,
+                license_plate,
                 make,
                 model,
                 odometer_reading
@@ -318,7 +318,7 @@ export async function getManifests(): Promise<Manifest[]> {
         .from('manifests')
         .select(`
             *,
-            vehicles (registration_number, make, model),
+            vehicles (license_plate, make, model),
             drivers (profiles (full_name)),
             jobs (id, status, job_number)
         `)
@@ -339,7 +339,7 @@ export async function getManifest(id: string): Promise<Manifest | null> {
         .from('manifests')
         .select(`
             *,
-            vehicles (registration_number, make, model),
+            vehicles (license_plate, make, model),
             drivers (profiles (full_name, phone)),
             jobs (
                 id, job_number, status, sequence_order,

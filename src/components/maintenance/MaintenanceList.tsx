@@ -42,7 +42,7 @@ export function MaintenanceList({ initialData }: MaintenanceListProps) {
     const filteredRecords = (records as any[]).filter((record) => {
         const matchesSearch =
             record.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            record.vehicles?.registration_number?.toLowerCase().includes(searchQuery.toLowerCase())
+            record.vehicles?.license_plate?.toLowerCase().includes(searchQuery.toLowerCase())
         const matchesStatus = statusFilter === 'all' || record.status === statusFilter
         return matchesSearch && matchesStatus
     })

@@ -18,7 +18,7 @@ export const tripKeys = {
 // Extended type with relations
 export type TripWithRelations = Trip & {
     jobs?: { job_number: string; customer_name: string } | null
-    vehicles?: { registration_number: string; make: string; model: string } | null
+    vehicles?: { license_plate: string; make: string; model: string } | null
     drivers?: { profiles: { full_name: string } | null } | null
 }
 
@@ -31,7 +31,7 @@ async function fetchTrips(filters?: { jobId?: string; driverId?: string; vehicle
         .select(`
             *,
             jobs (job_number, customer_name),
-            vehicles (registration_number, make, model),
+            vehicles (license_plate, make, model),
             drivers (profiles (full_name))
         `)
         .order('start_time', { ascending: false })
@@ -55,7 +55,7 @@ async function fetchTripById(id: string): Promise<TripWithRelations | null> {
         .select(`
             *,
             jobs (job_number, customer_name),
-            vehicles (registration_number, make, model),
+            vehicles (license_plate, make, model),
             drivers (profiles (full_name))
         `)
         .eq('id', id)
@@ -74,7 +74,7 @@ async function fetchActiveTrips(): Promise<TripWithRelations[]> {
         .select(`
             *,
             jobs (job_number, customer_name),
-            vehicles (registration_number, make, model),
+            vehicles (license_plate, make, model),
             drivers (profiles (full_name))
         `)
         .eq('status', 'started')

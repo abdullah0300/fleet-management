@@ -121,7 +121,7 @@ export function ServiceForm({ initialData, onSubmit, isSubmitting }: ServiceForm
                                 <SelectContent>
                                     {vehicles.map((vehicle) => (
                                         <SelectItem key={vehicle.id} value={vehicle.id}>
-                                            {vehicle.make} {vehicle.model} - {vehicle.registration_number}
+                                            {vehicle.make} {vehicle.model} - {vehicle.license_plate}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

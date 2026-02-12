@@ -328,7 +328,7 @@ export function JobForm({ initialData, onSubmit, isSubmitting }: JobFormProps) {
                                     <SelectItem value="none">Unassigned</SelectItem>
                                     {availableVehicles.map((vehicle) => (
                                         <SelectItem key={vehicle.id} value={vehicle.id}>
-                                            {vehicle.make} {vehicle.model} - {vehicle.registration_number}
+                                            {vehicle.make} {vehicle.model} - {vehicle.license_plate}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

@@ -21,7 +21,7 @@ interface JobCardProps {
         job_stops?: JobStop[]
         scheduled_date?: string | null
         scheduled_time?: string | null
-        vehicles?: { registration_number: string; make: string } | null
+        vehicles?: { license_plate: string; make: string } | null
         drivers?: { profiles: { full_name: string } | null } | null
         manifests?: { id: string; manifest_number: string | null; status: string | null } | null
     }
@@ -181,7 +181,7 @@ export function JobCard({ job, onViewDetails }: JobCardProps) {
                                     )}
                                     {job.vehicles && (
                                         <span className="text-[10px] text-gray-400 uppercase tracking-wider">
-                                            {job.vehicles.registration_number}
+                                            {job.vehicles.license_plate}
                                         </span>
                                     )}
                                 </div>

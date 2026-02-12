@@ -45,7 +45,7 @@ export function JobDetailPopup({ job, open, onOpenChange, onEdit }: JobDetailPop
     // Mock driver/vehicle info (if available on job)
     // If getting from manifest/assignment, we might need extra props or assume job has these fields populated
     const driverName = job.manifest?.drivers?.profiles?.full_name || job.driver_name
-    const vehicleNumber = job.manifest?.vehicles?.registration_number || job.vehicle_number
+    const vehicleNumber = job.manifest?.vehicles?.license_plate || job.vehicle_number
 
     const statusColors: any = {
         pending: 'bg-slate-100 text-slate-700',

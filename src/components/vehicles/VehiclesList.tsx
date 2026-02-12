@@ -32,7 +32,7 @@ export function VehiclesList({ initialData }: VehiclesListProps) {
     // Filter vehicles
     const filteredVehicles = vehicles.filter((vehicle) => {
         const matchesSearch =
-            vehicle.registration_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            vehicle.license_plate?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             vehicle.make?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             vehicle.model?.toLowerCase().includes(searchQuery.toLowerCase())
         const matchesStatus = statusFilter === 'all' || vehicle.status === statusFilter

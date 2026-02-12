@@ -24,8 +24,8 @@ interface BulkVehicleImportProps {
     trigger?: React.ReactNode
 }
 
-const REQUIRED_COLUMNS = ['registration_number', 'make', 'model']
-const OPTIONAL_COLUMNS = ['year', 'vehicle_type', 'fuel_type', 'fuel_efficiency', 'status', 'odometer_reading']
+const REQUIRED_COLUMNS = ['license_plate', 'make', 'model']
+const OPTIONAL_COLUMNS = ['year', 'vehicle_type', 'fuel_type', 'fuel_efficiency', 'status', 'odometer_reading', 'vin_number', 'rfid_tag']
 const ALL_COLUMNS = [...REQUIRED_COLUMNS, ...OPTIONAL_COLUMNS]
 
 const VALID_FUEL_TYPES = ['diesel', 'petrol', 'electric', 'hybrid']
@@ -64,7 +64,7 @@ export function BulkVehicleImport({ trigger }: BulkVehicleImportProps) {
             const vehicle: ParsedVehicle = {
                 _rowIndex: i,
                 _errors: errors,
-                registration_number: '',
+                license_plate: '',
                 make: '',
                 model: '',
             }
@@ -111,14 +111,18 @@ export function BulkVehicleImport({ trigger }: BulkVehicleImportProps) {
                         } else {
                             vehicle.status = value.toLowerCase() as 'available' | 'in_use' | 'maintenance' | 'inactive'
                         }
-                    } else if (col === 'registration_number' && value) {
-                        vehicle.registration_number = value
+                    } else if (col === 'license_plate' && value) {
+                        vehicle.license_plate = value
                     } else if (col === 'make' && value) {
                         vehicle.make = value
                     } else if (col === 'model' && value) {
                         vehicle.model = value
                     } else if (col === 'vehicle_type' && value) {
                         vehicle.vehicle_type = value
+                    } else if (col === 'vin_number' && value) {
+                        vehicle.vin_number = value
+                    } else if (col === 'rfid_tag' && value) {
+                        vehicle.rfid_tag = value
                     }
                 }
             })
@@ -181,7 +185,7 @@ export function BulkVehicleImport({ trigger }: BulkVehicleImportProps) {
 
     const downloadTemplate = () => {
         const headers = ALL_COLUMNS.join(',')
-        const example = 'ABC-1234,Toyota,Camry,2023,sedan,petrol,12.5,available,50000'
+        const example = 'ABC-1234,Toyota,Camry,2023,sedan,petrol,12.5,available,50000,1HGBH41JXMN109186,RFID-001'
         const csv = `${headers}\n${example}`
         const blob = new Blob([csv], { type: 'text/csv' })
         const url = URL.createObjectURL(blob)
@@ -281,7 +285,7 @@ export function BulkVehicleImport({ trigger }: BulkVehicleImportProps) {
                                     <thead className="bg-muted sticky top-0">
                                         <tr>
                                             <th className="p-2 text-left">Row</th>
-                                            <th className="p-2 text-left">Registration</th>
+                                            <th className="p-2 text-left">License Plate</th>
                                             <th className="p-2 text-left">Make</th>
                                             <th className="p-2 text-left">Model</th>
                                             <th className="p-2 text-left">Status</th>
@@ -291,7 +295,7 @@ export function BulkVehicleImport({ trigger }: BulkVehicleImportProps) {
                                         {parsedVehicles.map((vehicle, idx) => (
                                             <tr key={idx} className={vehicle._errors.length > 0 ? 'bg-status-error-muted' : ''}>
                                                 <td className="p-2">{vehicle._rowIndex}</td>
-                                                <td className="p-2">{vehicle.registration_number}</td>
+                                                <td className="p-2">{vehicle.license_plate}</td>
                                                 <td className="p-2">{vehicle.make}</td>
                                                 <td className="p-2">{vehicle.model}</td>
                                                 <td className="p-2">

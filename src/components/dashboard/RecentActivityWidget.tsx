@@ -66,7 +66,7 @@ export function RecentActivityWidget() {
                         id: `maint-due-${record.id}`,
                         type: 'maintenance_due',
                         title: isOverdue ? 'Action Required' : 'Maintenance Scheduled',
-                        description: `Vehicle #${record.vehicles?.registration_number} • ${record.type} ${isOverdue ? 'Overdue' : 'Due'}`,
+                        description: `Vehicle #${record.vehicles?.license_plate} • ${record.type} ${isOverdue ? 'Overdue' : 'Due'}`,
                         timestamp: serviceDate, // Sort by due date effectively
                         color: 'bg-red-500'
                     })

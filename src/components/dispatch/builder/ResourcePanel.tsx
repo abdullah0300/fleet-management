@@ -68,7 +68,7 @@ export function ResourcePanel({
         if (!vehicleSearch.trim()) return vehicles
         const search = vehicleSearch.toLowerCase()
         return vehicles.filter(vehicle =>
-            vehicle.registration_number?.toLowerCase().includes(search) ||
+            vehicle.license_plate?.toLowerCase().includes(search) ||
             vehicle.make?.toLowerCase().includes(search) ||
             vehicle.model?.toLowerCase().includes(search)
         )
@@ -234,7 +234,7 @@ export function ResourcePanel({
                                                 <Truck className="h-4 w-4 text-orange-600" />
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <div className="text-sm font-medium truncate">{vehicle.registration_number}</div>
+                                                <div className="text-sm font-medium truncate">{vehicle.license_plate}</div>
                                                 <div className="text-[10px] text-muted-foreground truncate">{vehicle.make} {vehicle.model}</div>
                                             </div>
                                             <Info className="h-4 w-4 text-muted-foreground flex-none" />
@@ -269,7 +269,7 @@ export function ResourcePanel({
                 onSelectForManifest={() => {
                     if (viewingVehicle) {
                         onSelectVehicle(viewingVehicle.id)
-                        toast.success(`Vehicle "${viewingVehicle.registration_number}" selected for manifest`)
+                        toast.success(`Vehicle "${viewingVehicle.license_plate}" selected for manifest`)
                     }
                 }}
             />

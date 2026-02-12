@@ -26,7 +26,7 @@ interface BulkDriverImportProps {
 }
 
 const REQUIRED_COLUMNS = ['email', 'full_name']
-const OPTIONAL_COLUMNS = ['phone', 'license_number', 'license_expiry', 'payment_type', 'rate_amount', 'status']
+const OPTIONAL_COLUMNS = ['phone', 'license_number', 'license_expiry', 'payment_type', 'rate_amount', 'status', 'login_pin']
 const ALL_COLUMNS = [...REQUIRED_COLUMNS, ...OPTIONAL_COLUMNS]
 
 const VALID_PAYMENT_TYPES = ['per_mile', 'per_trip', 'hourly', 'salary']
@@ -122,12 +122,25 @@ export function BulkDriverImport({ trigger }: BulkDriverImportProps) {
                 } else if (col === 'license_number') {
                     driver.license_number = value
                 } else if (col === 'license_expiry' && value) {
-                    // Basic date validation (YYYY-MM-DD)
-                    const dateRegex = /^\d{4}-\d{2}-\d{2}$/
-                    if (!dateRegex.test(value)) {
-                        errors.push('Invalid license expiry date (use YYYY-MM-DD format)')
-                    } else {
+                    // Accept MM/DD/YYYY or YYYY-MM-DD
+                    const usDateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+                    const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/
+                    const usMatch = value.match(usDateRegex)
+                    if (usMatch) {
+                        // Convert MM/DD/YYYY to YYYY-MM-DD for storage
+                        const [, month, day, year] = usMatch
+                        driver.license_expiry = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+                    } else if (isoDateRegex.test(value)) {
                         driver.license_expiry = value
+                    } else {
+                        errors.push('Invalid license expiry date (use MM/DD/YYYY format)')
+                    }
+                } else if (col === 'login_pin' && value) {
+                    const pinRegex = /^\d{4,6}$/
+                    if (!pinRegex.test(value)) {
+                        errors.push('Invalid PIN (must be 4-6 digits)')
+                    } else {
+                        driver.login_pin = value
                     }
                 }
             })
@@ -200,7 +213,7 @@ export function BulkDriverImport({ trigger }: BulkDriverImportProps) {
 
     const downloadTemplate = () => {
         const headers = ALL_COLUMNS.join(',')
-        const example = 'driver@example.com,John Doe,555-0123,DL123456,2025-12-31,per_mile,0.50,available'
+        const example = 'driver@example.com,John Doe,555-0123,DL123456,12/31/2025,per_mile,0.50,available,1234'
         const csv = `${headers}\n${example}`
         const blob = new Blob([csv], { type: 'text/csv' })
         const url = URL.createObjectURL(blob)
@@ -323,6 +336,7 @@ export function BulkDriverImport({ trigger }: BulkDriverImportProps) {
                                             <th className="p-2 text-left">Row</th>
                                             <th className="p-2 text-left">Name</th>
                                             <th className="p-2 text-left">Email</th>
+                                            <th className="p-2 text-left">PIN</th>
                                             <th className="p-2 text-left">Status</th>
                                         </tr>
                                     </thead>
@@ -332,6 +346,7 @@ export function BulkDriverImport({ trigger }: BulkDriverImportProps) {
                                                 <td className="p-2">{driver._rowIndex}</td>
                                                 <td className="p-2">{driver.full_name || '-'}</td>
                                                 <td className="p-2">{driver.email || '-'}</td>
+                                                <td className="p-2 font-mono">{driver.login_pin || '-'}</td>
                                                 <td className="p-2">
                                                     {driver._errors.length > 0 ? (
                                                         <span className="text-status-error">{driver._errors[0]}</span>

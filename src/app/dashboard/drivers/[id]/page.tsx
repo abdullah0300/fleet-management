@@ -231,7 +231,7 @@ export default function DriverDetailPage() {
                         {assignedVehicle ? (
                             <>
                                 <div className="text-sm sm:text-lg font-bold">{assignedVehicle.make} {assignedVehicle.model}</div>
-                                <p className="text-xs text-muted-foreground">{assignedVehicle.registration_number}</p>
+                                <p className="text-xs text-muted-foreground">{assignedVehicle.license_plate}</p>
                             </>
                         ) : (
                             <div className="text-sm sm:text-lg font-medium text-muted-foreground">No vehicle assigned</div>

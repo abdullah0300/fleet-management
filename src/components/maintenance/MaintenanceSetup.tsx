@@ -143,7 +143,7 @@ export function MaintenanceSetup() {
                             <SelectContent>
                                 {vehicles.map(v => (
                                     <SelectItem key={v.id} value={v.id}>
-                                        {v.make} {v.model} ({v.registration_number})
+                                        {v.make} {v.model} ({v.license_plate})
                                     </SelectItem>
                                 ))}
                             </SelectContent>

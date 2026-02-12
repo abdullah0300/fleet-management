@@ -92,7 +92,7 @@ export function MaintenanceCard({ record, onComplete, onViewDetails }: Maintenan
                                     <Truck className="h-3 w-3" />
                                     <span>{record.vehicles.make} {record.vehicles.model}</span>
                                     <span className="text-muted-foreground/60">•</span>
-                                    <span className="font-mono">{record.vehicles.registration_number}</span>
+                                    <span className="font-mono">{record.vehicles.license_plate}</span>
                                 </div>
                             )}
                         </div>

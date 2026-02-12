@@ -111,7 +111,7 @@ export function FleetMapWidget() {
 
                                     {/* Persistent Label */}
                                     <div className="absolute top-full mt-1 flex flex-col items-center bg-white/90 px-2 py-1 rounded shadow-sm border text-[10px] whitespace-nowrap z-40 backdrop-blur-sm">
-                                        <div className="font-bold text-gray-900 leading-tight">{vehicle.registration_number}</div>
+                                        <div className="font-bold text-gray-900 leading-tight">{vehicle.license_plate}</div>
                                         {vehicle.profiles?.full_name && (
                                             <div className="text-gray-600 font-medium leading-tight max-w-[80px] truncate">{vehicle.profiles.full_name}</div>
                                         )}

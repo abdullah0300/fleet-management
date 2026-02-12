@@ -23,7 +23,7 @@ interface VehicleFormProps {
 export function VehicleForm({ initialData, onSubmit, isSubmitting }: VehicleFormProps) {
     const { register, handleSubmit, formState: { errors }, setValue, watch } = useForm<VehicleInsert>({
         defaultValues: {
-            registration_number: initialData?.registration_number || '',
+            license_plate: initialData?.license_plate || '',
             make: initialData?.make || '',
             model: initialData?.model || '',
             year: initialData?.year || new Date().getFullYear(),
@@ -32,6 +32,8 @@ export function VehicleForm({ initialData, onSubmit, isSubmitting }: VehicleForm
             fuel_efficiency: initialData?.fuel_efficiency || undefined,
             status: initialData?.status || 'available',
             odometer_reading: initialData?.odometer_reading || 0,
+            vin_number: initialData?.vin_number || '',
+            rfid_tag: initialData?.rfid_tag || '',
         }
     })
 
@@ -47,14 +49,14 @@ export function VehicleForm({ initialData, onSubmit, isSubmitting }: VehicleForm
             {/* Basic Info */}
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                    <Label htmlFor="registration_number">Registration Number *</Label>
+                    <Label htmlFor="license_plate">License Plate *</Label>
                     <Input
-                        id="registration_number"
+                        id="license_plate"
                         placeholder="ABC-1234"
-                        {...register('registration_number', { required: 'Registration is required' })}
+                        {...register('license_plate', { required: 'License Plate is required' })}
                     />
-                    {errors.registration_number && (
-                        <p className="text-xs text-red-500">{errors.registration_number.message}</p>
+                    {errors.license_plate && (
+                        <p className="text-xs text-red-500">{errors.license_plate.message}</p>
                     )}
                 </div>
 
@@ -143,6 +145,26 @@ export function VehicleForm({ initialData, onSubmit, isSubmitting }: VehicleForm
                         type="number"
                         placeholder="50000"
                         {...register('odometer_reading', { valueAsNumber: true })}
+                    />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="vin_number">VIN #</Label>
+                    <Input
+                        id="vin_number"
+                        placeholder="1HGBH41JXMN109186"
+                        {...register('vin_number')}
+                    />
+                </div>
+
+                <div className="space-y-2">
+                    <Label htmlFor="rfid_tag">RFID Tag</Label>
+                    <Input
+                        id="rfid_tag"
+                        placeholder="RFID-001"
+                        {...register('rfid_tag')}
                     />
                 </div>
             </div>

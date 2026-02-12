@@ -264,7 +264,7 @@ export default function CostsPage() {
                                     <SelectItem value="none">No vehicle</SelectItem>
                                     {vehicles?.map((vehicle) => (
                                         <SelectItem key={vehicle.id} value={vehicle.id}>
-                                            {vehicle.registration_number} - {vehicle.make} {vehicle.model}
+                                            {vehicle.license_plate} - {vehicle.make} {vehicle.model}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>
@@ -561,7 +561,7 @@ export default function CostsPage() {
                                             </Badge>
                                         </div>
                                         <p className="text-xs text-muted-foreground">
-                                            {cost.vehicles?.registration_number || 'No Vehicle'} •
+                                            {cost.vehicles?.license_plate || 'No Vehicle'} •
                                             {cost.distance_km} km •
                                             {new Date(cost.created_at).toLocaleDateString()}
                                         </p>

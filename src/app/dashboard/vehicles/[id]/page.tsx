@@ -96,7 +96,7 @@ export default function VehicleDetailPage() {
                             </Badge>
                         </div>
                         <div className="flex items-center gap-2 text-muted-foreground mt-1 text-sm flex-wrap">
-                            <span className="font-mono bg-muted px-1.5 rounded">{vehicle.registration_number}</span>
+                            <span className="font-mono bg-muted px-1.5 rounded">{vehicle.license_plate}</span>
                             <span>•</span>
                             <span>{vehicle.year || 'Year unknown'}</span>
                             {vehicle.vehicle_type && (
@@ -219,12 +219,20 @@ export default function VehicleDetailPage() {
                                 <div className="font-medium">{vehicle.vehicle_type || 'N/A'}</div>
                             </div>
                             <div className="space-y-1">
-                                <span className="text-muted-foreground text-xs">Registration</span>
-                                <div className="font-medium font-mono">{vehicle.registration_number}</div>
+                                <span className="text-muted-foreground text-xs">License Plate</span>
+                                <div className="font-medium font-mono">{vehicle.license_plate}</div>
                             </div>
                             <div className="space-y-1">
                                 <span className="text-muted-foreground text-xs">Created</span>
                                 <div className="font-medium">{new Date(vehicle.created_at).toLocaleDateString()}</div>
+                            </div>
+                            <div className="space-y-1">
+                                <span className="text-muted-foreground text-xs">VIN #</span>
+                                <div className="font-medium font-mono">{vehicle.vin_number || 'N/A'}</div>
+                            </div>
+                            <div className="space-y-1">
+                                <span className="text-muted-foreground text-xs">RFID Tag</span>
+                                <div className="font-medium">{vehicle.rfid_tag || 'N/A'}</div>
                             </div>
                         </div>
                     </CardContent>

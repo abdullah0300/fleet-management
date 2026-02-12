@@ -227,7 +227,7 @@ export default function JobDetailPage() {
                                             <Truck className="h-6 w-6 text-slate-600" />
                                         </div>
                                         <div className="flex-1">
-                                            <div className="font-semibold">{job.vehicles ? job.vehicles.registration_number : 'No Vehicle Assigned'}</div>
+                                            <div className="font-semibold">{job.vehicles ? job.vehicles.license_plate : 'No Vehicle Assigned'}</div>
                                             <div className="text-xs text-muted-foreground">{job.vehicles ? `${job.vehicles.make} ${job.vehicles.model}` : 'Vehicle'}</div>
                                         </div>
                                     </div>

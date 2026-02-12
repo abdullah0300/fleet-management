@@ -225,7 +225,7 @@ export function ManifestBuilder() {
                                 <SelectContent>
                                     {vehicles?.map(v => (
                                         <SelectItem key={v.id} value={v.id}>
-                                            {v.registration_number} - {v.make}
+                                            {v.license_plate} - {v.make}
                                         </SelectItem>
                                     ))}
                                 </SelectContent>

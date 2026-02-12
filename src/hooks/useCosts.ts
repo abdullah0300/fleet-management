@@ -297,10 +297,10 @@ export function useVehiclesForCost() {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('vehicles')
-                .select('id, registration_number, make, model, fuel_efficiency')
-                .order('registration_number')
+                .select('id, license_plate, make, model, fuel_efficiency')
+                .order('license_plate')
             if (error) throw error
-            return data as Pick<Vehicle, 'id' | 'registration_number' | 'make' | 'model' | 'fuel_efficiency'>[]
+            return data as Pick<Vehicle, 'id' | 'license_plate' | 'make' | 'model' | 'fuel_efficiency'>[]
         },
     })
 }

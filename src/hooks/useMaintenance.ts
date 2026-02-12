@@ -20,7 +20,7 @@ export const maintenanceKeys = {
 export type MaintenanceWithVehicle = MaintenanceRecord & {
     vehicles: {
         id: string
-        registration_number: string
+        license_plate: string
         make: string
         model: string
         odometer_reading: number | null
@@ -42,7 +42,7 @@ async function fetchMaintenance(filters?: { vehicleId?: string; status?: string;
             *,
             vehicles (
                 id,
-                registration_number,
+                license_plate,
                 make,
                 model,
                 odometer_reading
@@ -76,7 +76,7 @@ async function fetchMaintenanceById(id: string): Promise<MaintenanceWithVehicle 
             *,
             vehicles (
                 id,
-                registration_number,
+                license_plate,
                 make,
                 model,
                 odometer_reading
@@ -102,7 +102,7 @@ async function fetchUpcomingMaintenance(): Promise<MaintenanceWithVehicle[]> {
             *,
             vehicles (
                 id,
-                registration_number,
+                license_plate,
                 make,
                 model,
                 odometer_reading
@@ -128,7 +128,7 @@ async function fetchOverdueMaintenance(): Promise<MaintenanceWithVehicle[]> {
             *,
             vehicles (
                 id,
-                registration_number,
+                license_plate,
                 make,
                 model,
                 odometer_reading

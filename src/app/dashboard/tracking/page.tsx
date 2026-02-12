@@ -217,7 +217,7 @@ export default function TrackingPage() {
                                                         </div>
                                                     </div>
                                                     <p className="text-xs text-muted-foreground font-mono">
-                                                        {vehicle.registration_number}
+                                                        {vehicle.license_plate}
                                                     </p>
                                                     {vehicle.profiles && (
                                                         <p className="text-xs text-muted-foreground mt-1">

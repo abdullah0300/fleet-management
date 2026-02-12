@@ -38,7 +38,7 @@ export function ManifestList({ initialData }: ManifestListProps) {
         const matchesSearch =
             manifest.manifest_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             (manifest as any).drivers?.profiles?.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (manifest as any).vehicles?.registration_number?.toLowerCase().includes(searchQuery.toLowerCase())
+            (manifest as any).vehicles?.license_plate?.toLowerCase().includes(searchQuery.toLowerCase())
 
         const matchesStatus = statusFilter === 'all' || manifest.status === statusFilter
         return matchesSearch && matchesStatus
@@ -182,7 +182,7 @@ export function ManifestList({ initialData }: ManifestListProps) {
                                     <div className="flex items-center text-muted-foreground mb-1">
                                         <Truck className="mr-2 h-4 w-4" />
                                         {manifest.vehicles ? (
-                                            <span>{manifest.vehicles.make} {manifest.vehicles.model} ({manifest.vehicles.registration_number})</span>
+                                            <span>{manifest.vehicles.make} {manifest.vehicles.model} ({manifest.vehicles.license_plate})</span>
                                         ) : (
                                             <span className="text-muted-foreground/60">No vehicle assigned</span>
                                         )}
