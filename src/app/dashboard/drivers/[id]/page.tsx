@@ -1,9 +1,10 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { ArrowLeft, Edit, Trash2, User, Phone, CreditCard, Truck, IdCard, Calendar, Mail } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { ArrowLeft, Edit, Trash2, User, Phone, CreditCard, Truck, IdCard, Calendar, Mail, Package, TrendingUp } from 'lucide-react'
 import { useDriver, useDeleteDriver, useUpdateDriver } from '@/hooks/useDrivers'
+import { useDriverJobs } from '@/hooks/useJobs'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -15,6 +16,7 @@ import { DriverInsert, Profile } from '@/types/database'
 import { updateDriver } from '../actions'
 import { useQueryClient } from '@tanstack/react-query'
 import { driverKeys } from '@/hooks/useDrivers'
+import { formatDate } from '@/lib/utils'
 
 export default function DriverDetailPage() {
     const params = useParams()
@@ -25,9 +27,43 @@ export default function DriverDetailPage() {
 
     // Use the single driver hook - fetches only this driver, uses cache if available
     const { data: driver, isLoading, error } = useDriver(id)
+    const { data: driverJobs, isLoading: jobsLoading } = useDriverJobs(id, 5)
     const deleteMutation = useDeleteDriver()
     const queryClient = useQueryClient()
-    // const updateMutation = useUpdateDriver() // No longer using client side update for main form to support PIN sync
+
+    // Calculate monthly earnings from completed jobs
+    const monthlyEarnings = useMemo(() => {
+        if (!driverJobs || !driver) return 0
+
+        const now = new Date()
+        const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+        const completedThisMonth = driverJobs.filter(job =>
+            job.status === 'completed' &&
+            new Date(job.created_at) >= firstDayOfMonth
+        )
+
+        let total = 0
+        completedThisMonth.forEach(job => {
+            const rate = driver.rate_amount || 0
+
+            switch (driver.payment_type) {
+                case 'per_trip':
+                    total += rate
+                    break
+                case 'per_mile':
+                    // Calculate distance from route if available
+                    const distance = job.routes?.distance_km || 0
+                    total += rate * distance * 0.621371 // Convert km to miles
+                    break
+                // hourly and salary would need additional time tracking
+                default:
+                    break
+            }
+        })
+
+        return total
+    }, [driverJobs, driver])
 
     const handleDelete = async () => {
         if (!confirm('Are you sure you want to delete this driver?')) return
@@ -59,7 +95,6 @@ export default function DriverDetailPage() {
             toast.success('Driver updated successfully')
         } catch (error: any) {
             console.error(error)
-            // Check for duplicate PIN error (already handled in action but safety check)
             if (error?.message?.includes('PIN')) {
                 toast.error(error.message)
             } else {
@@ -125,6 +160,8 @@ export default function DriverDetailPage() {
         ? new Date(driver.license_expiry).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
         : 'Not set'
 
+    const completedJobsCount = driverJobs?.filter(j => j.status === 'completed').length || 0
+
     return (
         <div className="flex flex-col gap-4 sm:gap-6">
             {/* Header */}
@@ -183,7 +220,7 @@ export default function DriverDetailPage() {
                                     profile: driver.profiles || undefined
                                 }}
                                 onSubmit={handleUpdate}
-                                isSubmitting={isUpdating} // Connected to local state
+                                isSubmitting={isUpdating}
                             />
                         </DialogContent>
                     </Dialog>
@@ -241,11 +278,11 @@ export default function DriverDetailPage() {
                 <Card>
                     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2 p-3 sm:p-6 sm:pb-2">
                         <CardTitle className="text-xs sm:text-sm font-medium">Earnings (Month)</CardTitle>
-                        <CreditCard className="h-4 w-4 text-muted-foreground" />
+                        <TrendingUp className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
-                        <div className="text-xl sm:text-2xl font-bold">$0.00</div>
-                        <p className="text-xs text-muted-foreground">No completed trips</p>
+                        <div className="text-xl sm:text-2xl font-bold">${monthlyEarnings.toFixed(2)}</div>
+                        <p className="text-xs text-muted-foreground">{completedJobsCount} completed jobs</p>
                     </CardContent>
                 </Card>
             </div>
@@ -291,14 +328,74 @@ export default function DriverDetailPage() {
                     <CardHeader className="p-4 sm:p-6">
                         <CardTitle className="text-base sm:text-lg">Recent Trips</CardTitle>
                     </CardHeader>
-                    <CardContent className="flex items-center justify-center p-6 text-muted-foreground">
-                        <div className="text-center">
-                            <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p className="text-sm">No trips recorded yet</p>
-                            <Button variant="outline" size="sm" className="mt-4">
-                                Assign a Job
-                            </Button>
-                        </div>
+                    <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
+                        {jobsLoading ? (
+                            <div className="space-y-3">
+                                {[...Array(3)].map((_, i) => (
+                                    <Skeleton key={i} className="h-16 w-full" />
+                                ))}
+                            </div>
+                        ) : driverJobs && driverJobs.length > 0 ? (
+                            <div className="space-y-2">
+                                {driverJobs.map((job) => (
+                                    <div
+                                        key={job.id}
+                                        onClick={() => router.push(`/dashboard/jobs/${job.id}`)}
+                                        className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent cursor-pointer transition-colors"
+                                    >
+                                        <div className="flex items-center gap-3 min-w-0">
+                                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                                                <Package className="h-5 w-5 text-blue-600" />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="font-medium text-sm truncate">{job.job_number}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{job.customer_name}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex flex-col items-end gap-1 shrink-0">
+                                            <Badge
+                                                variant="outline"
+                                                className={`text-[10px] ${job.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
+                                                        job.status === 'in_progress' ? 'bg-purple-50 text-purple-700 border-purple-200' :
+                                                            job.status === 'assigned' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                                                'bg-gray-50 text-gray-700 border-gray-200'
+                                                    }`}
+                                            >
+                                                {job.status?.replace('_', ' ')}
+                                            </Badge>
+                                            {job.scheduled_date && (
+                                                <span className="text-xs text-muted-foreground">
+                                                    {formatDate(job.scheduled_date)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))}
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full mt-2"
+                                    onClick={() => router.push(`/dashboard/jobs?driver=${id}`)}
+                                >
+                                    View All Jobs
+                                </Button>
+                            </div>
+                        ) : (
+                            <div className="flex items-center justify-center p-6 text-muted-foreground">
+                                <div className="text-center">
+                                    <Calendar className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                    <p className="text-sm">No trips recorded yet</p>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="mt-4"
+                                        onClick={() => router.push('/dashboard/jobs/new')}
+                                    >
+                                        Assign a Job
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>

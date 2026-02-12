@@ -135,6 +135,51 @@ async function fetchJobs(page = 1, pageSize = 50): Promise<{
     }
 }
 
+/**
+ * Fetch jobs for a specific driver
+ */
+async function fetchDriverJobs(driverId: string, limit = 10): Promise<JobWithRelations[]> {
+    const { data, error } = await supabase
+        .from('jobs')
+        .select(`
+            *,
+            job_stops (*),
+            routes:route_id (*),
+            vehicles:vehicle_id (*),
+            manifests:manifest_id (id, manifest_number, status),
+            drivers:driver_id (
+                *,
+                profiles (*)
+            )
+        `)
+        .eq('driver_id', driverId)
+        .order('created_at', { ascending: false })
+        .limit(limit)
+
+    if (error) throw error
+
+    // Sort job_stops by sequence_order for each job
+    const jobsWithSortedStops = (data || []).map(job => ({
+        ...job,
+        job_stops: (job.job_stops || []).sort((a: JobStop, b: JobStop) =>
+            a.sequence_order - b.sequence_order
+        )
+    }))
+
+    return jobsWithSortedStops as JobWithRelations[]
+}
+
+/**
+ * Hook to fetch jobs for a specific driver
+ */
+export function useDriverJobs(driverId: string, limit = 10) {
+    return useQuery({
+        queryKey: [...jobKeys.all, 'driver', driverId, { limit }] as const,
+        queryFn: () => fetchDriverJobs(driverId, limit),
+        enabled: !!driverId,
+    })
+}
+
 // Fetch single job (includes stops)
 async function fetchJob(id: string): Promise<JobWithRelations> {
     const { data, error } = await supabase
