@@ -418,8 +418,13 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                                                                 </div>
 
                                                                 <p className={`text-sm font-medium leading-normal ${isStopCompleted ? 'text-slate-500' : 'text-slate-900'}`}>
-                                                                    {stop.address}
+                                                                    {stop.location_name || stop.address}
                                                                 </p>
+                                                                {stop.location_name && (
+                                                                    <p className="text-xs text-muted-foreground leading-normal">
+                                                                        {stop.address}
+                                                                    </p>
+                                                                )}
 
                                                                 {/* Metadata / Times */}
                                                                 <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
@@ -448,6 +453,23 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                                                                             Arrived: {formatTime(stop.actual_arrival_time)}
                                                                         </span>
                                                                     )}
+
+                                                                    {stop.actual_completion_time && (
+                                                                        <span className="flex items-center px-1.5 py-0.5 rounded border text-green-700 bg-green-50 border-green-100">
+                                                                            <div className="w-1.5 h-1.5 rounded-full mr-1.5 bg-green-500" />
+                                                                            Completed: {formatTime(stop.actual_completion_time)}
+                                                                        </span>
+                                                                    )}
+
+                                                                    {stop.actual_arrival_time && stop.actual_completion_time && (() => {
+                                                                        const waitMin = Math.round((new Date(stop.actual_completion_time).getTime() - new Date(stop.actual_arrival_time).getTime()) / 60000)
+                                                                        return (
+                                                                            <span className="flex items-center px-1.5 py-0.5 rounded border text-amber-700 bg-amber-50 border-amber-100">
+                                                                                <Timer className="w-3 h-3 mr-1.5" />
+                                                                                Wait: {waitMin} min
+                                                                            </span>
+                                                                        )
+                                                                    })()}
                                                                 </div>
                                                             </div>
 
@@ -530,7 +552,7 @@ const ProofOfDeliveryDialog = ({ stop, formatTime, parseTime }: { stop: any, for
                     actualLocation={stop.actual_completion_lat ? {
                         lat: stop.actual_completion_lat,
                         lng: stop.actual_completion_lng,
-                        timestamp: stop.actual_arrival_time
+                        timestamp: stop.actual_completion_time || stop.actual_arrival_time
                     } : undefined}
                     completionType={stop.type}
                     flagged={stop.flagged_location}
@@ -544,7 +566,7 @@ const ProofOfDeliveryDialog = ({ stop, formatTime, parseTime }: { stop: any, for
                         : stop.scheduled_arrival ? formatTime(stop.scheduled_arrival) : '--:--'}
                 </div>
                 <div>
-                    <span className="font-semibold block text-xs uppercase tracking-wider">Actual</span>
+                    <span className="font-semibold block text-xs uppercase tracking-wider">Arrived</span>
                     <span className={(() => {
                         const actualDate = parseTime(stop.actual_arrival_time)
                         const scheduledDate = parseTime(stop.scheduled_arrival)
@@ -553,6 +575,22 @@ const ProofOfDeliveryDialog = ({ stop, formatTime, parseTime }: { stop: any, for
                         {formatTime(stop.actual_arrival_time) || '--:--'}
                     </span>
                 </div>
+                {stop.actual_completion_time && (
+                    <div>
+                        <span className="font-semibold block text-xs uppercase tracking-wider">Completed</span>
+                        <span className="text-green-600 font-medium">
+                            {formatTime(stop.actual_completion_time)}
+                        </span>
+                    </div>
+                )}
+                {stop.actual_arrival_time && stop.actual_completion_time && (
+                    <div>
+                        <span className="font-semibold block text-xs uppercase tracking-wider">Wait Time</span>
+                        <span className="font-medium">
+                            {Math.round((new Date(stop.actual_completion_time).getTime() - new Date(stop.actual_arrival_time).getTime()) / 60000)} min
+                        </span>
+                    </div>
+                )}
             </div>
         </DialogContent>
     </Dialog>

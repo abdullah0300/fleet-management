@@ -81,8 +81,8 @@ export function JobCard({ job, onViewDetails }: JobCardProps) {
         const stops = job.job_stops?.sort((a, b) => a.sequence_order - b.sequence_order) || []
         if (stops.length === 0) return null
 
-        const start = getCity(stops[0].address)
-        const end = getCity(stops[stops.length - 1].address)
+        const start = stops[0].location_name || getCity(stops[0].address)
+        const end = stops[stops.length - 1].location_name || getCity(stops[stops.length - 1].address)
         const middleCount = stops.length - 2
 
         if (stops.length === 1) return <span className="font-medium text-gray-500">{start}</span>

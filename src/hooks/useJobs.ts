@@ -24,24 +24,27 @@ export type JobWithRelations = JobWithStops & {
 
 /**
  * Get the first pickup address from a job's stops
+ * Prefers location_name for display, falls back to full address
  */
 export function getJobPickupAddress(job: { job_stops?: JobStop[] } | null | undefined): string {
     if (!job?.job_stops?.length) return 'No pickup address'
     const pickup = job.job_stops
         .filter(s => s.type === 'pickup')
         .sort((a, b) => a.sequence_order - b.sequence_order)[0]
-    return pickup?.address || job.job_stops[0]?.address || 'No pickup address'
+    return pickup?.location_name || pickup?.address || job.job_stops[0]?.address || 'No pickup address'
 }
 
 /**
  * Get the last dropoff address from a job's stops
+ * Prefers location_name for display, falls back to full address
  */
 export function getJobDeliveryAddress(job: { job_stops?: JobStop[] } | null | undefined): string {
     if (!job?.job_stops?.length) return 'No delivery address'
     const dropoffs = job.job_stops
         .filter(s => s.type === 'dropoff')
         .sort((a, b) => b.sequence_order - a.sequence_order)
-    return dropoffs[0]?.address || job.job_stops[job.job_stops.length - 1]?.address || 'No delivery address'
+    const lastDropoff = dropoffs[0] || job.job_stops[job.job_stops.length - 1]
+    return lastDropoff?.location_name || lastDropoff?.address || 'No delivery address'
 }
 
 /**

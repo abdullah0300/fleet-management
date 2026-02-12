@@ -339,9 +339,11 @@ export interface Database {
           actual_arrival_time: string | null
           actual_arrival_lat: number | null
           actual_arrival_lng: number | null
+          actual_completion_time: string | null
           actual_completion_lat: number | null
           actual_completion_lng: number | null
           flagged_location: boolean | null
+          location_name: string | null
           created_at: string
         }
         Insert: {
@@ -363,9 +365,11 @@ export interface Database {
           actual_arrival_time?: string | null
           actual_arrival_lat?: number | null
           actual_arrival_lng?: number | null
+          actual_completion_time?: string | null
           actual_completion_lat?: number | null
           actual_completion_lng?: number | null
           flagged_location?: boolean | null
+          location_name?: string | null
           created_at?: string
         }
         Update: {
@@ -387,9 +391,11 @@ export interface Database {
           actual_arrival_time?: string | null
           actual_arrival_lat?: number | null
           actual_arrival_lng?: number | null
+          actual_completion_time?: string | null
           actual_completion_lat?: number | null
           actual_completion_lng?: number | null
           flagged_location?: boolean | null
+          location_name?: string | null
           created_at?: string
         }
       }

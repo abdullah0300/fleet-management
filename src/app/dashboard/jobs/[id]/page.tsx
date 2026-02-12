@@ -254,9 +254,18 @@ export default function JobDetailPage() {
                                                     ? formatTime(stop.scheduled_time)
                                                     : 'Not Scheduled'
 
-                                        // Actual Time Display
-                                        const actualTime = stop.actual_arrival_time
+                                        // Actual Times Display
+                                        const actualArrival = stop.actual_arrival_time
                                             ? formatTime(stop.actual_arrival_time)
+                                            : null
+
+                                        const actualCompletion = stop.actual_completion_time
+                                            ? formatTime(stop.actual_completion_time)
+                                            : null
+
+                                        // Waiting Time Calculation
+                                        const waitingMinutes = (stop.actual_arrival_time && stop.actual_completion_time)
+                                            ? Math.round((new Date(stop.actual_completion_time).getTime() - new Date(stop.actual_arrival_time).getTime()) / 60000)
                                             : null
 
                                         // Status Color Logic for Time
@@ -282,7 +291,10 @@ export default function JobDetailPage() {
                                                                 {stop.type}
                                                                 {stop.status === 'completed' && <span className="ml-2 text-green-600 normal-case bg-green-50 px-1.5 py-0.5 rounded text-[10px]">✓ Done</span>}
                                                             </div>
-                                                            <p className="text-sm font-medium">{stop.address}</p>
+                                                            {stop.location_name && (
+                                                                <p className="text-sm font-semibold text-slate-900">{stop.location_name}</p>
+                                                            )}
+                                                            <p className={`text-sm ${stop.location_name ? 'text-muted-foreground' : 'font-medium'}`}>{stop.address}</p>
                                                         </div>
 
                                                         {/* POD Map / Verification Button */}
@@ -307,7 +319,7 @@ export default function JobDetailPage() {
                                                                             actualLocation={stop.actual_completion_lat ? {
                                                                                 lat: stop.actual_completion_lat,
                                                                                 lng: stop.actual_completion_lng,
-                                                                                timestamp: stop.actual_arrival_time
+                                                                                timestamp: stop.actual_completion_time || stop.actual_arrival_time
                                                                             } : undefined}
                                                                             completionType={stop.type}
                                                                             flagged={stop.flagged_location}
@@ -321,24 +333,52 @@ export default function JobDetailPage() {
                                                                         <div>
                                                                             <span className="font-semibold block text-xs uppercase tracking-wider">Actual Arrival</span>
                                                                             <span className={isLate ? "text-red-600 font-medium" : "text-green-600 font-medium"}>
-                                                                                {actualTime || '--:--'}
+                                                                                {actualArrival || '--:--'}
                                                                             </span>
                                                                         </div>
+                                                                        {actualCompletion && (
+                                                                            <div>
+                                                                                <span className="font-semibold block text-xs uppercase tracking-wider">Completed</span>
+                                                                                <span className="text-green-600 font-medium">
+                                                                                    {actualCompletion}
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
+                                                                        {waitingMinutes !== null && (
+                                                                            <div>
+                                                                                <span className="font-semibold block text-xs uppercase tracking-wider">Wait Time</span>
+                                                                                <span className="font-medium">
+                                                                                    {waitingMinutes} min
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
                                                                     </div>
                                                                 </DialogContent>
                                                             </Dialog>
                                                         )}
                                                     </div>
 
-                                                    <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground">
+                                                    <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                                                         <div className="flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded">
                                                             <Clock className="h-3 w-3" />
                                                             <span>Sched: {scheduledTime}</span>
                                                         </div>
-                                                        {actualTime && (
+                                                        {actualArrival && (
                                                             <div className={`flex items-center gap-1 px-1.5 py-0.5 rounded ${isLate ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>
                                                                 <CheckCircle2 className="h-3 w-3" />
-                                                                <span>Arrived: {actualTime}</span>
+                                                                <span>Arrived: {actualArrival}</span>
+                                                            </div>
+                                                        )}
+                                                        {actualCompletion && (
+                                                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-green-50 text-green-700">
+                                                                <CheckCircle2 className="h-3 w-3" />
+                                                                <span>Completed: {actualCompletion}</span>
+                                                            </div>
+                                                        )}
+                                                        {waitingMinutes !== null && (
+                                                            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-700">
+                                                                <Timer className="h-3 w-3" />
+                                                                <span>Wait: {waitingMinutes} min</span>
                                                             </div>
                                                         )}
                                                     </div>

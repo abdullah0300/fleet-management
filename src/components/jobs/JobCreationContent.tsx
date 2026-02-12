@@ -260,6 +260,7 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
         lng?: number,
         type: 'pickup' | 'dropoff' | 'waypoint',
         notes: string,
+        location_name: string,
         // Schedule fields
         arrival_mode?: 'fixed' | 'window',
         scheduled_arrival?: string,
@@ -275,6 +276,7 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
                 lng: s.longitude || undefined,
                 type: s.type,
                 notes: s.notes || '',
+                location_name: s.location_name || '',
                 arrival_mode: (s.arrival_mode as any) || 'fixed',
                 scheduled_arrival: s.scheduled_arrival || undefined,
                 window_start: s.window_start || undefined,
@@ -283,8 +285,8 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
             }))
         }
         return [
-            { id: '1', address: '', type: 'pickup', notes: '' },
-            { id: '2', address: '', type: 'dropoff', notes: '' }
+            { id: '1', address: '', type: 'pickup' as const, notes: '', location_name: '' },
+            { id: '2', address: '', type: 'dropoff' as const, notes: '', location_name: '' }
         ]
     })
 
@@ -298,8 +300,8 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
         setPriority('normal')
         setSelectedRouteId(null)
         setStops([
-            { id: '1', address: '', type: 'pickup', notes: '' },
-            { id: '2', address: '', type: 'dropoff', notes: '' }
+            { id: '1', address: '', type: 'pickup' as const, notes: '', location_name: '' },
+            { id: '2', address: '', type: 'dropoff' as const, notes: '', location_name: '' }
         ])
         setActiveTab('details')
     }
@@ -328,7 +330,8 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
                 lat: origin.lat,
                 lng: origin.lng,
                 type: 'pickup',
-                notes: ''
+                notes: '',
+                location_name: ''
             })
         }
 
@@ -343,7 +346,8 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
                         lat: wp.lat,
                         lng: wp.lng,
                         type: 'waypoint',
-                        notes: ''
+                        notes: '',
+                        location_name: ''
                     })
                 }
             })
@@ -358,7 +362,8 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
                 lat: destination.lat,
                 lng: destination.lng,
                 type: 'dropoff',
-                notes: ''
+                notes: '',
+                location_name: ''
             })
         }
 
@@ -373,7 +378,7 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
     }
 
     const addStop = () => {
-        setStops([...stops, { id: Math.random().toString(), address: '', type: 'dropoff', notes: '' }])
+        setStops([...stops, { id: Math.random().toString(), address: '', type: 'dropoff', notes: '', location_name: '' }])
     }
 
     const removeStop = (id: string) => {
@@ -472,6 +477,7 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
                 latitude: stop.lat || null,
                 longitude: stop.lng || null,
                 notes: stop.notes || null,
+                location_name: stop.location_name || null,
                 scheduled_time: null, // Legacy field, we use sched_arrival now
                 service_duration: (stop as any).service_duration || 0,
                 arrival_mode: (stop as any).arrival_mode || 'fixed',
@@ -696,6 +702,12 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
                                                         className="h-8 text-xs"
                                                     />
                                                 </div>
+                                                <Input
+                                                    placeholder="Location Name (e.g. Downtown LA)"
+                                                    className="w-44 h-8 text-xs"
+                                                    value={stop.location_name}
+                                                    onChange={(e) => updateStop(stop.id, 'location_name', e.target.value)}
+                                                />
                                             </div>
 
                                             {/* Row 2: Scheduling Mode */}

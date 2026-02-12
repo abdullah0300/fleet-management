@@ -167,7 +167,10 @@ export function JobDetailPopup({ job, open, onOpenChange, onEdit }: JobDetailPop
                                                     <div className="text-xs font-semibold uppercase tracking-wider mb-0.5 text-muted-foreground">
                                                         {stop.type}
                                                     </div>
-                                                    <p className="text-sm font-medium leading-tight">{stop.address}</p>
+                                                    <p className="text-sm font-medium leading-tight">{stop.location_name || stop.address}</p>
+                                                    {stop.location_name && (
+                                                        <p className="text-xs text-muted-foreground leading-tight">{stop.address}</p>
+                                                    )}
 
                                                     {/* Time Info */}
                                                     <div className="mt-1.5 flex flex-wrap gap-2">
