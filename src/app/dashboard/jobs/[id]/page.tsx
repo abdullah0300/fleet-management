@@ -17,6 +17,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { ProofOfDeliveryMap } from '@/components/manifests/ProofOfDeliveryMap'
+import { JobPODViewer } from '@/components/jobs/JobPODViewer'
 import { format } from 'date-fns'
 import { useRealtimeUpdate } from '@/hooks/useRealtimeUpdate'
 import { jobKeys } from '@/hooks/useJobs'
@@ -426,16 +427,26 @@ export default function JobDetailPage() {
                     </div>
                 </TabsContent>
 
-                <TabsContent value="documents" className="flex-1 mt-0">
-                    <Card className="h-full">
-                        <CardHeader>
-                            <CardTitle>Job Documents</CardTitle>
-                            <CardDescription>Upload PODs, invoices, or other files.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="h-[calc(100%-5rem)]">
-                            <EntityDocuments entityId={id} entityType="job" className="h-full" />
-                        </CardContent>
-                    </Card>
+                <TabsContent value="documents" className="flex-1 mt-0 h-full min-h-0">
+                    <div className={`grid grid-cols-1 ${job.proof_of_delivery?.length ? 'lg:grid-cols-2' : ''} gap-6 h-full`}>
+                        {/* POD Section - Only shows if data exists */}
+                        {job.proof_of_delivery && job.proof_of_delivery.length > 0 && (
+                            <div className="h-full overflow-y-auto pr-1">
+                                <JobPODViewer podData={job.proof_of_delivery} />
+                            </div>
+                        )}
+
+                        {/* General Documents Section */}
+                        <Card className="h-full flex flex-col border-slate-200 shadow-sm">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-base">Job Documents</CardTitle>
+                                <CardDescription>Upload and manage job-related files.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="flex-1 min-h-0 overflow-y-auto">
+                                <EntityDocuments entityId={id} entityType="job" />
+                            </CardContent>
+                        </Card>
+                    </div>
                 </TabsContent>
             </Tabs>
         </div>

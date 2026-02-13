@@ -75,41 +75,29 @@ async function createPOD(data: PODUploadData): Promise<PODResult> {
     // 2. Upload photos to storage
     const photoUrls: string[] = []
     for (let i = 0; i < photoDataUrls.length; i++) {
-        const photoPath = `photos/${jobId}/${timestamp}_photo_${i}.png`
+        const photoPath = `photos/${jobId}/${timestamp}_photo_${i}.jpg`  // Use .jpg for JPEG data
         const photoUrl = await uploadToStorage('delivery-proofs', photoPath, photoDataUrls[i])
         photoUrls.push(photoUrl)
     }
 
-    // 3. Create POD record in database
+    // 3. Create POD record in database with photos array (matching mobile app schema)
     const { data: podData, error: podError } = await supabase
         .from('proof_of_delivery')
         .insert({
             job_id: jobId,
+            type: 'delivery',  // Required field: 'pickup' or 'delivery'
             recipient_name: recipientName,
             signature_url: signatureUrl,
-            delivery_notes: deliveryNotes || null,
-            completed_at: new Date().toISOString()
+            photos: photoUrls,  // Store photos as array in main table
+            notes: deliveryNotes || null,
+            timestamp: new Date().toISOString()
         })
         .select()
         .single()
 
     if (podError) throw podError
 
-    // 4. Create photo records
-    if (photoUrls.length > 0) {
-        const photoRecords = photoUrls.map(url => ({
-            pod_id: podData.id,
-            photo_url: url
-        }))
-
-        const { error: photosError } = await supabase
-            .from('proof_of_delivery_photos')
-            .insert(photoRecords)
-
-        if (photosError) throw photosError
-    }
-
-    // 5. Update job status to completed
+    // 4. Update job status to completed
     const { error: jobError } = await supabase
         .from('jobs')
         .update({ status: 'completed' })

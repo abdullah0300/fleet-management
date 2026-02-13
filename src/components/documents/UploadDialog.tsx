@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useRef } from 'react'
-import { Upload, FileText, X, Loader2 } from 'lucide-react'
+import { useState, useRef, useMemo } from 'react'
+import { Upload, FileText, X, Loader2, Search, Check, ChevronDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 import { Input } from '@/components/ui/input'
@@ -35,14 +35,23 @@ interface UploadDialogProps {
 }
 
 const documentTypes = [
-    { value: 'license', label: 'Driver License' },
-    { value: 'registration', label: 'Vehicle Registration' },
-    { value: 'insurance', label: 'Insurance' },
-    { value: 'inspection', label: 'Inspection Certificate' },
-    { value: 'permit', label: 'Permit' },
-    { value: 'contract', label: 'Contract' },
-    { value: 'invoice', label: 'Invoice' },
-    { value: 'pod', label: 'Proof of Delivery' },
+    { value: 'trouble_ticket', label: 'Trouble Ticket' },
+    { value: 'yard_ticket', label: 'Yard Ticket' },
+    { value: 'storage_receipt', label: 'Storage Receipt' },
+    { value: 'scale_ticket', label: 'Scale Ticket' },
+    { value: 'repair_invoice', label: 'Repair Invoice' },
+    { value: 'proof_of_pickup', label: 'Proof of Pick Up' },
+    { value: 'proof_of_delivery', label: 'Proof of Delivery' },
+    { value: 'proof_of_completion', label: 'Proof of Completion' },
+    { value: 'bol', label: 'BOL' },
+    { value: 'lumper_fee', label: 'Lumper Fee' },
+    { value: 'interchange_in', label: 'Interchange In' },
+    { value: 'interchange_out', label: 'Interchange Out' },
+    { value: 'delivery_order', label: 'Delivery Order' },
+    { value: 'chassis_interchange', label: 'Chassis Interchange' },
+    { value: 'chassis_photo', label: 'Chassis Photo' },
+    { value: 'container_trailer_photo', label: 'Container/Trailer Photo' },
+    { value: 'manifest', label: 'Manifest' },
     { value: 'other', label: 'Other' },
 ]
 
@@ -53,7 +62,17 @@ export function UploadDialog({ trigger, onSuccess, entityType: initialType, enti
     const [entityId, setEntityId] = useState(initialId || '')
     const [documentType, setDocumentType] = useState('other')
     const [expiryDate, setExpiryDate] = useState('')
+    const [typeSearch, setTypeSearch] = useState('')
+    const [typeDropdownOpen, setTypeDropdownOpen] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
+    const typeDropdownRef = useRef<HTMLDivElement>(null)
+
+    const filteredDocTypes = useMemo(() => {
+        if (!typeSearch) return documentTypes
+        return documentTypes.filter(t =>
+            t.label.toLowerCase().includes(typeSearch.toLowerCase())
+        )
+    }, [typeSearch])
 
     const { data: vehiclesData } = useVehicles()
     const { data: driversData } = useDrivers()
@@ -249,21 +268,65 @@ export function UploadDialog({ trigger, onSuccess, entityType: initialType, enti
                         </div>
                     )}
 
-                    {/* Document Type */}
+                    {/* Document Type with Search */}
                     <div className="space-y-2">
                         <Label className="text-sm">Document Type *</Label>
-                        <Select value={documentType} onValueChange={setDocumentType}>
-                            <SelectTrigger>
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {documentTypes.map((type) => (
-                                    <SelectItem key={type.value} value={type.value}>
-                                        {type.label}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <div className="relative" ref={typeDropdownRef}>
+                            <button
+                                type="button"
+                                className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                                onClick={() => setTypeDropdownOpen(!typeDropdownOpen)}
+                            >
+                                <span className={documentType ? '' : 'text-muted-foreground'}>
+                                    {documentTypes.find(t => t.value === documentType)?.label || 'Select type...'}
+                                </span>
+                                <ChevronDown className="h-4 w-4 opacity-50" />
+                            </button>
+                            {typeDropdownOpen && (
+                                <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover shadow-lg">
+                                    <div className="flex items-center border-b px-3 py-2">
+                                        <Search className="h-4 w-4 text-muted-foreground mr-2 shrink-0" />
+                                        <input
+                                            type="text"
+                                            placeholder="Search document types..."
+                                            value={typeSearch}
+                                            onChange={(e) => setTypeSearch(e.target.value)}
+                                            className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                                            autoFocus
+                                        />
+                                    </div>
+                                    <div className="max-h-48 overflow-y-auto p-1">
+                                        {filteredDocTypes.length === 0 ? (
+                                            <p className="py-3 px-2 text-sm text-muted-foreground text-center">No types found</p>
+                                        ) : (
+                                            filteredDocTypes.map((type) => (
+                                                <button
+                                                    key={type.value}
+                                                    type="button"
+                                                    className={cn(
+                                                        "w-full flex items-center gap-2 rounded px-2 py-1.5 text-sm cursor-pointer transition-colors",
+                                                        documentType === type.value
+                                                            ? 'bg-primary/10 text-primary font-medium'
+                                                            : 'hover:bg-accent'
+                                                    )}
+                                                    onClick={() => {
+                                                        setDocumentType(type.value)
+                                                        setTypeDropdownOpen(false)
+                                                        setTypeSearch('')
+                                                    }}
+                                                >
+                                                    <Check className={cn(
+                                                        "h-3.5 w-3.5 shrink-0",
+                                                        documentType === type.value ? 'opacity-100' : 'opacity-0'
+                                                    )} />
+                                                    {type.label}
+                                                </button>
+                                            ))
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Expiry Date */}

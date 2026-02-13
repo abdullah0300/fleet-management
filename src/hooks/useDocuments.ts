@@ -117,8 +117,7 @@ async function uploadDocument(
             entity_id: metadata.entityId,
             document_type: metadata.documentType,
             file_url: urlData.publicUrl,
-            expiry_date: metadata.expiryDate || null,
-            ...(companyId && { company_id: companyId })
+            expiry_date: metadata.expiryDate || null
         })
         .select()
         .single()
@@ -212,7 +211,7 @@ export function useCreateDocument() {
             if (!companyId) throw new Error("Company ID is required to create a document.")
             const { data, error } = await supabase
                 .from('documents')
-                .insert({ ...doc, company_id: companyId })
+                .insert(doc)
                 .select()
                 .single()
 
@@ -316,13 +315,23 @@ export function useDeleteDocument() {
  */
 export function getDocumentTypeLabel(type: string): string {
     const labels: Record<string, string> = {
-        license: 'Driver License',
-        registration: 'Vehicle Registration',
-        insurance: 'Insurance',
-        inspection: 'Inspection Certificate',
-        permit: 'Permit',
-        contract: 'Contract',
-        invoice: 'Invoice',
+        trouble_ticket: 'Trouble Ticket',
+        yard_ticket: 'Yard Ticket',
+        storage_receipt: 'Storage Receipt',
+        scale_ticket: 'Scale Ticket',
+        repair_invoice: 'Repair Invoice',
+        proof_of_pickup: 'Proof of Pick Up',
+        proof_of_delivery: 'Proof of Delivery',
+        proof_of_completion: 'Proof of Completion',
+        bol: 'BOL',
+        lumper_fee: 'Lumper Fee',
+        interchange_in: 'Interchange In',
+        interchange_out: 'Interchange Out',
+        delivery_order: 'Delivery Order',
+        chassis_interchange: 'Chassis Interchange',
+        chassis_photo: 'Chassis Photo',
+        container_trailer_photo: 'Container/Trailer Photo',
+        manifest: 'Manifest',
         other: 'Other',
     }
     return labels[type] || type

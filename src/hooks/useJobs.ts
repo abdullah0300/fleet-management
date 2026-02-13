@@ -16,6 +16,7 @@ export type JobWithRelations = JobWithStops & {
     vehicles: Vehicle | null
     drivers: DriverWithProfile | null
     manifests?: { id: string; manifest_number: string | null; status: string | null } | null
+    proof_of_delivery?: any[]
 }
 
 // ============================================
@@ -196,7 +197,8 @@ async function fetchJob(id: string): Promise<JobWithRelations> {
             drivers:driver_id (
                 *,
                 profiles (*)
-            )
+            ),
+            proof_of_delivery (*)
         `)
         .eq('id', id)
         .single()

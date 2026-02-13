@@ -17,8 +17,8 @@ interface PODData {
     id: string
     recipient_name: string
     signature_url?: string | null
-    delivery_notes?: string | null
-    completed_at: string
+    notes?: string | null
+    timestamp: string
     photos?: { photo_url: string }[]
 }
 
@@ -61,7 +61,7 @@ export function PODViewer({ pod, trigger }: PODViewerProps) {
                         {/* Timestamp */}
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Clock className="h-4 w-4" />
-                            {new Date(pod.completed_at).toLocaleString()}
+                            {new Date(pod.timestamp).toLocaleString()}
                         </div>
 
                         {/* Signature */}
@@ -107,11 +107,11 @@ export function PODViewer({ pod, trigger }: PODViewerProps) {
                         )}
 
                         {/* Notes */}
-                        {pod.delivery_notes && (
+                        {pod.notes && (
                             <div>
                                 <p className="text-sm font-medium mb-1">Notes</p>
                                 <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                                    {pod.delivery_notes}
+                                    {pod.notes}
                                 </p>
                             </div>
                         )}
