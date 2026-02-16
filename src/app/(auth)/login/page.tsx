@@ -1,5 +1,6 @@
 import { login } from './actions'
-import { Truck, MapPin, Shield, BarChart3 } from 'lucide-react'
+import { Truck, MapPin, Shield, BarChart3, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 
 export default function LoginPage() {
     return (
@@ -89,7 +90,11 @@ export default function LoginPage() {
             </div>
 
             {/* Right Panel - Login Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center bg-background p-4">
+            <div className="w-full lg:w-1/2 flex items-center justify-center bg-background p-4 relative">
+                <Link href="/" className="absolute top-8 left-8 flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors group">
+                    <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
+                    Back to Home
+                </Link>
                 <div className="w-full max-w-sm space-y-8">
                     {/* Mobile Logo (hidden on lg+) */}
                     <div className="flex flex-col items-center gap-3 lg:hidden">
@@ -150,8 +155,7 @@ export default function LoginPage() {
 
                     <p className="text-center text-xs text-muted-foreground">
                         By continuing, you agree to Trucker&apos;sCall&apos;s{' '}
-                        <a href="#" className="hover:underline" style={{ color: '#548EC7' }}>Terms</a> and{' '}
-                        <a href="#" className="hover:underline" style={{ color: '#548EC7' }}>Privacy Policy</a>.
+                        <Link href="/privacy-policy" className="hover:underline" style={{ color: '#548EC7' }}>Privacy Policy</Link>.
                     </p>
                 </div>
             </div>
