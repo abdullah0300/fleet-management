@@ -13,6 +13,7 @@ export type Permission =
     | 'manage:jobs'
     | 'view:routes'
     | 'manage:routes'
+    | 'view:notifications' // NEW
     | 'view:dispatch'   // NEW
     | 'manage:dispatch' // NEW
     | 'view:manifests'  // NEW
@@ -36,28 +37,31 @@ const rolePermissions: Record<UserRole, Permission[]> = {
         'view:routes', 'manage:routes', 'view:dispatch', 'manage:dispatch',
         'view:manifests', 'manage:manifests', 'view:tracking',
         'view:maintenance', 'manage:maintenance', 'view:documents',
-        'manage:documents', 'view:reports', 'view:settings', 'manage:settings'
+        'manage:documents', 'view:reports', 'view:settings', 'manage:settings',
+        'view:notifications' // Admin can view notifications
     ],
     fleet_manager: [
+        'view:dashboard', 'view:vehicles', 'manage:vehicles',
         'view:dashboard', 'view:vehicles', 'manage:vehicles',
         'view:drivers', 'manage:drivers', 'view:jobs', 'manage:jobs',
         'view:routes', 'manage:routes', 'view:dispatch', 'manage:dispatch',
         'view:manifests', 'manage:manifests', 'view:tracking',
         'view:maintenance', 'manage:maintenance', 'view:documents',
-        'manage:documents', 'view:reports', 'view:settings'
+        'manage:documents', 'view:reports', 'view:settings', 'view:notifications'
     ],
     dispatcher: [
         'view:dashboard', 'view:vehicles', 'view:drivers',
+        'view:dashboard', 'view:vehicles', 'view:drivers',
         'view:jobs', 'manage:jobs', 'view:routes', 'manage:routes',
         'view:dispatch', 'manage:dispatch', 'view:manifests', 'manage:manifests',
-        'view:tracking', 'view:maintenance', 'view:documents'
+        'view:tracking', 'view:maintenance', 'view:documents', 'view:notifications'
     ],
     driver: [
-        'view:dashboard', 'view:jobs', 'view:tracking'
+        'view:dashboard', 'view:jobs', 'view:tracking', 'view:notifications'
     ],
     accountant: [
         'view:dashboard', 'view:reports', 'view:drivers',
-        'view:jobs', 'view:maintenance', 'view:manifests'
+        'view:jobs', 'view:maintenance', 'view:manifests', 'view:notifications'
     ]
 }
 
@@ -104,6 +108,7 @@ const routePermissions: Record<string, Permission> = {
     '/dashboard/reports': 'view:reports',
     '/dashboard/settings': 'view:settings',
     '/dashboard/costs': 'view:reports',
+    '/dashboard/notifications': 'view:notifications',
 }
 
 // Check if a user can access a specific route
