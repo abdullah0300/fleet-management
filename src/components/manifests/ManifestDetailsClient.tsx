@@ -20,7 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ProofOfDeliveryMap } from '@/components/manifests/ProofOfDeliveryMap'
 import { format } from 'date-fns'
 import { useRealtimeUpdate } from '@/hooks/useRealtimeUpdate'
-import { manifestKeys } from '@/hooks/useManifests'
+import { manifestKeys, useUpdateManifest } from '@/hooks/useManifests'
 import { formatDate, formatTime, parseTime } from '@/lib/utils'
 
 interface ManifestDetailsClientProps {
@@ -90,6 +90,7 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
     const router = useRouter()
     const startTrip = useStartTrip()
     const completeTrip = useCompleteTrip()
+    const updateManifestMutation = useUpdateManifest()
     const [isActionLoading, setIsActionLoading] = useState(false)
 
     // --- Real-time Updates ---
@@ -183,6 +184,21 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
         }
     }
 
+    const handleCancelManifest = async () => {
+        if (!confirm('Are you sure you want to cancel this manifest?')) return
+        setIsActionLoading(true)
+        try {
+            await updateManifestMutation.mutateAsync({
+                id: manifest.id,
+                updates: { status: 'cancelled' }
+            })
+        } catch (error: any) {
+            alert(error.message)
+        } finally {
+            setIsActionLoading(false)
+        }
+    }
+
     return (
         <div className="flex flex-col h-[calc(100vh-6rem)] gap-6">
             {/* Header */}
@@ -214,6 +230,11 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                         <Button onClick={handleStartTrip} disabled={isActionLoading} size="lg">
                             <Play className="mr-2 h-4 w-4" />
                             Start Trip
+                        </Button>
+                    )}
+                    {manifest.status !== 'cancelled' && manifest.status !== 'completed' && (
+                        <Button variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={handleCancelManifest} disabled={isActionLoading}>
+                            <AlertCircle className="mr-2 h-4 w-4" /> Cancel Manifest
                         </Button>
                     )}
                 </div>

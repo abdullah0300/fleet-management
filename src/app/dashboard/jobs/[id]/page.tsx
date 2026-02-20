@@ -6,7 +6,7 @@ import {
     Package, DollarSign, CheckCircle2, XCircle, Play, Camera, Navigation,
     AlertCircle, Smartphone, Timer
 } from 'lucide-react'
-import { useJob, useUpdateJob, useDeleteJob, getJobPickupAddress, getJobDeliveryAddress, getJobMapPoints, getJobStopCount } from '@/hooks/useJobs'
+import { useJob, useUpdateJob, useDeleteJob, useUpdateJobStop, useForceCompleteStop, getJobPickupAddress, getJobDeliveryAddress, getJobMapPoints, getJobStopCount } from '@/hooks/useJobs'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -76,6 +76,8 @@ export default function JobDetailPage() {
     const { data: job, isLoading, error } = useJob(id)
     const updateMutation = useUpdateJob()
     const deleteMutation = useDeleteJob()
+    const updateStopMutation = useUpdateJobStop()
+    const forceCompleteStopMutation = useForceCompleteStop()
 
     // --- Real-time Updates ---
     // --- Real-time Updates ---
@@ -184,6 +186,12 @@ export default function JobDetailPage() {
                                 <CheckCircle2 className="mr-2 h-4 w-4" /> Complete
                             </Button>
                         </>
+                    )}
+                    {/* Dispatcher Cancel Option */}
+                    {job.status !== 'cancelled' && job.status !== 'completed' && (
+                        <Button variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => handleStatusChange('cancelled')} disabled={updateMutation.isPending}>
+                            <XCircle className="mr-2 h-4 w-4" /> Cancel Job
+                        </Button>
                     )}
                 </div>
             </div>
@@ -358,6 +366,70 @@ export default function JobDetailPage() {
                                                             </Dialog>
                                                         )}
                                                     </div>
+
+                                                    {/* Dispatcher Force Actions */}
+                                                    {job.status !== 'completed' && job.status !== 'cancelled' && (
+                                                        <div className="flex gap-2 mb-2">
+                                                            {/* Force Arrived */}
+                                                            {!stop.actual_arrival_time && stop.status !== 'completed' && (
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="outline"
+                                                                    className="h-7 text-xs border-green-200 text-green-700 hover:bg-green-50"
+                                                                    onClick={() => updateStopMutation.mutate({
+                                                                        id: stop.id,
+                                                                        updates: {
+                                                                            actual_arrival_time: new Date().toISOString(),
+                                                                        }
+                                                                    })}
+                                                                    disabled={updateStopMutation.isPending}
+                                                                >
+                                                                    <MapPin className="h-3 w-3 mr-1" /> Mark Arrived
+                                                                </Button>
+                                                            )}
+
+                                                            {/* Force Complete */}
+                                                            {stop.status !== 'completed' && (
+                                                                <Dialog>
+                                                                    <DialogTrigger asChild>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline"
+                                                                            className="h-7 text-xs border-blue-200 text-blue-700 hover:bg-blue-50"
+                                                                        >
+                                                                            <CheckCircle2 className="h-3 w-3 mr-1" /> Force Complete
+                                                                        </Button>
+                                                                    </DialogTrigger>
+                                                                    <DialogContent>
+                                                                        <DialogHeader>
+                                                                            <DialogTitle>Force Complete Stop #{index + 1}</DialogTitle>
+                                                                            <CardDescription>Manually mark this stop as completed. You can add notes.</CardDescription>
+                                                                        </DialogHeader>
+                                                                        <div className="grid gap-4 py-4">
+                                                                            <div className="space-y-2">
+                                                                                <label className="text-sm font-medium">Notes (Optional)</label>
+                                                                                <textarea
+                                                                                    id={`notes-${stop.id}`}
+                                                                                    className="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                                                                                    placeholder="Dispatcher note: Verified with customer..."
+                                                                                />
+                                                                            </div>
+                                                                            <Button onClick={() => {
+                                                                                const notesElement = document.getElementById(`notes-${stop.id}`) as HTMLTextAreaElement
+                                                                                forceCompleteStopMutation.mutate({
+                                                                                    stopId: stop.id,
+                                                                                    jobId: job.id,
+                                                                                    notes: notesElement ? notesElement.value : ''
+                                                                                })
+                                                                            }} disabled={forceCompleteStopMutation.isPending}>
+                                                                                {forceCompleteStopMutation.isPending ? 'Completing...' : 'Confirm Completion'}
+                                                                            </Button>
+                                                                        </div>
+                                                                    </DialogContent>
+                                                                </Dialog>
+                                                            )}
+                                                        </div>
+                                                    )}
 
                                                     <div className="mt-1 flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                                                         <div className="flex items-center gap-1 bg-slate-100 px-1.5 py-0.5 rounded">

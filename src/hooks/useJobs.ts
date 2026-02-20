@@ -613,6 +613,85 @@ export function useUpdateJobStop() {
         onSuccess: () => {
             // Invalidate job lists to refresh the parent job and its stops
             queryClient.invalidateQueries({ queryKey: jobKeys.lists() })
+            queryClient.invalidateQueries({ queryKey: jobKeys.details() })
         },
+    })
+}
+
+// Force complete a stop (Dispatcher Action)
+async function forceCompleteStopApi({
+    stopId,
+    jobId,
+    notes,
+    podUrl,
+    signatureUrl
+}: {
+    stopId: string
+    jobId: string
+    notes?: string
+    podUrl?: string
+    signatureUrl?: string
+}): Promise<void> {
+    // 1. Create POD record if evidence provided
+    if (podUrl || signatureUrl || notes) {
+        // First get the job to check type or use passed type
+        const { data: stop } = await supabase.from('job_stops').select('type').eq('id', stopId).single()
+
+        const { error: podError } = await supabase
+            .from('proof_of_delivery')
+            .insert({
+                job_id: jobId,
+                type: stop?.type === 'pickup' ? 'pickup' : 'delivery',
+                photos: podUrl ? [podUrl] : [],
+                signature_url: signatureUrl,
+                notes: notes,
+                timestamp: new Date().toISOString()
+            })
+
+        if (podError) throw podError
+    }
+
+    // 2. Mark stop as completed
+    const { error: stopError } = await supabase
+        .from('job_stops')
+        .update({
+            status: 'completed',
+            actual_completion_time: new Date().toISOString(),
+            notes: notes ? `[Dispatcher]: ${notes}` : undefined
+        })
+        .eq('id', stopId)
+
+    if (stopError) throw stopError
+
+    // 3. Check if all stops are done, if so complete job? 
+    // (Optional, matches driver app logic)
+}
+
+export function useForceCompleteStop() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: forceCompleteStopApi,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: jobKeys.lists() })
+            queryClient.invalidateQueries({ queryKey: jobKeys.details() })
+        }
+    })
+}
+
+// Skip a stop (Dispatcher Action)
+export function useSkipStop() {
+    const queryClient = useQueryClient()
+    return useMutation({
+        mutationFn: async (stopId: string) => {
+            const { error } = await supabase
+                .from('job_stops')
+                .update({ status: 'skipped' })
+                .eq('id', stopId)
+            if (error) throw error
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: jobKeys.lists() })
+            queryClient.invalidateQueries({ queryKey: jobKeys.details() })
+        }
     })
 }
