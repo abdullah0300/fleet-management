@@ -152,7 +152,7 @@ export default function PrivacyPolicy() {
                             </p>
                             <ul className="mt-4 space-y-2">
                                 <li><strong>Supabase:</strong> Backend-as-a-Service for secure database, authentication, and file storage.</li>
-                                <li><strong>Mapbox:</strong> For map rendering and routing services.</li>
+                                <li><strong>Google Maps Platform:</strong> For map rendering, places autocomplete, and routing services.</li>
                                 <li><strong>Expo:</strong> Application framework for mobile app stability.</li>
                             </ul>
                             <p className="mt-6">

@@ -53,19 +53,40 @@ interface RouteFormProps {
     isSubmitting?: boolean
 }
 
-// Helper to get Mapbox Route with multiple waypoints
-async function getMapboxRoute(stops: RouteStop[]) {
-    if (!process.env.NEXT_PUBLIC_MAPBOX_TOKEN || stops.length < 2) return null
+// Helper to get Google Route with multiple waypoints
+async function getGoogleRoute(stops: RouteStop[]) {
+    if (!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || stops.length < 2) return null
 
-    // Build coordinates string: lng,lat;lng,lat;...
     const validStops = stops.filter(s => s.lat && s.lng)
     if (validStops.length < 2) return null
 
-    const coords = validStops.map(s => `${s.lng},${s.lat}`).join(';')
+    const origin = validStops[0]
+    const destination = validStops[validStops.length - 1]
+    const intermediates = validStops.slice(1, -1).map(s => ({
+        location: { latLng: { latitude: s.lat, longitude: s.lng } }
+    }))
+
+    const body = {
+        origin: { location: { latLng: { latitude: origin.lat, longitude: origin.lng } } },
+        destination: { location: { latLng: { latitude: destination.lat, longitude: destination.lng } } },
+        intermediates: intermediates.length > 0 ? intermediates : undefined,
+        travelMode: 'DRIVE',
+        routingPreference: 'TRAFFIC_AWARE'
+    }
 
     const response = await fetch(
-        `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?steps=true&geometries=geojson&access_token=${process.env.NEXT_PUBLIC_MAPBOX_TOKEN}`
+        `https://routes.googleapis.com/directions/v2:computeRoutes`,
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Goog-Api-Key': process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
+                'X-Goog-FieldMask': 'routes.distanceMeters,routes.duration'
+            },
+            body: JSON.stringify(body)
+        }
     )
+
     if (!response.ok) return null
     const json = await response.json()
     return json.routes?.[0]
@@ -216,22 +237,28 @@ export function RouteForm({ initialData, onSubmit, isSubmitting }: RouteFormProp
 
         setIsCalculating(true)
         try {
-            // Get route from Mapbox
-            const mapboxRoute = await getMapboxRoute(stops)
+            // Get route from Google
+            const googleRoute = await getGoogleRoute(stops)
 
-            if (mapboxRoute) {
-                const distMiles = (mapboxRoute.distance || 0) / 1609.34
-                const durMin = (mapboxRoute.duration || 0) / 60
+            if (googleRoute) {
+                const distMeters = googleRoute.distanceMeters || 0;
+                const durSeconds = parseInt(googleRoute.duration || '0', 10);
+
+                const distMiles = distMeters / 1609.34
+                const durMin = durSeconds / 60
 
                 setValue('distance_km', Number(distMiles.toFixed(1)))
                 setValue('estimated_duration', Math.round(durMin))
             }
 
-            // Get tolls (origin to destination only for now)
+            // Get tolls including waypoints
             const origin = stops[0]
             const destination = stops[stops.length - 1]
+            const waypoints = stops.slice(1, -1)
+
             if (origin.address && destination.address) {
-                const tollResult = await calculateTolls(origin.address, destination.address)
+                const waypointAddresses = waypoints.map(w => w.address).filter(Boolean)
+                const tollResult = await calculateTolls(origin.address, destination.address, waypointAddresses)
                 if (tollResult) {
                     setValue('estimated_toll_cost', Number(tollResult.tollCost.toFixed(2)))
                 }

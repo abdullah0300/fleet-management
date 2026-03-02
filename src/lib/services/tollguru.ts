@@ -12,9 +12,14 @@ export interface TollCalculationResult {
 }
 
 /**
- * Calculate tolls between origin and destination using TollGuru API
+ * Calculate tolls between origin, destination, and waypoints using TollGuru API
  */
-export async function calculateTolls(origin: string, destination: string, vehicleType: string = '2AxlesAuto'): Promise<TollCalculationResult | null> {
+export async function calculateTolls(
+    origin: string,
+    destination: string,
+    waypoints: string[] = [],
+    vehicleType: string = '5AxlesTruck'
+): Promise<TollCalculationResult | null> {
     if (!TOLLGURU_API_KEY) {
         console.error('TollGuru API key is missing')
         throw new Error('TollGuru API key is not configured')
@@ -30,6 +35,7 @@ export async function calculateTolls(origin: string, destination: string, vehicl
             body: JSON.stringify({
                 from: { address: origin },
                 to: { address: destination },
+                ...(waypoints.length > 0 ? { waypoints: waypoints.map(wp => ({ address: wp })) } : {}),
                 vehicle: { type: vehicleType },
                 serviceProvider: "here",
             })

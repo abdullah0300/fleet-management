@@ -133,6 +133,22 @@ export default function JobDetailPage() {
     const mapPoints = getJobMapPoints(job)
     const stopCount = getJobStopCount(job)
 
+    let dynamicDescription = status.description
+    if (job.status === 'in_progress' && job.job_stops && job.job_stops.length > 0) {
+        const activeStop = job.job_stops.find((s: any) => s.status !== 'completed')
+        if (activeStop) {
+            const stopName = activeStop.location_name || activeStop.address || 'location'
+            const stopTypeDisplay = activeStop.type ? (activeStop.type.charAt(0).toUpperCase() + activeStop.type.slice(1)) : 'Stop'
+            if (activeStop.actual_arrival_time) {
+                dynamicDescription = `Arrived at ${stopTypeDisplay}: ${stopName}.`
+            } else {
+                dynamicDescription = `En route to ${stopTypeDisplay}: ${stopName}.`
+            }
+        } else {
+            dynamicDescription = 'All stops completed. Awaiting final job completion.'
+        }
+    }
+
     return (
         <div className="flex flex-col h-[calc(100vh-6rem)] gap-6">
             {/* Header */}
@@ -201,7 +217,7 @@ export default function JobDetailPage() {
                 <StatusIcon className={`h-4 w-4 ${status.color}`} />
                 <AlertTitle className={status.color}>{status.label}</AlertTitle>
                 <AlertDescription className="text-gray-700">
-                    {status.description}
+                    {dynamicDescription}
                 </AlertDescription>
             </Alert>
 
@@ -375,14 +391,14 @@ export default function JobDetailPage() {
                                                                 <Button
                                                                     size="sm"
                                                                     variant="outline"
-                                                                    className="h-7 text-xs border-green-200 text-green-700 hover:bg-green-50"
+                                                                    className="h-7 text-xs border-green-200 text-green-700 hover:bg-green-50 disabled:opacity-50 disabled:pointer-events-none"
                                                                     onClick={() => updateStopMutation.mutate({
                                                                         id: stop.id,
                                                                         updates: {
                                                                             actual_arrival_time: new Date().toISOString(),
                                                                         }
                                                                     })}
-                                                                    disabled={updateStopMutation.isPending}
+                                                                    disabled={updateStopMutation.isPending || job.status !== 'in_progress'}
                                                                 >
                                                                     <MapPin className="h-3 w-3 mr-1" /> Mark Arrived
                                                                 </Button>
@@ -395,7 +411,8 @@ export default function JobDetailPage() {
                                                                         <Button
                                                                             size="sm"
                                                                             variant="outline"
-                                                                            className="h-7 text-xs border-blue-200 text-blue-700 hover:bg-blue-50"
+                                                                            className="h-7 text-xs border-blue-200 text-blue-700 hover:bg-blue-50 disabled:opacity-50 disabled:pointer-events-none"
+                                                                            disabled={forceCompleteStopMutation.isPending || job.status !== 'in_progress'}
                                                                         >
                                                                             <CheckCircle2 className="h-3 w-3 mr-1" /> Force Complete
                                                                         </Button>
@@ -421,7 +438,7 @@ export default function JobDetailPage() {
                                                                                     jobId: job.id,
                                                                                     notes: notesElement ? notesElement.value : ''
                                                                                 })
-                                                                            }} disabled={forceCompleteStopMutation.isPending}>
+                                                                            }} disabled={forceCompleteStopMutation.isPending || job.status !== 'in_progress'}>
                                                                                 {forceCompleteStopMutation.isPending ? 'Completing...' : 'Confirm Completion'}
                                                                             </Button>
                                                                         </div>

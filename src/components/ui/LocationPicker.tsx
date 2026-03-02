@@ -4,14 +4,11 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import { Input } from '@/components/ui/input'
 import { MapPin, Loader2, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+import { APIProvider, useMapsLibrary } from '@vis.gl/react-google-maps'
 
 interface LocationResult {
     id: string
     place_name: string
-    center: [number, number] // [lng, lat]
-    text: string
 }
 
 interface LocationPickerProps {
@@ -23,7 +20,7 @@ interface LocationPickerProps {
     disabled?: boolean
 }
 
-export function LocationPicker({
+function InnerLocationPicker({
     value,
     onChange,
     placeholder = 'Search for a location...',
@@ -36,9 +33,26 @@ export function LocationPicker({
     const [isLoading, setIsLoading] = useState(false)
     const [isOpen, setIsOpen] = useState(false)
     const [selectedIndex, setSelectedIndex] = useState(-1)
+
     const containerRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLInputElement>(null)
     const debounceRef = useRef<NodeJS.Timeout | null>(null)
+
+    const placesLib = useMapsLibrary('places')
+    const geocodingLib = useMapsLibrary('geocoding')
+
+    const [autocompleteService, setAutocompleteService] = useState<google.maps.places.AutocompleteService | null>(null)
+    const [geocoder, setGeocoder] = useState<google.maps.Geocoder | null>(null)
+
+    useEffect(() => {
+        if (!placesLib) return
+        setAutocompleteService(new placesLib.AutocompleteService())
+    }, [placesLib])
+
+    useEffect(() => {
+        if (!geocodingLib) return
+        setGeocoder(new geocodingLib.Geocoder())
+    }, [geocodingLib])
 
     // Sync external value changes
     useEffect(() => {
@@ -57,41 +71,39 @@ export function LocationPicker({
     }, [])
 
     const searchLocations = useCallback(async (searchQuery: string) => {
-        if (!searchQuery || searchQuery.length < 3 || !MAPBOX_TOKEN) {
+        if (!searchQuery || searchQuery.length < 3 || !autocompleteService) {
             setResults([])
             return
         }
 
         setIsLoading(true)
         try {
-            const response = await fetch(
-                `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(searchQuery)}.json?access_token=${MAPBOX_TOKEN}&types=address,place,poi&limit=5`
-            )
-            const data = await response.json()
-
-            if (data.features) {
-                setResults(data.features.map((feature: any) => ({
-                    id: feature.id,
-                    place_name: feature.place_name,
-                    center: feature.center,
-                    text: feature.text,
+            const response = await autocompleteService.getPlacePredictions({
+                input: searchQuery,
+                componentRestrictions: { country: ['us', 'ca'] }
+            })
+            if (response && response.predictions) {
+                setResults(response.predictions.map(p => ({
+                    id: p.place_id,
+                    place_name: p.description,
                 })))
                 setIsOpen(true)
+            } else {
+                setResults([])
             }
-        } catch (error) {
-            console.error('Geocoding error:', error)
+        } catch (err) {
+            console.error('Autocomplete error:', err)
             setResults([])
         } finally {
             setIsLoading(false)
         }
-    }, [])
+    }, [autocompleteService])
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newQuery = e.target.value
         setQuery(newQuery)
         setSelectedIndex(-1)
 
-        // Debounce API calls
         if (debounceRef.current) {
             clearTimeout(debounceRef.current)
         }
@@ -100,15 +112,29 @@ export function LocationPicker({
         }, 300)
     }
 
-    const handleSelect = (result: LocationResult) => {
+    const handleSelect = async (result: LocationResult) => {
         setQuery(result.place_name)
-        onChange(result.place_name, {
-            lat: result.center[1],
-            lng: result.center[0],
-        })
         setResults([])
         setIsOpen(false)
         setSelectedIndex(-1)
+
+        if (!geocoder) {
+            onChange(result.place_name)
+            return
+        }
+
+        try {
+            const geoResponse = await geocoder.geocode({ placeId: result.id })
+            if (geoResponse.results && geoResponse.results.length > 0) {
+                const loc = geoResponse.results[0].geometry.location
+                onChange(result.place_name, { lat: loc.lat(), lng: loc.lng() })
+            } else {
+                onChange(result.place_name)
+            }
+        } catch (err) {
+            console.error('Geocoding error:', err)
+            onChange(result.place_name)
+        }
     }
 
     const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -196,5 +222,23 @@ export function LocationPicker({
 
             {error && <p className="text-xs text-status-error mt-1">{error}</p>}
         </div>
+    )
+}
+
+export function LocationPicker(props: LocationPickerProps) {
+    const [apiKey, setApiKey] = useState<string>('')
+
+    useEffect(() => {
+        setApiKey(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '')
+    }, [])
+
+    if (!apiKey) {
+        return <InnerLocationPicker {...props} disabled={true} placeholder="Mapping API key missing..." />
+    }
+
+    return (
+        <APIProvider apiKey={apiKey}>
+            <InnerLocationPicker {...props} />
+        </APIProvider>
     )
 }

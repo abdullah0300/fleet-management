@@ -1,146 +1,145 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
-import mapboxgl from 'mapbox-gl'
-import 'mapbox-gl/dist/mapbox-gl.css'
-
+import { useEffect, useState } from 'react'
+import {
+    APIProvider,
+    Map,
+    AdvancedMarker,
+    useMap,
+    useMapsLibrary
+} from '@vis.gl/react-google-maps'
+import { cn } from '@/lib/utils'
+import { truckingMapStyle } from '@/lib/map-styles'
 interface RouteMapProps {
     stops?: { lat: number; lng: number; type: 'origin' | 'waypoint' | 'destination' }[]
     className?: string
 }
 
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN
+function Directions({ stops }: { stops: RouteMapProps['stops'] }) {
+    const map = useMap();
+    const routesLibrary = useMapsLibrary('routes');
+    const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService>();
+    const [directionsRenderer, setDirectionsRenderer] = useState<google.maps.DirectionsRenderer>();
 
-export function RouteMap({ stops = [], className }: RouteMapProps) {
-    const mapContainer = useRef<HTMLDivElement>(null)
-    const map = useRef<mapboxgl.Map | null>(null)
-    const markers = useRef<mapboxgl.Marker[]>([])
-
-    // Initialize Map
+    // Initialize directions service and renderer
     useEffect(() => {
-        if (!mapContainer.current || !MAPBOX_TOKEN) return
+        if (!routesLibrary || !map) return;
+        setDirectionsService(new routesLibrary.DirectionsService());
 
-        mapboxgl.accessToken = MAPBOX_TOKEN
-
-        map.current = new mapboxgl.Map({
-            container: mapContainer.current,
-            style: 'mapbox://styles/mapbox/streets-v12',
-            center: [-98.5795, 39.8283], // US center
-            zoom: 3,
-        })
+        // Setup renderer
+        const renderer = new routesLibrary.DirectionsRenderer({
+            map,
+            suppressMarkers: true, // We draw our own markers
+            polylineOptions: {
+                strokeColor: '#3b82f6',
+                strokeWeight: 5,
+                strokeOpacity: 0.75
+            }
+        });
+        setDirectionsRenderer(renderer);
 
         return () => {
-            map.current?.remove()
-        }
-    }, [])
+            renderer.setMap(null);
+        };
+    }, [routesLibrary, map]);
 
-    // Update Markers & Path when stops change
+    // Calculate and draw route
     useEffect(() => {
-        if (!map.current) return
+        if (!directionsService || !directionsRenderer || !stops || stops.length < 2) {
+            if (directionsRenderer) directionsRenderer.setDirections({ routes: [] } as any);
 
-        // 1. Clear existing markers
-        markers.current.forEach(m => m.remove())
-        markers.current = []
-
-        // 2. Add new markers for each stop
-        stops.forEach((stop, idx) => {
-            const color = stop.type === 'origin' ? '#22c55e' :
-                stop.type === 'destination' ? '#ef4444' : '#3b82f6'
-
-            const marker = new mapboxgl.Marker({ color })
-                .setLngLat([stop.lng, stop.lat])
-                .addTo(map.current!)
-
-            markers.current.push(marker)
-        })
-
-        // 3. Fit bounds to show all stops
-        if (stops.length >= 2) {
-            const bounds = new mapboxgl.LngLatBounds()
-            stops.forEach(stop => bounds.extend([stop.lng, stop.lat]))
-            map.current.fitBounds(bounds, { padding: 60 })
-
-            // 4. Fetch and draw route through all stops
-            fetchRoute(stops)
-        } else if (stops.length === 1) {
-            // Single stop - just center on it
-            map.current.flyTo({ center: [stops[0].lng, stops[0].lat], zoom: 12 })
-            // Remove route if exists
-            clearRouteLayer()
-        } else {
-            // No stops - clear route
-            clearRouteLayer()
+            // If only 1 stop, center map to it
+            if (stops && stops.length === 1 && map) {
+                map.panTo({ lat: stops[0].lat, lng: stops[0].lng });
+                map.setZoom(12);
+            }
+            return;
         }
-    }, [stops])
 
-    const clearRouteLayer = () => {
-        if (!map.current) return
-        if (map.current.getLayer('route')) map.current.removeLayer('route')
-        if (map.current.getSource('route')) map.current.removeSource('route')
+        const validStops = stops.filter(s => s.lat !== undefined && s.lng !== undefined);
+        if (validStops.length < 2) return;
+
+        const origin = validStops[0];
+        const destination = validStops[validStops.length - 1];
+        const waypoints = validStops.slice(1, -1).map(stop => ({
+            location: { lat: stop.lat, lng: stop.lng },
+            stopover: true
+        }));
+
+        directionsService.route({
+            origin: { lat: origin.lat, lng: origin.lng },
+            destination: { lat: destination.lat, lng: destination.lng },
+            waypoints,
+            travelMode: google.maps.TravelMode.DRIVING,
+        }).then(response => {
+            directionsRenderer.setDirections(response);
+
+            // Optional: fit bounds
+            if (response.routes[0]?.bounds && map) {
+                map.fitBounds(response.routes[0].bounds, {
+                    top: 60, right: 60, bottom: 60, left: 60
+                });
+            }
+        }).catch(e => {
+            console.error('Directions request failed:', e);
+            directionsRenderer.setDirections({ routes: [] } as any);
+        });
+    }, [directionsService, directionsRenderer, stops, map]);
+
+    return null;
+}
+
+export function RouteMap({ stops = [], className }: RouteMapProps) {
+    const [apiKey, setApiKey] = useState<string>('');
+
+    useEffect(() => {
+        setApiKey(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '');
+    }, []);
+
+    // US Center
+    const defaultCenter = { lat: 39.8283, lng: -98.5795 };
+
+    if (!apiKey) {
+        return <div className={cn("bg-slate-100 flex items-center justify-center p-4 text-center", className)}>
+            Google Maps API Key required
+        </div>;
     }
 
-    const fetchRoute = async (routeStops: { lat: number; lng: number }[]) => {
-        if (!map.current || !MAPBOX_TOKEN || routeStops.length < 2) return
+    return (
+        <div className={className}>
+            <APIProvider apiKey={apiKey}>
+                <Map
+                    defaultCenter={defaultCenter}
+                    defaultZoom={3}
+                    mapId="route_map"
+                    className="w-full h-full"
+                    gestureHandling={'greedy'}
+                    disableDefaultUI={false}
+                    styles={truckingMapStyle}
+                >
+                    {/* Render custom markers for each stop */}
+                    {stops.filter(s => s.lat && s.lng).map((stop, idx) => {
+                        const color = stop.type === 'origin' ? 'bg-green-500' :
+                            stop.type === 'destination' ? 'bg-red-500' : 'bg-blue-500';
 
-        try {
-            // Ensure style is loaded before adding layers
-            if (!map.current.isStyleLoaded()) {
-                await new Promise<void>(resolve => {
-                    map.current?.once('style.load', () => resolve())
-                })
-            }
-            if (!map.current) return
+                        return (
+                            <AdvancedMarker
+                                key={`${stop.type}-${idx}`}
+                                position={{ lat: stop.lat, lng: stop.lng }}
+                                title={stop.type}
+                            >
+                                <div className={cn(
+                                    "w-4 h-4 rounded-full border-2 border-white shadow-md",
+                                    color
+                                )} />
+                            </AdvancedMarker>
+                        )
+                    })}
 
-            // Build coordinates string: lng,lat;lng,lat;...
-            const coords = routeStops.map(s => `${s.lng},${s.lat}`).join(';')
-
-            const query = await fetch(
-                `https://api.mapbox.com/directions/v5/mapbox/driving/${coords}?steps=true&geometries=geojson&access_token=${MAPBOX_TOKEN}`
-            )
-            const json = await query.json()
-
-            if (!json.routes || !json.routes[0]) {
-                console.warn('No route found')
-                return
-            }
-
-            const data = json.routes[0]
-            const route = data.geometry.coordinates
-
-            const geojson: GeoJSON.Feature<GeoJSON.Geometry> = {
-                type: 'Feature',
-                properties: {},
-                geometry: {
-                    type: 'LineString',
-                    coordinates: route,
-                },
-            }
-
-            if (map.current.getSource('route')) {
-                (map.current.getSource('route') as mapboxgl.GeoJSONSource).setData(geojson as any)
-            } else {
-                map.current.addLayer({
-                    id: 'route',
-                    type: 'line',
-                    source: {
-                        type: 'geojson',
-                        data: geojson as any,
-                    },
-                    layout: {
-                        'line-join': 'round',
-                        'line-cap': 'round',
-                    },
-                    paint: {
-                        'line-color': '#3b82f6',
-                        'line-width': 5,
-                        'line-opacity': 0.75,
-                    },
-                })
-            }
-        } catch (err) {
-            console.error('Error fetching route:', err)
-        }
-    }
-
-    return <div ref={mapContainer} className={className} />
+                    {/* Directions drawing component */}
+                    <Directions stops={stops} />
+                </Map>
+            </APIProvider>
+        </div>
+    )
 }

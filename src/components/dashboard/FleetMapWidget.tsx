@@ -1,68 +1,63 @@
 'use client'
 
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import Map, { Marker, NavigationControl, FullscreenControl, MapRef } from 'react-map-gl/mapbox'
-import 'mapbox-gl/dist/mapbox-gl.css'
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import {
+    APIProvider,
+    Map,
+    AdvancedMarker,
+    useMap
+} from '@vis.gl/react-google-maps'
+import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { useVehicles } from '@/hooks/useVehicles'
-import { Truck, Navigation, Maximize2, RefreshCw } from 'lucide-react'
+import { Truck, Maximize2, RefreshCw } from 'lucide-react'
 import { Button } from "@/components/ui/button"
 import { cn } from '@/lib/utils'
+import { truckingMapStyle } from '@/lib/map-styles'
 
 export function FleetMapWidget() {
-    const mapRef = useRef<MapRef>(null)
-    const [mapboxToken, setMapboxToken] = useState<string>('')
+    const [apiKey, setApiKey] = useState<string>('')
     const { data: vehiclesData, refetch } = useVehicles()
     const vehicles = vehiclesData?.data || []
+    const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null)
 
     const activeVehicles = vehicles.filter(v => v.current_location && (v.status === 'in_use' || v.status === 'available'))
 
     useEffect(() => {
-        const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || ''
-        setMapboxToken(token)
+        setApiKey(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '')
     }, [])
 
     const fitBounds = useCallback(() => {
-        if (!mapRef.current || activeVehicles.length === 0) return
+        if (!mapInstance || activeVehicles.length === 0) return
 
-        const lngs = activeVehicles.map(v => (v.current_location as any).lng)
-        const lats = activeVehicles.map(v => (v.current_location as any).lat)
+        const bounds = new google.maps.LatLngBounds()
+        activeVehicles.forEach(v => {
+            const loc = v.current_location as any
+            if (loc?.lat && loc?.lng) {
+                bounds.extend({ lat: loc.lat, lng: loc.lng })
+            }
+        })
 
-        const minLng = Math.min(...lngs)
-        const maxLng = Math.max(...lngs)
-        const minLat = Math.min(...lats)
-        const maxLat = Math.max(...lats)
-
-        // Add padding
-        const lngPadding = (maxLng - minLng) * 0.1 || 0.05
-        const latPadding = (maxLat - minLat) * 0.1 || 0.05
-
-        mapRef.current.fitBounds(
-            [
-                [minLng - lngPadding, minLat - latPadding],
-                [maxLng + lngPadding, maxLat + latPadding]
-            ],
-            { padding: 40, duration: 1000 }
-        )
-    }, [activeVehicles])
+        if (!bounds.isEmpty()) {
+            mapInstance.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 })
+        }
+    }, [mapInstance, activeVehicles])
 
     // Auto-fit on load
     useEffect(() => {
-        if (mapboxToken && activeVehicles.length > 0) {
+        if (mapInstance && activeVehicles.length > 0) {
             const timer = setTimeout(fitBounds, 1000)
             return () => clearTimeout(timer)
         }
-    }, [mapboxToken, activeVehicles.length, fitBounds])
+    }, [mapInstance, activeVehicles.length, fitBounds])
 
     const initialViewState = useMemo(() => {
         return {
-            longitude: -95.7129, // Center of US
-            latitude: 37.0902,
-            zoom: 3
+            lng: -95.7129, // Center of US
+            lat: 37.0902
         }
     }, [])
 
-    if (!mapboxToken) return <div className="h-[450px] bg-muted animate-pulse rounded-xl" />
+    if (!apiKey) return <div className="h-[450px] bg-muted animate-pulse rounded-xl" />
 
     return (
         <Card className="col-span-1 lg:col-span-2 h-[450px] flex flex-col relative overflow-hidden">
@@ -80,47 +75,49 @@ export function FleetMapWidget() {
                 </div>
             </CardHeader>
             <div className="flex-1 w-full h-full">
-                <Map
-                    ref={mapRef}
-                    mapboxAccessToken={mapboxToken}
-                    initialViewState={initialViewState}
-                    style={{ width: '100%', height: '100%' }}
-                    mapStyle="mapbox://styles/mapbox/light-v11"
-                    reuseMaps
-                >
-                    <NavigationControl position="bottom-right" />
+                <APIProvider apiKey={apiKey}>
+                    <Map
+                        defaultCenter={initialViewState}
+                        defaultZoom={3}
+                        mapId="fleet_map_widget"
+                        className="w-full h-full"
+                        gestureHandling={'greedy'}
+                        disableDefaultUI={false}
+                        styles={truckingMapStyle}
+                        onIdle={(map) => {
+                            if (!mapInstance) setMapInstance(map.map)
+                        }}
+                    >
+                        {activeVehicles.map(vehicle => {
+                            const loc = vehicle.current_location as any
+                            if (!loc?.lat || !loc?.lng) return null
 
-                    {activeVehicles.map(vehicle => {
-                        const loc = vehicle.current_location as any
-                        if (!loc?.lat || !loc?.lng) return null
+                            return (
+                                <AdvancedMarker
+                                    key={vehicle.id}
+                                    position={{ lat: loc.lat, lng: loc.lng }}
+                                >
+                                    <div className="group relative flex flex-col items-center">
+                                        <div className={cn(
+                                            "p-2 rounded-full shadow-lg transition-transform hover:scale-110",
+                                            vehicle.status === 'in_use' ? "bg-green-600 text-white" : "bg-blue-600 text-white"
+                                        )}>
+                                            <Truck className="h-4 w-4 fill-current" />
+                                        </div>
 
-                        return (
-                            <Marker
-                                key={vehicle.id}
-                                longitude={loc.lng}
-                                latitude={loc.lat}
-                                anchor="bottom"
-                            >
-                                <div className="group relative flex flex-col items-center">
-                                    <div className={cn(
-                                        "p-2 rounded-full shadow-lg transition-transform hover:scale-110",
-                                        vehicle.status === 'in_use' ? "bg-green-600 text-white" : "bg-blue-600 text-white"
-                                    )}>
-                                        <Truck className="h-4 w-4 fill-current" />
+                                        {/* Persistent Label */}
+                                        <div className="absolute top-full mt-1 flex flex-col items-center bg-white/90 px-2 py-1 rounded shadow-sm border text-[10px] whitespace-nowrap z-40 backdrop-blur-sm">
+                                            <div className="font-bold text-gray-900 leading-tight">{vehicle.license_plate}</div>
+                                            {vehicle.profiles?.full_name && (
+                                                <div className="text-gray-600 font-medium leading-tight max-w-[80px] truncate">{vehicle.profiles.full_name}</div>
+                                            )}
+                                        </div>
                                     </div>
-
-                                    {/* Persistent Label */}
-                                    <div className="absolute top-full mt-1 flex flex-col items-center bg-white/90 px-2 py-1 rounded shadow-sm border text-[10px] whitespace-nowrap z-40 backdrop-blur-sm">
-                                        <div className="font-bold text-gray-900 leading-tight">{vehicle.license_plate}</div>
-                                        {vehicle.profiles?.full_name && (
-                                            <div className="text-gray-600 font-medium leading-tight max-w-[80px] truncate">{vehicle.profiles.full_name}</div>
-                                        )}
-                                    </div>
-                                </div>
-                            </Marker>
-                        )
-                    })}
-                </Map>
+                                </AdvancedMarker>
+                            )
+                        })}
+                    </Map>
+                </APIProvider>
             </div>
         </Card>
     )
