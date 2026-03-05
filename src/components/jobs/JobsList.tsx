@@ -34,7 +34,8 @@ export function JobsList({ initialData }: JobsListProps) {
         total: jobs.length,
         pending: jobs.filter((j) => j.status === 'pending').length,
         inProgress: jobs.filter((j) => j.status === 'in_progress').length,
-        completed: jobs.filter((j) => j.status === 'completed').length,
+        pendingReview: jobs.filter((j) => j.financial_status === 'pending_review').length,
+        completed: jobs.filter((j) => j.status === 'completed' && j.financial_status === 'approved').length,
     }
 
     // Filter jobs
@@ -42,7 +43,18 @@ export function JobsList({ initialData }: JobsListProps) {
         const matchesSearch =
             job.job_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             job.customer_name?.toLowerCase().includes(searchQuery.toLowerCase())
-        const matchesStatus = statusFilter === 'all' || job.status === statusFilter
+
+        let matchesStatus = false;
+        if (statusFilter === 'all') {
+            matchesStatus = true;
+        } else if (statusFilter === 'pending_review') {
+            matchesStatus = job.financial_status === 'pending_review';
+        } else if (statusFilter === 'completed') {
+            matchesStatus = job.status === 'completed' && job.financial_status === 'approved';
+        } else {
+            matchesStatus = job.status === statusFilter;
+        }
+
         return matchesSearch && matchesStatus
     })
 
@@ -57,7 +69,7 @@ export function JobsList({ initialData }: JobsListProps) {
         value: number;
         icon: any;
         active: boolean;
-        type: 'total' | 'pending' | 'in_progress' | 'completed'
+        type: 'total' | 'pending' | 'in_progress' | 'pending_review' | 'completed'
     }) => {
         const styles = {
             total: {
@@ -77,6 +89,12 @@ export function JobsList({ initialData }: JobsListProps) {
                 border: 'border-blue-200',
                 text: 'text-blue-600',
                 hover: 'hover:bg-blue-50'
+            },
+            pending_review: {
+                bg: 'bg-orange-100',
+                border: 'border-orange-200',
+                text: 'text-orange-600',
+                hover: 'hover:bg-orange-50'
             },
             completed: {
                 bg: 'bg-green-100',
@@ -133,7 +151,7 @@ export function JobsList({ initialData }: JobsListProps) {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <StatCard
                     label="Total Jobs"
                     value={stats.total}
@@ -154,6 +172,13 @@ export function JobsList({ initialData }: JobsListProps) {
                     icon={Truck}
                     active={statusFilter === 'in_progress'}
                     type="in_progress"
+                />
+                <StatCard
+                    label="Pending Review"
+                    value={stats.pendingReview}
+                    icon={AlertCircle}
+                    active={statusFilter === 'pending_review'}
+                    type="pending_review"
                 />
                 <StatCard
                     label="Completed"
@@ -187,6 +212,7 @@ export function JobsList({ initialData }: JobsListProps) {
                             <SelectItem value="pending">Pending</SelectItem>
                             <SelectItem value="assigned">Assigned</SelectItem>
                             <SelectItem value="in_progress">In Progress</SelectItem>
+                            <SelectItem value="pending_review">Pending Review</SelectItem>
                             <SelectItem value="completed">Completed</SelectItem>
                             <SelectItem value="cancelled">Cancelled</SelectItem>
                         </SelectContent>

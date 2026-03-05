@@ -93,7 +93,7 @@ export function VehicleHealthVisualizer({ currentOdometer, programs, mini = fals
                             <div className="flex flex-col">
                                 <span className="font-medium">{prog.service_programs.name}</span>
                                 <span className="text-xs text-muted-foreground">
-                                    {Math.round(prog.last_service_odometer || 0).toLocaleString()} → {Math.round((prog.last_service_odometer || 0) + (prog.service_programs.interval_miles || 0)).toLocaleString()} km
+                                    {Math.round(prog.last_service_odometer || 0).toLocaleString()} → {Math.round((prog.last_service_odometer || 0) + (prog.service_programs.interval_miles || 0)).toLocaleString()} mi
                                 </span>
                             </div>
                             <div className="text-right">

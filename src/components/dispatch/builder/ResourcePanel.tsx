@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Plus, User, Truck, Loader2, Info, Search, X } from 'lucide-react'
+import { Plus, User, Truck, Loader2, Info, Search, X, Wrench } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { DriverForm } from '@/components/drivers/DriverForm'
@@ -232,10 +232,20 @@ export function ResourcePanel({
                                         >
                                             <div className="h-8 w-8 rounded-full bg-orange-100 flex items-center justify-center relative flex-none">
                                                 <Truck className="h-4 w-4 text-orange-600" />
+                                                {vehicle.status === 'maintenance' && (
+                                                    <div className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-amber-500 flex items-center justify-center ring-2 ring-white">
+                                                        <Wrench className="h-2.5 w-2.5 text-white" />
+                                                    </div>
+                                                )}
                                             </div>
                                             <div className="flex-1 min-w-0">
                                                 <div className="text-sm font-medium truncate">{vehicle.license_plate}</div>
-                                                <div className="text-[10px] text-muted-foreground truncate">{vehicle.make} {vehicle.model}</div>
+                                                <div className="text-[10px] text-muted-foreground truncate">
+                                                    {vehicle.make} {vehicle.model}
+                                                    {vehicle.status === 'maintenance' && (
+                                                        <span className="ml-1 text-amber-600 font-medium">• In Maintenance</span>
+                                                    )}
+                                                </div>
                                             </div>
                                             <Info className="h-4 w-4 text-muted-foreground flex-none" />
                                         </div>

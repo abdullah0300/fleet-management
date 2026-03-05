@@ -83,7 +83,7 @@ async function fetchExpiringDocuments(): Promise<Document[]> {
 async function uploadDocument(
     file: File,
     metadata: {
-        entityType: 'vehicle' | 'driver' | 'job'
+        entityType: 'vehicle' | 'driver' | 'job' | 'maintenance'
         entityId: string
         documentType: string
         expiryDate?: string
@@ -183,7 +183,7 @@ export function useUploadDocument() {
         }: {
             file: File
             metadata: {
-                entityType: 'vehicle' | 'driver' | 'job'
+                entityType: 'vehicle' | 'driver' | 'job' | 'maintenance'
                 entityId: string
                 documentType: string
                 expiryDate?: string

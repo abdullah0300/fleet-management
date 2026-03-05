@@ -214,31 +214,62 @@ export function useCompleteTrip() {
             actualFuelCost?: number
             actualTollCost?: number
         }) => {
-            // Calculate distance if odometer provided
-            const { data: trip } = await supabase
+            // Find the actual trip record
+            // First try by trip ID, then by job_id, then by manifest_id
+            let trip: any = null
+
+            // Try direct trip ID lookup
+            const { data: directTrip } = await supabase
                 .from('trips')
-                .select('start_odometer')
+                .select('id, start_odometer')
                 .eq('id', data.tripId)
-                .single()
+                .eq('status', 'started')
+                .maybeSingle()
+
+            if (directTrip) {
+                trip = directTrip
+            } else if (data.jobId) {
+                // Lookup by job_id (when called from job detail page)
+                const { data: jobTrip } = await supabase
+                    .from('trips')
+                    .select('id, start_odometer')
+                    .eq('job_id', data.jobId)
+                    .eq('status', 'started')
+                    .order('created_at', { ascending: false })
+                    .maybeSingle()
+                trip = jobTrip
+            } else if (data.manifestId) {
+                // Lookup by manifest_id
+                const { data: manifestTrip } = await supabase
+                    .from('trips')
+                    .select('id, start_odometer')
+                    .eq('manifest_id', data.manifestId)
+                    .eq('status', 'started')
+                    .order('created_at', { ascending: false })
+                    .maybeSingle()
+                trip = manifestTrip
+            }
 
             const actualDistance = data.endOdometer && trip?.start_odometer
                 ? data.endOdometer - trip.start_odometer
                 : null
 
-            // Update trip
-            const { error: tripError } = await supabase
-                .from('trips')
-                .update({
-                    end_time: new Date().toISOString(),
-                    end_odometer: data.endOdometer || null,
-                    actual_distance_km: actualDistance,
-                    actual_fuel_cost: data.actualFuelCost || null,
-                    actual_toll_cost: data.actualTollCost || null,
-                    status: 'completed',
-                })
-                .eq('id', data.tripId)
+            // Update trip if found
+            if (trip?.id) {
+                const { error: tripError } = await supabase
+                    .from('trips')
+                    .update({
+                        end_time: new Date().toISOString(),
+                        end_odometer: data.endOdometer || null,
+                        actual_distance_km: actualDistance,
+                        actual_fuel_cost: data.actualFuelCost || null,
+                        actual_toll_cost: data.actualTollCost || null,
+                        status: 'completed',
+                    })
+                    .eq('id', trip.id)
 
-            if (tripError) throw tripError
+                if (tripError) throw tripError
+            }
 
             // Update Entity Status (Manifest or Job)
             if (data.manifestId) {
@@ -256,10 +287,14 @@ export function useCompleteTrip() {
                 if (jobError) throw jobError
             }
 
-            // Update vehicle status
+            // Update vehicle status + odometer
+            const vehicleUpdate: Record<string, any> = { status: 'available' }
+            if (data.endOdometer) {
+                vehicleUpdate.odometer_reading = data.endOdometer
+            }
             await supabase
                 .from('vehicles')
-                .update({ status: 'available' })
+                .update(vehicleUpdate)
                 .eq('id', data.vehicleId)
 
             // Update driver status

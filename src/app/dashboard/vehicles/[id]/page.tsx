@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Edit, Trash2, Truck, Gauge, Fuel, Calendar, MapPin, User, Stethoscope } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, Truck, Gauge, Fuel, Calendar, MapPin, User, Stethoscope, Wrench } from 'lucide-react'
 import { useVehicle, useUpdateVehicle, useDeleteVehicle, VehicleWithDriver } from '@/hooks/useVehicles'
 import { useVehicleMaintenanceStatus } from '@/hooks/useSmartMaintenance'
 import { Button } from '@/components/ui/button'
@@ -153,7 +153,7 @@ export default function VehicleDetailPage() {
                     </CardHeader>
                     <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
                         <div className="text-xl sm:text-2xl font-bold">
-                            {(vehicle.odometer_reading || 0).toLocaleString()} km
+                            {(vehicle.odometer_reading || 0).toLocaleString()} mi
                         </div>
                     </CardContent>
                 </Card>
@@ -165,7 +165,7 @@ export default function VehicleDetailPage() {
                     <CardContent className="p-3 pt-0 sm:p-6 sm:pt-0">
                         <div className="text-xl sm:text-2xl font-bold capitalize">{vehicle.fuel_type || 'Not set'}</div>
                         {vehicle.fuel_efficiency && (
-                            <p className="text-xs text-muted-foreground">{vehicle.fuel_efficiency} km/L</p>
+                            <p className="text-xs text-muted-foreground">{vehicle.fuel_efficiency} MPG</p>
                         )}
                     </CardContent>
                 </Card>
@@ -238,31 +238,69 @@ export default function VehicleDetailPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="h-full">
-                    <CardHeader className="p-4 sm:p-6">
-                        <CardTitle className="text-base sm:text-lg">Maintenance History</CardTitle>
+                <Card className="h-full shadow-sm">
+                    <CardHeader className="p-4 sm:p-6 flex flex-row items-center justify-between">
+                        <CardTitle className="text-base sm:text-lg flex items-center gap-2">
+                            <Wrench className="h-4 w-4 text-primary" />
+                            Maintenance Programs
+                        </CardTitle>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs gap-1"
+                            onClick={() => router.push(`/dashboard/maintenance/${id}`)}
+                        >
+                            View History
+                        </Button>
                     </CardHeader>
-                    <CardContent className="flex items-center justify-center p-6 text-muted-foreground h-[200px]">
+                    <CardContent className="p-4 pt-0 sm:p-6 sm:pt-0">
                         {maintenanceStatus && maintenanceStatus.length > 0 ? (
-                            <div className="space-y-2 w-full">
-                                {maintenanceStatus.map(status => (
-                                    <div key={status.id} className="flex justify-between items-center text-sm p-2 border rounded hover:bg-muted/50">
-                                        <div className='flex flex-col'>
-                                            <span className='font-medium'>{status.service_programs?.name}</span>
-                                            <span className='text-xs'>Last: {status.last_service_odometer} km</span>
+                            <div className="space-y-2">
+                                {maintenanceStatus.map(status => {
+                                    const interval = status.service_programs?.interval_miles || 5000
+                                    const used = (vehicle.odometer_reading || 0) - (status.last_service_odometer || 0)
+                                    const percent = Math.min(Math.max((used / interval) * 100, 0), 100)
+                                    const isUrgent = percent >= 90
+                                    const isDue = percent >= 75
+
+                                    return (
+                                        <div key={status.id} className="p-3 border rounded-lg hover:bg-muted/30 transition-colors">
+                                            <div className="flex justify-between items-start mb-2">
+                                                <div>
+                                                    <span className="font-medium text-sm">{status.service_programs?.name}</span>
+                                                    <div className="text-xs text-muted-foreground mt-0.5">
+                                                        Last: {(status.last_service_odometer || 0).toLocaleString()} mi
+                                                        {status.next_due_odometer && (
+                                                            <span> → Next: {status.next_due_odometer.toLocaleString()} mi</span>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                                <Badge
+                                                    variant={isUrgent ? 'destructive' : isDue ? 'outline' : 'outline'}
+                                                    className={`text-[10px] uppercase ${isDue && !isUrgent ? 'border-amber-300 text-amber-700 bg-amber-50' : !isUrgent ? 'border-emerald-300 text-emerald-700 bg-emerald-50' : ''}`}
+                                                >
+                                                    {isUrgent ? 'Overdue' : isDue ? 'Due Soon' : 'OK'}
+                                                </Badge>
+                                            </div>
+                                            <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                                                <div
+                                                    className={`h-full rounded-full transition-all ${isUrgent ? 'bg-red-500' : isDue ? 'bg-amber-500' : 'bg-emerald-500'}`}
+                                                    style={{ width: `${percent}%` }}
+                                                />
+                                            </div>
+                                            <div className="text-[10px] text-muted-foreground mt-1 text-right">
+                                                {Math.round(percent)}% used
+                                            </div>
                                         </div>
-                                        <Badge variant={status.status === 'ok' ? 'outline' : 'destructive'} className="uppercase text-[10px]">
-                                            {status.status}
-                                        </Badge>
-                                    </div>
-                                ))}
+                                    )
+                                })}
                             </div>
                         ) : (
-                            <div className="text-center">
-                                <Stethoscope className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                                <p className="text-sm">No Smart Maintenance Configured</p>
-                                <Button variant="outline" size="sm" className="mt-4" onClick={() => router.push('/dashboard/maintenance/setup')}>
-                                    Configure Program
+                            <div className="text-center py-6">
+                                <Stethoscope className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+                                <p className="text-sm text-muted-foreground">No programs configured</p>
+                                <Button variant="outline" size="sm" className="mt-3 gap-1.5" onClick={() => router.push('/dashboard/maintenance/setup')}>
+                                    <Wrench className="h-3.5 w-3.5" /> Setup Programs
                                 </Button>
                             </div>
                         )}

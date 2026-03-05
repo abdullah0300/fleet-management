@@ -263,6 +263,7 @@ export interface Database {
           vehicle_id: string | null
           driver_id: string | null
           status: 'pending' | 'assigned' | 'in_progress' | 'completed' | 'cancelled' | null
+          financial_status: 'pending' | 'pending_review' | 'approved' | null
           scheduled_date: string | null
           scheduled_time: string | null
           customer_name: string | null
@@ -271,6 +272,9 @@ export interface Database {
           priority: 'low' | 'normal' | 'high' | 'urgent' | null
           notes: string | null
           weight: number | null
+          revenue: number | null
+          billing_type: 'flat_rate' | 'per_mile' | 'per_weight' | 'hourly' | null
+          driver_pay_rate_override: number | null
           created_at: string
           updated_at: string
         }
@@ -279,10 +283,12 @@ export interface Database {
           company_id?: string | null
           job_number?: string | null
           manifest_id?: string | null
+          sequence_order?: number | null
           route_id?: string | null
           vehicle_id?: string | null
           driver_id?: string | null
           status?: 'pending' | 'assigned' | 'in_progress' | 'completed' | 'cancelled' | null
+          financial_status?: 'pending' | 'pending_review' | 'approved' | null
           scheduled_date?: string | null
           scheduled_time?: string | null
           customer_name?: string | null
@@ -291,6 +297,9 @@ export interface Database {
           priority?: 'low' | 'normal' | 'high' | 'urgent' | null
           notes?: string | null
           weight?: number | null
+          revenue?: number | null
+          billing_type?: 'flat_rate' | 'per_mile' | 'per_weight' | 'hourly' | null
+          driver_pay_rate_override?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -299,10 +308,12 @@ export interface Database {
           company_id?: string | null
           job_number?: string | null
           manifest_id?: string | null
+          sequence_order?: number | null
           route_id?: string | null
           vehicle_id?: string | null
           driver_id?: string | null
           status?: 'pending' | 'assigned' | 'in_progress' | 'completed' | 'cancelled' | null
+          financial_status?: 'pending' | 'pending_review' | 'approved' | null
           scheduled_date?: string | null
           scheduled_time?: string | null
           customer_name?: string | null
@@ -311,6 +322,9 @@ export interface Database {
           priority?: 'low' | 'normal' | 'high' | 'urgent' | null
           notes?: string | null
           weight?: number | null
+          revenue?: number | null
+          billing_type?: 'flat_rate' | 'per_mile' | 'per_weight' | 'hourly' | null
+          driver_pay_rate_override?: number | null
           created_at?: string
           updated_at?: string
         }
@@ -506,9 +520,13 @@ export interface Database {
         Row: {
           id: string
           vehicle_id: string | null
+          program_id: string | null
           type: 'scheduled' | 'repair' | 'inspection' | null
           description: string | null
           cost: number | null
+          parts_cost: number | null
+          labor_cost: number | null
+          mechanic_notes: string | null
           odometer_at_service: number | null
           service_date: string | null
           next_service_date: string | null
@@ -520,9 +538,13 @@ export interface Database {
         Insert: {
           id?: string
           vehicle_id?: string | null
+          program_id?: string | null
           type?: 'scheduled' | 'repair' | 'inspection' | null
           description?: string | null
           cost?: number | null
+          parts_cost?: number | null
+          labor_cost?: number | null
+          mechanic_notes?: string | null
           odometer_at_service?: number | null
           service_date?: string | null
           next_service_date?: string | null
@@ -534,9 +556,13 @@ export interface Database {
         Update: {
           id?: string
           vehicle_id?: string | null
+          program_id?: string | null
           type?: 'scheduled' | 'repair' | 'inspection' | null
           description?: string | null
           cost?: number | null
+          parts_cost?: number | null
+          labor_cost?: number | null
+          mechanic_notes?: string | null
           odometer_at_service?: number | null
           service_date?: string | null
           next_service_date?: string | null
@@ -553,7 +579,7 @@ export interface Database {
       documents: {
         Row: {
           id: string
-          entity_type: 'vehicle' | 'driver' | 'job'
+          entity_type: 'vehicle' | 'driver' | 'job' | 'maintenance'
           entity_id: string
           document_type: string | null
           file_url: string | null
@@ -562,7 +588,7 @@ export interface Database {
         }
         Insert: {
           id?: string
-          entity_type: 'vehicle' | 'driver' | 'job'
+          entity_type: 'vehicle' | 'driver' | 'job' | 'maintenance'
           entity_id: string
           document_type?: string | null
           file_url?: string | null
@@ -571,7 +597,7 @@ export interface Database {
         }
         Update: {
           id?: string
-          entity_type?: 'vehicle' | 'driver' | 'job'
+          entity_type?: 'vehicle' | 'driver' | 'job' | 'maintenance'
           entity_id?: string
           document_type?: string | null
           file_url?: string | null
@@ -868,4 +894,36 @@ export type CostEstimateWithRelations = CostEstimate & {
   jobs: Job | null
   vehicles: Vehicle | null
   drivers: DriverWithProfile | null
+}
+
+// ============================================
+// JOB PAY ADJUSTMENTS
+// ============================================
+export interface JobPayAdjustment {
+  id: string
+  job_id: string
+  company_id: string | null
+  type: 'bonus' | 'deduction' | 'detention' | 'stop_pay' | 'loading' | 'hazmat' | 'other'
+  label: string
+  amount: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface JobPayAdjustmentInsert {
+  id?: string
+  job_id: string
+  company_id?: string | null
+  type?: 'bonus' | 'deduction' | 'detention' | 'stop_pay' | 'loading' | 'hazmat' | 'other'
+  label: string
+  amount: number
+  notes?: string | null
+}
+
+export interface JobPayAdjustmentUpdate {
+  type?: 'bonus' | 'deduction' | 'detention' | 'stop_pay' | 'loading' | 'hazmat' | 'other'
+  label?: string
+  amount?: number
+  notes?: string | null
 }

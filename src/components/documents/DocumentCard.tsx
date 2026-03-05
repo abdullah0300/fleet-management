@@ -40,6 +40,8 @@ export function DocumentCard({ document, onDelete, onView }: DocumentCardProps) 
                 return <Badge variant="outline" className="text-xs bg-status-info-muted/50">Driver</Badge>
             case 'job':
                 return <Badge variant="outline" className="text-xs bg-status-success-muted/50">Job</Badge>
+            case 'maintenance':
+                return <Badge variant="outline" className="text-xs bg-amber-100/50 border-amber-300 text-amber-700">Maintenance</Badge>
             default:
                 return null
         }

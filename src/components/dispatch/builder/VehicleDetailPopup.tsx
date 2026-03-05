@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Truck, User, MapPin, Calendar, Fuel, Gauge, Wrench, Package, CheckCircle2, Clock, AlertCircle, Navigation, ArrowRight } from 'lucide-react'
+import { Truck, User, MapPin, Calendar, Fuel, Gauge, Wrench, Package, CheckCircle2, Clock, AlertCircle, AlertTriangle, Navigation, ArrowRight } from 'lucide-react'
 import { useJobs } from '@/hooks/useJobs'
 import { useDrivers } from '@/hooks/useDrivers'
 import { useManifests } from '@/hooks/useManifests'
@@ -120,6 +120,18 @@ export function VehicleDetailPopup({ vehicle, open, onOpenChange, onSelectForMan
                 </DialogHeader>
 
                 <div className="space-y-4 pt-4">
+                    {/* Maintenance Soft Warning */}
+                    {vehicle.status === 'maintenance' && (
+                        <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg animate-in fade-in slide-in-from-top-2 duration-300">
+                            <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p className="font-semibold text-sm text-amber-800">Vehicle In Maintenance</p>
+                                <p className="text-xs text-amber-600 mt-0.5">
+                                    This vehicle is currently undergoing maintenance. You can still assign it, but it may not be road-ready.
+                                </p>
+                            </div>
+                        </div>
+                    )}
                     {/* Current Status */}
                     <Card className={isInUse ? "border-blue-200 bg-blue-50/50" : "border-green-200 bg-green-50/50"}>
                         <CardHeader className="pb-2">

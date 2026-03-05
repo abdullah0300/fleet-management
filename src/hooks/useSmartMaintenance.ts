@@ -58,7 +58,18 @@ export function useAssignServiceProgram() {
 
     return useMutation({
         mutationFn: async ({ vehicleId, programId, currentOdometer }: { vehicleId: string, programId: string, currentOdometer: number }) => {
-            // Default to "Fresh" status
+            // Fetch the program to get intervals
+            const { data: program } = await supabase
+                .from('service_programs')
+                .select('interval_miles, interval_months')
+                .eq('id', programId)
+                .single()
+
+            // Calculate next service due points
+            const nextDueOdometer = currentOdometer + (program?.interval_miles || 5000)
+            const nextDueDate = new Date()
+            nextDueDate.setMonth(nextDueDate.getMonth() + (program?.interval_months || 6))
+
             const { data, error } = await supabase
                 .from('vehicle_service_programs')
                 .insert({
@@ -66,6 +77,8 @@ export function useAssignServiceProgram() {
                     program_id: programId,
                     last_service_odometer: currentOdometer,
                     last_service_date: new Date().toISOString().split('T')[0],
+                    next_due_odometer: nextDueOdometer,
+                    next_due_date: nextDueDate.toISOString().split('T')[0],
                     status: 'ok'
                 })
                 .select()
@@ -76,6 +89,7 @@ export function useAssignServiceProgram() {
         },
         onSuccess: (_, variables) => {
             queryClient.invalidateQueries({ queryKey: smartMaintenanceKeys.vehicleStatus(variables.vehicleId) })
+            queryClient.invalidateQueries({ queryKey: smartMaintenanceKeys.programs() })
         }
     })
 }

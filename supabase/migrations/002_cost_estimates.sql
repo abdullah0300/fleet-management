@@ -119,7 +119,7 @@ SELECT
   ce.job_id,
   j.job_number,
   ce.vehicle_id,
-  v.registration_number as vehicle_registration,
+  v.license_plate as vehicle_registration,
   v.make || ' ' || v.model as vehicle_name,
   ce.driver_id,
   p.full_name as driver_name,

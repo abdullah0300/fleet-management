@@ -3,8 +3,10 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useUpcomingMaintenance, useOverdueMaintenance } from "@/hooks/useMaintenance"
 import { AlertCircle, Calendar, Wrench } from "lucide-react"
+import { useRouter } from "next/navigation"
 
 export function MaintenanceAlertsWidget() {
+    const router = useRouter()
     const { data: upcoming } = useUpcomingMaintenance()
     const { data: overdue } = useOverdueMaintenance()
 
@@ -69,7 +71,10 @@ export function MaintenanceAlertsWidget() {
                 </div>
 
                 <div className="pt-4 text-center">
-                    <button className="text-xs text-blue-600 font-medium hover:underline">
+                    <button
+                        className="text-xs text-blue-600 font-medium hover:underline"
+                        onClick={() => router.push('/dashboard/maintenance')}
+                    >
                         View All Maintenance
                     </button>
                 </div>

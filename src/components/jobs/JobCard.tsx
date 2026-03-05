@@ -1,8 +1,9 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { MapPin, Truck, User, Calendar, Flame, Layers } from 'lucide-react'
+import { MapPin, Truck, User, Calendar, Flame, Layers, DollarSign, TrendingUp, TrendingDown } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
+import { useJobCostEstimate, useJobPayAdjustments } from '@/hooks/useCostEstimates'
 import { Badge } from '@/components/ui/badge'
 import { getJobStopCount } from '@/hooks/useJobs'
 import { JobStop } from '@/types/database'
@@ -13,6 +14,7 @@ interface JobCardProps {
         id: string
         job_number: string
         status: string
+        financial_status?: string | null
         customer_name: string
         customer_phone?: string | null
         priority?: 'low' | 'normal' | 'high' | 'urgent' | null
@@ -33,6 +35,21 @@ export function JobCard({ job, onViewDetails }: JobCardProps) {
     const router = useRouter()
     const stopCount = getJobStopCount(job)
 
+    // Only fetch financial data if completed
+    const isCompleted = job.status === 'completed'
+    const { data: estimate } = useJobCostEstimate(isCompleted ? job.id : '')
+    const { data: adjustments } = useJobPayAdjustments(isCompleted ? job.id : '')
+
+    let netProfit = null
+    if (isCompleted && estimate) {
+        const totalAdjustments = (adjustments || []).reduce((sum, adj) => sum + adj.amount, 0)
+        const finalCost = estimate.total_cost + totalAdjustments
+        // We need revenue from job. Wait, is revenue in the job type? Yes, we added it to DB. 
+        // Let's assume passed `job` has `revenue` or `0`.
+        const revenue = (job as any).revenue || 0
+        netProfit = revenue - finalCost
+    }
+
     // Priority stripe color
     const stripeColor = {
         urgent: 'bg-red-500',
@@ -46,6 +63,7 @@ export function JobCard({ job, onViewDetails }: JobCardProps) {
         pending: 'bg-amber-100 text-amber-700 hover:bg-amber-100',
         assigned: 'bg-blue-100 text-blue-700 hover:bg-blue-100',
         in_progress: 'bg-purple-100 text-purple-700 hover:bg-purple-100',
+        pending_review: 'bg-orange-100 text-orange-700 hover:bg-orange-100',
         completed: 'bg-green-100 text-green-700 hover:bg-green-100',
         cancelled: 'bg-red-100 text-red-700 hover:bg-red-100',
     }
@@ -122,8 +140,8 @@ export function JobCard({ job, onViewDetails }: JobCardProps) {
                                     <Flame className="h-3.5 w-3.5 text-red-500 fill-red-500/10" />
                                 )}
                             </div>
-                            <Badge className={cn("text-[10px] uppercase font-bold tracking-wide px-2 py-0.5 rounded-md border-0 shadow-none", statusStyles[job.status])}>
-                                {job.status.replace('_', ' ')}
+                            <Badge className={cn("text-[10px] uppercase font-bold tracking-wide px-2 py-0.5 rounded-md border-0 shadow-none", statusStyles[job.financial_status === 'pending_review' ? 'pending_review' : job.status])}>
+                                {job.financial_status === 'pending_review' ? 'PENDING REVIEW' : job.status.replace('_', ' ')}
                             </Badge>
                         </div>
 
@@ -134,6 +152,14 @@ export function JobCard({ job, onViewDetails }: JobCardProps) {
                             </h3>
                             {getLocationSummary()}
                         </div>
+
+                        {/* Financials for Completed Jobs */}
+                        {netProfit !== null && (
+                            <div className={`mb-3 flex items-center gap-1.5 text-xs font-semibold px-2 py-1 rounded w-fit ${netProfit >= 0 ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
+                                {netProfit >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(netProfit)} Profit
+                            </div>
+                        )}
 
                         {/* Manifest Badge */}
                         {job.manifests && (

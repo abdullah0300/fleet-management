@@ -173,7 +173,8 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
             await startTrip.mutateAsync({
                 manifestId: manifest.id,
                 driverId: manifest.driver_id,
-                vehicleId: manifest.vehicle_id
+                vehicleId: manifest.vehicle_id,
+                startOdometer: manifest.vehicles?.odometer_reading || undefined
             })
             alert("Trip Started. Manifest is now In Transit.")
             router.refresh()

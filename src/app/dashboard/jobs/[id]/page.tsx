@@ -1,13 +1,19 @@
 'use client'
 
+import { useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import {
     ArrowLeft, Edit, Trash2, User, Phone, MapPin, Truck, Calendar, Clock,
     Package, DollarSign, CheckCircle2, XCircle, Play, Camera, Navigation,
-    AlertCircle, Smartphone, Timer
+    AlertCircle, Smartphone, Timer, Gauge
 } from 'lucide-react'
 import { useJob, useUpdateJob, useDeleteJob, useUpdateJobStop, useForceCompleteStop, getJobPickupAddress, getJobDeliveryAddress, getJobMapPoints, getJobStopCount } from '@/hooks/useJobs'
+import { createClient } from '@/lib/supabase/client'
+import { useQueryClient } from '@tanstack/react-query'
+import { useSaveCostEstimate, useJobCostEstimate, calculateJobCosts } from '@/hooks/useCostEstimates'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -15,13 +21,17 @@ import { JobRouteMap } from '@/components/jobs/JobRouteMap'
 import { EntityDocuments } from '@/components/documents/EntityDocuments'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from "@/components/ui/dialog"
 import { ProofOfDeliveryMap } from '@/components/manifests/ProofOfDeliveryMap'
 import { JobPODViewer } from '@/components/jobs/JobPODViewer'
+import { JobFinancialsCard } from '@/components/jobs/JobFinancialsCard'
+import { FinancialReviewModal } from '@/components/jobs/FinancialReviewModal'
 import { format } from 'date-fns'
 import { useRealtimeUpdate } from '@/hooks/useRealtimeUpdate'
 import { jobKeys } from '@/hooks/useJobs'
 import { formatDate, formatTime } from '@/lib/utils'
+
+const supabase = createClient()
 
 // Status config for consistent UI
 const statusConfig: Record<string, {
@@ -73,11 +83,20 @@ export default function JobDetailPage() {
     const router = useRouter()
     const id = params.id as string
 
+    const queryClient = useQueryClient()
     const { data: job, isLoading, error } = useJob(id)
     const updateMutation = useUpdateJob()
     const deleteMutation = useDeleteJob()
     const updateStopMutation = useUpdateJobStop()
     const forceCompleteStopMutation = useForceCompleteStop()
+    const saveCostMutation = useSaveCostEstimate()
+    const { data: costEstimateData } = useJobCostEstimate(id)
+    const [startOdometer, setStartOdometer] = useState<string>('')
+    const [endOdometer, setEndOdometer] = useState<string>('')
+    const [isStarting, setIsStarting] = useState(false)
+    const [isCompleting, setIsCompleting] = useState(false)
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
+    const [isReviewSubmitting, setIsReviewSubmitting] = useState(false)
 
     // --- Real-time Updates ---
     // --- Real-time Updates ---
@@ -104,6 +123,108 @@ export default function JobDetailPage() {
             id,
             updates: { status: newStatus as any }
         })
+    }
+
+    // ── Start Job: capture start odometer, update vehicle ──
+    const handleStartJob = async () => {
+        if (!job) return
+        setIsStarting(true)
+        try {
+            if (job.vehicle_id && startOdometer) {
+                await supabase
+                    .from('vehicles')
+                    .update({ odometer_reading: Number(startOdometer) })
+                    .eq('id', job.vehicle_id)
+            }
+            await updateMutation.mutateAsync({ id, updates: { status: 'in_progress' } })
+            queryClient.invalidateQueries({ queryKey: ['vehicles'] })
+            setStartOdometer('')
+        } catch (err: any) {
+            alert('Failed to start job: ' + err.message)
+        } finally {
+            setIsStarting(false)
+        }
+    }
+
+    // ── Review Job Finances: handle dispatcher verification ──
+    const handleFinancialReviewConfirm = async (finalData: any) => {
+        if (!job) return
+        setIsReviewSubmitting(true)
+        try {
+            // Update the job with revenue and verified financial status
+            await updateMutation.mutateAsync({
+                id,
+                updates: {
+                    revenue: finalData.revenue,
+                    financial_status: 'approved'
+                }
+            })
+
+            // Save the definitive verified cost estimate
+            const costPayload: any = {
+                job_id: id,
+                driver_id: job.driver_id,
+                vehicle_id: job.vehicle_id,
+                fuel_cost: finalData.fuel_cost,
+                toll_cost: finalData.toll_cost,
+                driver_cost: finalData.driver_cost,
+                other_costs: finalData.other_costs,
+                total_cost: finalData.fuel_cost + finalData.toll_cost + finalData.driver_cost + finalData.other_costs,
+            }
+
+            if (costEstimateData?.id) {
+                costPayload.id = costEstimateData.id
+            }
+
+            await saveCostMutation.mutateAsync(costPayload as any)
+
+            setIsReviewModalOpen(false)
+        } catch (err: any) {
+            alert('Failed to authorize finances: ' + err.message)
+        } finally {
+            setIsReviewSubmitting(false)
+        }
+    }
+
+    // ── Complete Job: capture end odometer, update vehicle, reset statuses ──
+    const handleCompleteJob = async () => {
+        if (!job) return
+        setIsCompleting(true)
+        try {
+            // 1. Update vehicle odometer + reset status
+            let startOdo = 0
+            if (job.vehicle_id) {
+                const vehicleUpdate: Record<string, any> = { status: 'available' }
+                startOdo = (job.vehicles as any)?.odometer_reading || 0
+                if (endOdometer) {
+                    vehicleUpdate.odometer_reading = Number(endOdometer)
+                }
+                await supabase.from('vehicles').update(vehicleUpdate).eq('id', job.vehicle_id)
+            }
+            // 2. Reset driver status
+            if (job.driver_id) {
+                await supabase.from('drivers').update({ status: 'available' }).eq('id', job.driver_id)
+            }
+            // 3. Mark job completed
+            await updateMutation.mutateAsync({ id, updates: { status: 'completed' } })
+
+            // 4. Calculate and save job costs
+            if (job.vehicle_id && job.driver_id) {
+                const endOdo = endOdometer ? Number(endOdometer) : startOdo
+                const distanceDriven = Math.max(0, endOdo - startOdo)
+                // App uses miles mostly, but our calculate function takes distanceKm for naming, treating as unit.
+                const costEstimate = calculateJobCosts(job, job.vehicles, job.drivers, job.routes, distanceDriven, 0)
+                await saveCostMutation.mutateAsync(costEstimate)
+            }
+
+            queryClient.invalidateQueries({ queryKey: ['vehicles'] })
+            queryClient.invalidateQueries({ queryKey: ['drivers'] })
+            setEndOdometer('')
+        } catch (err: any) {
+            alert('Failed to complete job: ' + err.message)
+        } finally {
+            setIsCompleting(false)
+        }
     }
 
     if (isLoading) {
@@ -188,19 +309,114 @@ export default function JobDetailPage() {
                     <Button variant="destructive" size="icon" onClick={handleDelete} disabled={deleteMutation.isPending}>
                         <Trash2 className="h-4 w-4" />
                     </Button>
-                    {job.status === 'assigned' && (
-                        <Button onClick={() => handleStatusChange('in_progress')} disabled={updateMutation.isPending}>
-                            <Play className="mr-2 h-4 w-4" /> Start
+                    {/* Dispatcher Financial Review Action */}
+                    {job.status === 'completed' && job.financial_status === 'pending_review' && (
+                        <Button
+                            className="bg-orange-500 hover:bg-orange-600 text-white shadow-sm"
+                            onClick={() => setIsReviewModalOpen(true)}
+                        >
+                            <AlertCircle className="mr-2 h-4 w-4" />
+                            Authorize Finances
                         </Button>
+                    )}
+                    {/* ── START JOB with Odometer Dialog ── */}
+                    {job.status === 'assigned' && (
+                        <Dialog>
+                            <DialogTrigger asChild>
+                                <Button disabled={isStarting}>
+                                    <Play className="mr-2 h-4 w-4" /> Start
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-md">
+                                <DialogHeader>
+                                    <DialogTitle>Start Job {job.job_number}</DialogTitle>
+                                    <CardDescription>Record the vehicle's odometer before the trip begins.</CardDescription>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                    <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                                        <Gauge className="h-5 w-5 text-muted-foreground" />
+                                        <div>
+                                            <p className="text-sm font-medium">{job.vehicles?.license_plate || 'Vehicle'}</p>
+                                            <p className="text-xs text-muted-foreground">
+                                                Current reading: {((job.vehicles as any)?.odometer_reading || 0).toLocaleString()} mi
+                                            </p>
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="start-odometer">Start Odometer (Miles)</Label>
+                                        <Input
+                                            id="start-odometer"
+                                            type="number"
+                                            placeholder={`e.g. ${((job.vehicles as any)?.odometer_reading || 0)}`}
+                                            value={startOdometer}
+                                            onChange={(e) => setStartOdometer(e.target.value)}
+                                        />
+                                        <p className="text-xs text-muted-foreground">Leave blank to keep the current reading.</p>
+                                    </div>
+                                </div>
+                                <div className="flex gap-2 justify-end">
+                                    <DialogClose asChild>
+                                        <Button variant="outline">Cancel</Button>
+                                    </DialogClose>
+                                    <DialogClose asChild>
+                                        <Button onClick={handleStartJob} disabled={isStarting}>
+                                            {isStarting ? 'Starting...' : 'Start Job'}
+                                        </Button>
+                                    </DialogClose>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
                     )}
                     {job.status === 'in_progress' && (
                         <>
                             <Button variant="outline" onClick={() => router.push(`/dashboard/jobs/${id}/pod`)}>
                                 <Camera className="mr-2 h-4 w-4" /> POD
                             </Button>
-                            <Button onClick={() => handleStatusChange('completed')} disabled={updateMutation.isPending}>
-                                <CheckCircle2 className="mr-2 h-4 w-4" /> Complete
-                            </Button>
+                            <Dialog>
+                                <DialogTrigger asChild>
+                                    <Button disabled={isCompleting}>
+                                        <CheckCircle2 className="mr-2 h-4 w-4" /> Complete
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-md">
+                                    <DialogHeader>
+                                        <DialogTitle>Complete Job {job.job_number}</DialogTitle>
+                                        <CardDescription>Enter the vehicle's current odometer reading to keep maintenance tracking accurate.</CardDescription>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-4">
+                                        <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                                            <Gauge className="h-5 w-5 text-muted-foreground" />
+                                            <div>
+                                                <p className="text-sm font-medium">Current Vehicle Odometer</p>
+                                                <p className="text-xs text-muted-foreground">
+                                                    {job.vehicles?.license_plate} — Last reading: {((job.vehicles as any)?.odometer_reading || 0).toLocaleString()} mi
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="end-odometer">End Odometer (Miles)</Label>
+                                            <Input
+                                                id="end-odometer"
+                                                type="number"
+                                                placeholder="e.g. 52340"
+                                                value={endOdometer}
+                                                onChange={(e) => setEndOdometer(e.target.value)}
+                                            />
+                                            <p className="text-xs text-muted-foreground">This updates the vehicle's odometer for maintenance tracking. Leave blank to skip.</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex gap-2 justify-end">
+                                        <DialogClose asChild>
+                                            <Button variant="outline">Cancel</Button>
+                                        </DialogClose>
+                                        <DialogClose asChild>
+                                            <Button onClick={handleCompleteJob} disabled={isCompleting}>
+                                                {isCompleting ? 'Completing...' : 'Complete Job'}
+                                            </Button>
+                                        </DialogClose>
+                                    </div>
+                                </DialogContent>
+                            </Dialog>
                         </>
                     )}
                     {/* Dispatcher Cancel Option */}
@@ -483,6 +699,8 @@ export default function JobDetailPage() {
                                 </CardContent>
                             </Card>
 
+                            <JobFinancialsCard job={job as any} />
+
                             {/* Notes Card */}
                             {job.notes && (
                                 <Card>
@@ -538,6 +756,15 @@ export default function JobDetailPage() {
                     </div>
                 </TabsContent>
             </Tabs>
+
+            {/* Financial Review Modal */}
+            <FinancialReviewModal
+                job={job}
+                isOpen={isReviewModalOpen}
+                onClose={() => setIsReviewModalOpen(false)}
+                onConfirm={handleFinancialReviewConfirm}
+                isSubmitting={isReviewSubmitting}
+            />
         </div>
     )
 }

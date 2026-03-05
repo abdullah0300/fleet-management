@@ -25,6 +25,9 @@ export type MaintenanceWithVehicle = MaintenanceRecord & {
         model: string
         odometer_reading: number | null
     } | null
+    service_programs?: {
+        name: string
+    } | null
 }
 
 interface MaintenanceQueryResult {
@@ -46,6 +49,9 @@ async function fetchMaintenance(filters?: { vehicleId?: string; status?: string;
                 make,
                 model,
                 odometer_reading
+            ),
+            service_programs (
+                name
             )
         `, { count: 'exact' })
         .order('next_service_date', { ascending: true })
@@ -80,6 +86,9 @@ async function fetchMaintenanceById(id: string): Promise<MaintenanceWithVehicle 
                 make,
                 model,
                 odometer_reading
+            ),
+            service_programs (
+                name
             )
         `)
         .eq('id', id)
@@ -106,6 +115,9 @@ async function fetchUpcomingMaintenance(): Promise<MaintenanceWithVehicle[]> {
                 make,
                 model,
                 odometer_reading
+            ),
+            service_programs (
+                name
             )
         `)
         .neq('status', 'completed')
@@ -132,6 +144,9 @@ async function fetchOverdueMaintenance(): Promise<MaintenanceWithVehicle[]> {
                 make,
                 model,
                 odometer_reading
+            ),
+            service_programs (
+                name
             )
         `)
         .neq('status', 'completed')
@@ -211,51 +226,12 @@ export function useCreateMaintenance() {
                 .single()
 
             if (error) throw error
-
-            // Smart Maintenance Logic: If linked to a program, update the tracker
-            // Cast to any because program_id might be missing from auto-generated types
-            const programId = (record as any).program_id
-
-            if (programId && data) {
-                // Fetch program intervals
-                const { data: program } = await supabase
-                    .from('service_programs')
-                    .select('interval_miles, interval_months')
-                    .eq('id', programId)
-                    .single()
-
-                if (program) {
-                    const currentOdo = data.odometer_at_service || 0
-                    const serviceDate = data.service_date ? new Date(data.service_date) : new Date()
-
-                    const nextOdometer = currentOdo + (program.interval_miles || 5000)
-                    const nextDate = new Date(serviceDate)
-                    nextDate.setMonth(nextDate.getMonth() + (program.interval_months || 6))
-
-                    // Update the tracker
-                    await supabase
-                        .from('vehicle_service_programs')
-                        .update({
-                            last_service_date: data.service_date,
-                            last_service_odometer: currentOdo,
-                            next_due_odometer: nextOdometer,
-                            next_due_date: nextDate.toISOString(),
-                            status: 'ok',
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('vehicle_id', data.vehicle_id)
-                        .eq('program_id', programId)
-                }
-            }
-
             return data
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: maintenanceKeys.lists() })
             queryClient.invalidateQueries({ queryKey: maintenanceKeys.upcoming() })
             queryClient.invalidateQueries({ queryKey: maintenanceKeys.overdue() })
-            // Refresh smart maintenance data (visualizer)
-            queryClient.invalidateQueries({ queryKey: ['smart-maintenance'] })
         },
     })
 }
@@ -335,13 +311,15 @@ export function useCompleteMaintenance() {
             cost,
             notes,
             nextServiceDate,
-            nextServiceOdometer
+            nextServiceOdometer,
+            odometerReading,
         }: {
             id: string
             cost?: number
             notes?: string
             nextServiceDate?: string
             nextServiceOdometer?: number
+            odometerReading?: number
         }) => {
             const updates: MaintenanceRecordUpdate = {
                 status: 'completed',
@@ -349,6 +327,11 @@ export function useCompleteMaintenance() {
                 cost: cost || null,
                 next_service_date: nextServiceDate || null,
                 next_service_odometer: nextServiceOdometer || null,
+            }
+
+            // Capture odometer at service if provided
+            if (odometerReading) {
+                updates.odometer_at_service = odometerReading
             }
 
             if (notes) {
@@ -369,6 +352,46 @@ export function useCompleteMaintenance() {
                 .single()
 
             if (error) throw error
+
+            // Update the vehicle's master odometer reading
+            if (odometerReading && data?.vehicle_id) {
+                await supabase
+                    .from('vehicles')
+                    .update({ odometer_reading: odometerReading })
+                    .eq('id', data.vehicle_id)
+            }
+
+            // Smart Maintenance Tracker Update: Link completion to the recurring program
+            if (data?.program_id && data?.vehicle_id) {
+                const { data: program } = await supabase
+                    .from('service_programs')
+                    .select('interval_miles, interval_months')
+                    .eq('id', data.program_id)
+                    .single()
+
+                if (program) {
+                    const currentOdo = odometerReading || data.odometer_at_service || 0
+                    const serviceDate = data.service_date ? new Date(data.service_date) : new Date()
+
+                    const nextOdo = currentOdo + (program.interval_miles || 5000)
+                    const nextDate = new Date(serviceDate)
+                    nextDate.setMonth(nextDate.getMonth() + (program.interval_months || 6))
+
+                    await supabase
+                        .from('vehicle_service_programs')
+                        .update({
+                            last_service_date: data.service_date,
+                            last_service_odometer: currentOdo,
+                            next_due_odometer: nextOdo,
+                            next_due_date: nextDate.toISOString().split('T')[0],
+                            status: 'ok',
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('vehicle_id', data.vehicle_id)
+                        .eq('program_id', data.program_id)
+                }
+            }
+
             return data
         },
         onSuccess: (_, variables) => {
@@ -376,6 +399,8 @@ export function useCompleteMaintenance() {
             queryClient.invalidateQueries({ queryKey: maintenanceKeys.detail(variables.id) })
             queryClient.invalidateQueries({ queryKey: maintenanceKeys.upcoming() })
             queryClient.invalidateQueries({ queryKey: maintenanceKeys.overdue() })
+            queryClient.invalidateQueries({ queryKey: ['vehicles'] })
+            queryClient.invalidateQueries({ queryKey: ['smart-maintenance'] })
         },
     })
 }

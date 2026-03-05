@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, Wrench, AlertTriangle, Clock, CheckCircle2, Filter } from 'lucide-react'
+import { Plus, Search, Wrench, AlertTriangle, Clock, CheckCircle2, Filter, Settings } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -15,6 +15,8 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { MaintenanceRecord } from '@/types/database'
+import { useCompleteMaintenance } from '@/hooks/useMaintenance'
+import { toast } from 'sonner'
 
 interface MaintenanceListProps {
     initialData: MaintenanceRecord[]
@@ -24,6 +26,7 @@ export function MaintenanceList({ initialData }: MaintenanceListProps) {
     const router = useRouter()
     const [searchQuery, setSearchQuery] = useState('')
     const [statusFilter, setStatusFilter] = useState<string>('all')
+    const completeMutation = useCompleteMaintenance()
 
     // Use initialData from server
     const records = initialData
@@ -47,6 +50,16 @@ export function MaintenanceList({ initialData }: MaintenanceListProps) {
         return matchesSearch && matchesStatus
     })
 
+    const handleComplete = async (id: string) => {
+        if (!confirm('Mark this maintenance as completed?')) return
+        try {
+            await completeMutation.mutateAsync({ id })
+            toast.success('Maintenance marked as completed')
+        } catch {
+            toast.error('Failed to complete maintenance')
+        }
+    }
+
     return (
         <div className="flex flex-col gap-4 sm:gap-6">
             {/* Header */}
@@ -55,13 +68,23 @@ export function MaintenanceList({ initialData }: MaintenanceListProps) {
                     <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Maintenance</h1>
                     <p className="text-muted-foreground text-sm">Track and schedule vehicle maintenance</p>
                 </div>
-                <Button
-                    onClick={() => router.push('/dashboard/maintenance/new')}
-                    className="gap-2 w-full sm:w-auto"
-                >
-                    <Plus className="h-4 w-4" />
-                    Schedule Service
-                </Button>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={() => router.push('/dashboard/maintenance/setup')}
+                        className="gap-2"
+                    >
+                        <Settings className="h-4 w-4" />
+                        <span className="hidden sm:inline">Programs</span>
+                    </Button>
+                    <Button
+                        onClick={() => router.push('/dashboard/maintenance/new')}
+                        className="gap-2 flex-1 sm:flex-none"
+                    >
+                        <Plus className="h-4 w-4" />
+                        Schedule Service
+                    </Button>
+                </div>
             </div>
 
             {/* Overdue Alert */}
@@ -167,7 +190,12 @@ export function MaintenanceList({ initialData }: MaintenanceListProps) {
             ) : (
                 <div className="space-y-3">
                     {filteredRecords.map((record: any) => (
-                        <MaintenanceCard key={record.id} record={record} />
+                        <MaintenanceCard
+                            key={record.id}
+                            record={record}
+                            onComplete={record.status !== 'completed' ? () => handleComplete(record.id) : undefined}
+                            onViewDetails={() => router.push(`/dashboard/maintenance/record/${record.id}`)}
+                        />
                     ))}
                 </div>
             )}

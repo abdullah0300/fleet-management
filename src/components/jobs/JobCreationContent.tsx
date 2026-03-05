@@ -5,10 +5,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Plus, Trash2, Calendar, User, Phone, Mail, Loader2, Clock } from 'lucide-react'
+import { MapPin, Plus, List, GripVertical, FileText, ChevronDown, ChevronRight, X, Clock, Calendar, User, Mail, DollarSign, Trash2, Loader2 } from 'lucide-react'
 import { PhoneInput } from '@/components/ui/phone-input'
 
 import { LocationPicker } from '@/components/ui/LocationPicker'
+import { JobRouteMap } from '@/components/jobs/JobRouteMap'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useCreateJobWithStops, useUpdateJobWithStops, CreateJobWithStopsInput, JobWithRelations } from '@/hooks/useJobs'
@@ -16,7 +17,6 @@ import { useRoutes } from '@/hooks/useRoutes'
 import { Route } from '@/types/database'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { MapPin } from 'lucide-react'
 
 // Helper: Get the effective end time of a stop
 // For fixed mode: scheduled_arrival + service_duration
@@ -247,6 +247,13 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
     // Scheduling
     const [priority, setPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>((initialData?.priority as any) || 'normal')
 
+    // Pricing & Revenue
+    const [billingType, setBillingType] = useState<'flat_rate' | 'per_mile' | 'per_weight' | 'hourly'>(
+        (initialData?.billing_type as any) || 'flat_rate'
+    )
+    const [revenue, setRevenue] = useState(initialData?.revenue?.toString() || '')
+    const [driverPayOverride, setDriverPayOverride] = useState(initialData?.driver_pay_rate_override?.toString() || '')
+
     // Route Template Selection
     const [selectedRouteId, setSelectedRouteId] = useState<string | null>(initialData?.route_id || null)
     const { data: routesData } = useRoutes()
@@ -469,6 +476,9 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
                 notes: notes || null,
                 weight: weight ? parseFloat(weight) : null,
                 route_id: selectedRouteId || null,
+                billing_type: billingType,
+                revenue: revenue ? parseFloat(revenue) : null,
+                driver_pay_rate_override: driverPayOverride ? parseFloat(driverPayOverride) : null,
             },
             stops: validStops.map((stop, index) => ({
                 sequence_order: index + 1,
@@ -557,6 +567,53 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
                                         <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
                                         <Input className="pl-9" placeholder="client@email.com" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} />
                                     </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="bg-slate-50 border-slate-200 shadow-sm">
+                        <CardContent className="pt-6 space-y-4">
+                            <div className="flex items-center gap-2 mb-2">
+                                <DollarSign className="h-4 w-4 text-green-600" />
+                                <h3 className="font-semibold text-sm">Pricing & Revenue</h3>
+                            </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label>Billing Type</Label>
+                                    <Select value={billingType} onValueChange={(v) => setBillingType(v as any)}>
+                                        <SelectTrigger>
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="flat_rate">Flat Rate</SelectItem>
+                                            <SelectItem value="per_mile">Per Mile</SelectItem>
+                                            <SelectItem value="hourly">Hourly</SelectItem>
+                                            <SelectItem value="per_weight">Per Weight</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label>Revenue / Charge ($)</Label>
+                                    <Input
+                                        type="number"
+                                        placeholder="0.00"
+                                        value={revenue}
+                                        onChange={e => setRevenue(e.target.value)}
+                                    />
+                                    <p className="text-[10px] text-muted-foreground">What the customer pays</p>
+                                </div>
+                            </div>
+                            <div className="pt-2 border-t border-slate-200/60 mt-2">
+                                <div className="space-y-2">
+                                    <Label className="text-muted-foreground">Driver Pay Override (Optional)</Label>
+                                    <Input
+                                        type="number"
+                                        placeholder="Driver base rate will be used if empty"
+                                        value={driverPayOverride}
+                                        onChange={e => setDriverPayOverride(e.target.value)}
+                                    />
+                                    <p className="text-[10px] text-muted-foreground">Custom rate just for this job</p>
                                 </div>
                             </div>
                         </CardContent>
@@ -855,6 +912,41 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
                             )
                         })}
                     </div>
+
+                    {/* Map Preview */}
+                    {(() => {
+                        const stopsWithCoords = stops.filter(s => s.lat && s.lng)
+                        if (stopsWithCoords.length < 2) return null
+
+                        const pickupStop = stopsWithCoords.find(s => s.type === 'pickup')
+                        const dropoffStop = [...stopsWithCoords].reverse().find(s => s.type === 'dropoff')
+                        const waypointStops = stopsWithCoords
+                            .filter(s => s !== pickupStop && s !== dropoffStop)
+                            .map((s, i) => ({
+                                lat: s.lat!,
+                                lng: s.lng!,
+                                type: s.type as 'pickup' | 'dropoff' | 'waypoint',
+                                sequence: i + 2,
+                                address: s.address
+                            }))
+
+                        return (
+                            <Card className="overflow-hidden border-slate-200 shadow-sm">
+                                <div className="px-4 py-2 bg-slate-50 border-b flex items-center gap-2">
+                                    <MapPin className="h-4 w-4 text-blue-600" />
+                                    <span className="text-sm font-medium">Route Preview</span>
+                                    <span className="text-xs text-muted-foreground ml-auto">{stopsWithCoords.length} stops mapped</span>
+                                </div>
+                                <div className="h-[300px]">
+                                    <JobRouteMap
+                                        pickup={pickupStop ? { lat: pickupStop.lat!, lng: pickupStop.lng!, address: pickupStop.address } : undefined}
+                                        delivery={dropoffStop ? { lat: dropoffStop.lat!, lng: dropoffStop.lng!, address: dropoffStop.address } : undefined}
+                                        waypoints={waypointStops}
+                                    />
+                                </div>
+                            </Card>
+                        )
+                    })()}
                 </TabsContent>
             </Tabs>
 
