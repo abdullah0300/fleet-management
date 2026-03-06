@@ -1,7 +1,12 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { JobCreationContent } from '@/components/jobs/JobCreationContent'
+import dynamic from 'next/dynamic'
+
+const JobCreationContent = dynamic(
+    () => import('@/components/jobs/JobCreationContent').then(m => m.JobCreationContent),
+    { ssr: false }
+)
 import { useJob } from '@/hooks/useJobs'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'

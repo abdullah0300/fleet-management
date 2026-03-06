@@ -1,20 +1,23 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { MapPin, Plus, List, GripVertical, FileText, ChevronDown, ChevronRight, X, Clock, Calendar, User, Mail, DollarSign, Trash2, Loader2 } from 'lucide-react'
+import { MapPin, Plus, List, GripVertical, FileText, ChevronRight, X, Clock, Calendar, User, Mail, DollarSign, Trash2, Loader2 } from 'lucide-react'
 import { PhoneInput } from '@/components/ui/phone-input'
 
 import { LocationPicker } from '@/components/ui/LocationPicker'
 import { JobRouteMap } from '@/components/jobs/JobRouteMap'
 import { Card, CardContent } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { useCreateJobWithStops, useUpdateJobWithStops, CreateJobWithStopsInput, JobWithRelations } from '@/hooks/useJobs'
 import { useRoutes } from '@/hooks/useRoutes'
-import { Route } from '@/types/database'
+import { useCustomers } from '@/hooks/useCustomers'
+import { Route, Customer } from '@/types/database'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
@@ -238,11 +241,27 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
 
     // Core Job Data
     const [jobNumber, setJobNumber] = useState(initialData?.job_number || '')
-    const [customerName, setCustomerName] = useState(initialData?.customer_name || '')
-    const [customerPhone, setCustomerPhone] = useState(initialData?.customer_phone || '')
-    const [customerEmail, setCustomerEmail] = useState(initialData?.customer_email || '')
+    const [customerId, setCustomerId] = useState<string | null>(initialData?.customer_id || null)
+    const [customerName, setCustomerName] = useState(initialData?.customer_name || initialData?.customers?.name || '')
+    const [customerPhone, setCustomerPhone] = useState(initialData?.customer_phone || initialData?.customers?.phone || '')
+    const [customerEmail, setCustomerEmail] = useState(initialData?.customer_email || initialData?.customers?.email || '')
     const [weight, setWeight] = useState(initialData?.weight?.toString() || '')
     const [notes, setNotes] = useState(initialData?.notes || '')
+
+    // Customer search state
+    const { customers, isLoading: isCustomersLoading, fetchCustomers, createCustomer } = useCustomers()
+    const [custSelectOpen, setCustSelectOpen] = useState(false)
+    const [customerDropdownOpen, setCustomerDropdownOpen] = useState(false)
+    const [isCreatingCustomer, setIsCreatingCustomer] = useState(false)
+    // Separate state for New Customer form - isolated from selected customer
+    const [newCustName, setNewCustName] = useState('')
+    const [newCustPhone, setNewCustPhone] = useState('')
+    const [newCustEmail, setNewCustEmail] = useState('')
+
+    // Fetch customers on mount
+    useEffect(() => {
+        fetchCustomers()
+    }, [])
 
     // Scheduling
     const [priority, setPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>((initialData?.priority as any) || 'normal')
@@ -299,6 +318,7 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
 
     const resetForm = () => {
         setJobNumber('')
+        setCustomerId(null)
         setCustomerName('')
         setCustomerPhone('')
         setCustomerEmail('')
@@ -466,9 +486,7 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
         const input: CreateJobWithStopsInput = {
             job: {
                 job_number: jobNumber || `JOB-${Date.now().toString(36).toUpperCase()}`,
-                customer_name: customerName,
-                customer_phone: customerPhone || null,
-                customer_email: customerEmail || null,
+                customer_id: customerId,
                 scheduled_date: legacyDate, // derived
                 scheduled_time: legacyTime, // derived
                 priority: priority,
@@ -477,8 +495,6 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
                 weight: weight ? parseFloat(weight) : null,
                 route_id: selectedRouteId || null,
                 billing_type: billingType,
-                revenue: revenue ? parseFloat(revenue) : null,
-                driver_pay_rate_override: driverPayOverride ? parseFloat(driverPayOverride) : null,
             },
             stops: validStops.map((stop, index) => ({
                 sequence_order: index + 1,
@@ -535,38 +551,146 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
                                 <User className="h-4 w-4 text-muted-foreground" />
                                 <h3 className="font-semibold text-sm">Customer Information</h3>
                             </div>
-                            <div className="grid grid-cols-2 gap-4">
+                            <div>
                                 <div className="space-y-2">
-                                    <Label>Job Number</Label>
-                                    <Input
-                                        placeholder="Auto-generated"
-                                        value={jobNumber}
-                                        onChange={e => setJobNumber(e.target.value)}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Customer Name *</Label>
-                                    <Input
-                                        placeholder="Client Name"
-                                        value={customerName}
-                                        onChange={e => setCustomerName(e.target.value)}
-                                    />
-                                </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label>Phone</Label>
-                                    <PhoneInput
-                                        value={customerPhone}
-                                        onChange={setCustomerPhone}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label>Email</Label>
-                                    <div className="relative">
-                                        <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-                                        <Input className="pl-9" placeholder="client@email.com" value={customerEmail} onChange={e => setCustomerEmail(e.target.value)} />
+                                    <Label>Customer *</Label>
+                                    <div className="flex gap-2">
+                                        {/* Searchable customer combobox */}
+                                        <Popover open={custSelectOpen} onOpenChange={setCustSelectOpen}>
+                                            <PopoverTrigger asChild>
+                                                <Button
+                                                    variant="outline"
+                                                    role="combobox"
+                                                    className={cn('flex-1 justify-between font-normal', !customerId && 'text-muted-foreground')}
+                                                >
+                                                    {customerName || (isCustomersLoading ? 'Loading...' : 'Select a customer...')}
+                                                    <Plus className="ml-2 h-3.5 w-3.5 opacity-40 rotate-45" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-[300px] p-0" align="start">
+                                                <Command>
+                                                    <CommandInput placeholder="Search customers..." />
+                                                    <CommandList>
+                                                        <CommandEmpty>
+                                                            <p className="text-xs text-center text-muted-foreground py-2">No customers found</p>
+                                                        </CommandEmpty>
+                                                        <CommandGroup>
+                                                            {customers.map(c => (
+                                                                <CommandItem
+                                                                    key={c.id}
+                                                                    value={c.name}
+                                                                    onSelect={() => {
+                                                                        setCustomerId(c.id)
+                                                                        setCustomerName(c.name)
+                                                                        setCustomerPhone(c.phone || '')
+                                                                        setCustomerEmail(c.email || '')
+                                                                        setCustSelectOpen(false)
+                                                                    }}
+                                                                >
+                                                                    <div className="flex flex-col">
+                                                                        <span className="font-medium text-sm">{c.name}</span>
+                                                                        {(c.phone || c.email) && (
+                                                                            <span className="text-xs text-muted-foreground">
+                                                                                {c.phone}{c.phone && c.email ? ' · ' : ''}{c.email}
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandGroup>
+                                                    </CommandList>
+                                                </Command>
+                                            </PopoverContent>
+                                        </Popover>
+
+                                        {/* New Customer button + popover form */}
+                                        <Popover
+                                            open={customerDropdownOpen}
+                                            onOpenChange={(open) => {
+                                                setCustomerDropdownOpen(open)
+                                                if (open) {
+                                                    // Clear new customer form when opening
+                                                    setNewCustName('')
+                                                    setNewCustPhone('')
+                                                    setNewCustEmail('')
+                                                }
+                                            }}
+                                        >
+                                            <PopoverTrigger asChild>
+                                                <Button variant="outline" size="icon" className="shrink-0 h-10 w-10" title="Add new customer">
+                                                    <Plus className="h-4 w-4" />
+                                                </Button>
+                                            </PopoverTrigger>
+                                            <PopoverContent className="w-80 p-4" align="end">
+                                                <div className="space-y-3">
+                                                    <div>
+                                                        <h4 className="font-semibold text-sm">New Customer</h4>
+                                                        <p className="text-xs text-muted-foreground">Fill in the customer details</p>
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label className="text-xs">Name *</Label>
+                                                        <Input
+                                                            placeholder="Full name or company"
+                                                            value={newCustName}
+                                                            onChange={e => setNewCustName(e.target.value)}
+                                                            autoFocus
+                                                        />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label className="text-xs">Phone</Label>
+                                                        <PhoneInput value={newCustPhone} onChange={setNewCustPhone} />
+                                                    </div>
+                                                    <div className="space-y-1">
+                                                        <Label className="text-xs">Email</Label>
+                                                        <div className="relative">
+                                                            <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                            <Input
+                                                                className="pl-9"
+                                                                type="email"
+                                                                placeholder="client@email.com"
+                                                                value={newCustEmail}
+                                                                onChange={e => setNewCustEmail(e.target.value)}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                    <Button
+                                                        className="w-full"
+                                                        size="sm"
+                                                        disabled={isCreatingCustomer || !newCustName.trim()}
+                                                        onClick={async () => {
+                                                            setIsCreatingCustomer(true)
+                                                            const newCustomer = await createCustomer({
+                                                                name: newCustName.trim(),
+                                                                phone: newCustPhone || undefined,
+                                                                email: newCustEmail || undefined,
+                                                            })
+                                                            if (newCustomer) {
+                                                                setCustomerId(newCustomer.id)
+                                                                setCustomerName(newCustomer.name)
+                                                                setCustomerPhone(newCustomer.phone || '')
+                                                                setCustomerEmail(newCustomer.email || '')
+                                                                setCustomerDropdownOpen(false)
+                                                            }
+                                                            setIsCreatingCustomer(false)
+                                                        }}
+                                                    >
+                                                        {isCreatingCustomer
+                                                            ? <><Loader2 className="h-3 w-3 mr-2 animate-spin" />Saving...</>
+                                                            : <><Plus className="h-3 w-3 mr-2" />Save Customer</>
+                                                        }
+                                                    </Button>
+                                                </div>
+                                            </PopoverContent>
+                                        </Popover>
                                     </div>
+
+                                    {/* Show selected customer contact info */}
+                                    {customerId && (customerPhone || customerEmail) && (
+                                        <div className="flex gap-3 text-xs text-muted-foreground">
+                                            {customerPhone && <span>📞 {customerPhone}</span>}
+                                            {customerEmail && <span>✉️ {customerEmail}</span>}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </CardContent>

@@ -14,48 +14,58 @@ export function formatCurrency(amount: number | null | undefined): string {
 }
 
 /**
- * Formats a YYYY-MM-DD string to a readable date (e.g., "Feb 11")
- * explicitly ignoring timezones to prevent day-shifting.
+ * Formats a date string explicitly to the User's Local Timezone
  */
 export function formatDate(dateStr: string | null | undefined): string | null {
   if (!dateStr) return null
 
-  // If it's a full ISO string, take the date part
-  const yyyymmdd = dateStr.split('T')[0]
-  const [year, month, day] = yyyymmdd.split('-').map(Number)
-
-  if (!year || !month || !day) return null
-
-  // Create date at Local Midnight to ensure it displays correctly in current locale
-  // or simply format it manually to avoid any Date object weirdness
-  const date = new Date(year, month - 1, day)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
-// Helper to safely parse time strings, ignoring timezone to show "wall clock" time
-export function parseTime(dateStr: string | null | undefined): Date | null {
-  if (!dateStr) return null
-
-  // Case 1: Time Only (HH:mm or HH:mm:ss)
-  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(dateStr)) {
-    const today = new Date().toISOString().split('T')[0]
-    return new Date(`${today}T${dateStr}`)
+  // If it's just a YYYY-MM-DD date without time (e.g. custom scheduled dates), manual parse without shifting
+  if (!dateStr.includes('T')) {
+    const [year, month, day] = dateStr.split(' ')[0].split('-').map(Number)
+    if (!year || !month || !day) return null
+    const date = new Date(year, month - 1, day)
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
   }
 
-  // Case 2: ISO Date String
-  // We want "Wall Clock" time. 
-  // If the DB says "16:00:00+00", we want to show "16:00" regardless of user timezone.
-  // So we strip the offset and 'Z' to force local interpretation of the time components.
+  // If it's a full ISO timestamp from Supabase Database
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return null
 
-  // Remove 'Z' and any offset like +05:00, -0500, +00
-  const cleanStr = dateStr.replace('Z', '').replace(/[+-]\d{2}(:?\d{2})?$/, '')
+  // Force display in User Device Time
+  return date.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric'
+  })
+}
 
-  const date = new Date(cleanStr)
+// Ensure `parseTime` continues to work if explicitly called elsewhere
+export function parseTime(dateStr: string | null | undefined): Date | null {
+  if (!dateStr) return null
+  const date = new Date(dateStr)
   return isNaN(date.getTime()) ? null : date
 }
 
+/**
+ * Universal time formatter that converts ALL UTC times into the User's Device Time
+ */
 export function formatTime(dateStr: string | null | undefined): string | null {
-  const dateObj = parseTime(dateStr)
-  if (!dateObj) return dateStr || null // Fallback to original string if parsing fails
-  return dateObj.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  if (!dateStr) return null
+
+  // Case 1: Raw Time Only (HH:mm)
+  if (/^\d{1,2}:\d{2}(:\d{2})?$/.test(dateStr)) {
+    const [hours, minutes] = dateStr.split(':')
+    const d = new Date()
+    d.setHours(Number(hours), Number(minutes), 0)
+    return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+  }
+
+  // Case 2: Full ISO Timestamp
+  const date = new Date(dateStr)
+  if (isNaN(date.getTime())) return null
+
+  // Format to standard User Device Time
+  return date.toLocaleTimeString('en-US', {
+    hour: 'numeric',
+    minute: '2-digit'
+  })
 }

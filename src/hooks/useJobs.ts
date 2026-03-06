@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useCompanyId } from './useCurrentUser'
-import { Job, JobInsert, JobUpdate, JobStop, JobStopInsert, JobWithStops, Vehicle, Route } from '@/types/database'
+import { Job, JobInsert, JobUpdate, JobStop, JobStopInsert, JobWithStops, Vehicle, Route, Customer } from '@/types/database'
 import { DriverWithProfile } from './useDrivers'
 import { vehicleKeys } from './useVehicles'
 import { driverKeys } from './useDrivers'
@@ -12,6 +12,8 @@ import { driverKeys } from './useDrivers'
 
 // Job with all relations including stops
 export type JobWithRelations = JobWithStops & {
+    customer_id?: string | null
+    customers?: Customer | null
     routes: Route | null
     vehicles: Vehicle | null
     drivers: DriverWithProfile | null

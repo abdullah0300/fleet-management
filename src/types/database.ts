@@ -6,6 +6,17 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+export interface Customer {
+  id: string
+  name: string
+  email?: string | null
+  phone?: string | null
+  billing_address?: string | null
+  notes?: string | null
+  created_at?: string
+  updated_at?: string
+}
+
 export interface Database {
   public: {
     Tables: {
@@ -300,6 +311,7 @@ export interface Database {
           revenue?: number | null
           billing_type?: 'flat_rate' | 'per_mile' | 'per_weight' | 'hourly' | null
           driver_pay_rate_override?: number | null
+          customer_id?: string | null
           created_at?: string
           updated_at?: string
         }

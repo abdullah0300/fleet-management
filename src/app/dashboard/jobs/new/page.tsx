@@ -3,7 +3,13 @@
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { JobCreationContent } from '@/components/jobs/JobCreationContent'
+import dynamic from 'next/dynamic'
+import { Loader2 } from 'lucide-react'
+
+const JobCreationContent = dynamic(
+    () => import('@/components/jobs/JobCreationContent').then(m => m.JobCreationContent),
+    { ssr: false, loading: () => <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div> }
+)
 
 export default function NewJobPage() {
     const router = useRouter()

@@ -1,30 +1,25 @@
-import { DashboardStats } from '@/components/dashboard/DashboardStats'
-import { RecentJobsWidget } from '@/components/dashboard/RecentJobsWidget'
-import { RecentActivityWidget } from '@/components/dashboard/RecentActivityWidget'
-import { FleetMapWidget } from '@/components/dashboard/FleetMapWidget'
-import { RevenueCostWidget } from '@/components/dashboard/RevenueCostWidget'
-import { MaintenanceAlertsWidget } from '@/components/dashboard/MaintenanceAlertsWidget'
+import { TopStatsRow } from '@/components/dashboard/v2/TopStatsRow'
+import { TrackingSection } from '@/components/dashboard/v2/TrackingSection'
+import { RemindersWidget, RecentAlertsWidget, RevenueCostsWidget } from '@/components/dashboard/v2/BottomWidgets'
 
 export default function DashboardPage() {
     return (
-        <div className="flex flex-1 flex-col gap-4 p-4 lg:gap-6 lg:p-6">
+        <div className="flex flex-1 flex-col gap-4 p-4 lg:p-5 bg-slate-50 min-h-screen">
             <div className="flex items-center">
-                <h1 className="text-lg font-semibold md:text-2xl">Dashboard</h1>
+                <h1 className="text-xl font-bold text-slate-800">Dashboard</h1>
             </div>
 
-            <DashboardStats />
+            {/* Top Row: Statistics */}
+            <TopStatsRow />
 
-            {/* Visual Overview Section */}
-            <div className="grid gap-4 md:gap-8 lg:grid-cols-4">
-                <FleetMapWidget />
-                <RevenueCostWidget />
-                <MaintenanceAlertsWidget />
-            </div>
+            {/* Middle Row: Tracking Loads & Live Map Overview */}
+            <TrackingSection />
 
-            {/* List Data Section */}
-            <div className="grid gap-4 md:gap-8 lg:grid-cols-3">
-                <RecentJobsWidget />
-                <RecentActivityWidget />
+            {/* Bottom Row: Reminders, Alerts, Costs */}
+            <div className="grid gap-4 lg:grid-cols-[1fr_1fr_1.5fr] min-h-[350px]">
+                <RemindersWidget />
+                <RecentAlertsWidget />
+                <RevenueCostsWidget />
             </div>
         </div>
     )

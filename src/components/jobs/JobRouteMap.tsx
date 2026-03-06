@@ -27,6 +27,7 @@ interface JobRouteMapProps {
     waypoints?: Waypoint[]
     vehicleLocation?: { lat: number; lng: number }
     vehicleId?: string | null
+    fleetLocations?: { id: string; lat: number; lng: number; label?: string }[]
 }
 
 function Traffic({ show }: { show: boolean }) {
@@ -61,7 +62,7 @@ function Directions({ waypoints }: { waypoints: Waypoint[] }) {
         const renderer = new routesLibrary.DirectionsRenderer({
             map,
             suppressMarkers: true,
-            polylineOptions: { strokeColor: '#0ea5e9', strokeWeight: 5, strokeOpacity: 0.8 }
+            polylineOptions: { strokeColor: '#ea580c', strokeWeight: 4, strokeOpacity: 0.9 }
         });
         setDirectionsRenderer(renderer);
         return () => renderer.setMap(null);
@@ -99,7 +100,7 @@ function Directions({ waypoints }: { waypoints: Waypoint[] }) {
     return null;
 }
 
-export function JobRouteMap({ pickup, delivery, waypoints: externalWaypoints, vehicleLocation: initialVehicleLocation, vehicleId }: JobRouteMapProps) {
+export function JobRouteMap({ pickup, delivery, waypoints: externalWaypoints, vehicleLocation: initialVehicleLocation, vehicleId, fleetLocations }: JobRouteMapProps) {
     const [apiKey, setApiKey] = useState<string>('')
     const [showTraffic, setShowTraffic] = useState(false)
     const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null)
@@ -122,17 +123,21 @@ export function JobRouteMap({ pickup, delivery, waypoints: externalWaypoints, ve
     }, [externalWaypoints, pickup, delivery])
 
     const fitBounds = useCallback(() => {
-        if (!mapInstance || waypoints.length === 0) return
+        if (!mapInstance) return
 
         const allPoints = [...waypoints]
         if (vehicleLocation) allPoints.push({ ...vehicleLocation, type: 'pickup', sequence: -1 } as Waypoint)
+        if (fleetLocations) {
+            fleetLocations.forEach(loc => allPoints.push({ lat: loc.lat, lng: loc.lng, type: 'pickup', sequence: -1 } as Waypoint))
+        }
+
         if (allPoints.length === 0) return
 
         const bounds = new google.maps.LatLngBounds()
         allPoints.forEach(p => bounds.extend({ lat: p.lat, lng: p.lng }))
 
         mapInstance.fitBounds(bounds, { top: 40, right: 40, bottom: 40, left: 40 })
-    }, [mapInstance, waypoints, vehicleLocation])
+    }, [mapInstance, waypoints, vehicleLocation, fleetLocations])
 
     useEffect(() => {
         if (mapInstance && waypoints.length > 0) {
@@ -142,16 +147,21 @@ export function JobRouteMap({ pickup, delivery, waypoints: externalWaypoints, ve
     }, [mapInstance, fitBounds, waypoints])
 
     const initialViewState = useMemo(() => {
-        if (waypoints.length === 0 && !vehicleLocation) return { lat: 40.7128, lng: -74.006 }
         const allPoints = [...waypoints]
         if (vehicleLocation) allPoints.push({ ...vehicleLocation, type: 'pickup', sequence: -1 } as Waypoint)
+        if (fleetLocations) {
+            fleetLocations.forEach(loc => allPoints.push({ lat: loc.lat, lng: loc.lng, type: 'pickup', sequence: -1 } as Waypoint))
+        }
+
+        if (allPoints.length === 0) return { lat: 40.7128, lng: -74.006 }
+
         const lngs = allPoints.map(p => p.lng)
         const lats = allPoints.map(p => p.lat)
         return {
             lng: (Math.min(...lngs) + Math.max(...lngs)) / 2,
             lat: (Math.min(...lats) + Math.max(...lats)) / 2,
         }
-    }, [waypoints, vehicleLocation])
+    }, [waypoints, vehicleLocation, fleetLocations])
 
     const displayWaypoints = useMemo(() => {
         const processedPoints = [...waypoints].map(p => ({ ...p, displayLat: p.lat, displayLng: p.lng }))
@@ -185,35 +195,22 @@ export function JobRouteMap({ pickup, delivery, waypoints: externalWaypoints, ve
                     mapId="job_route_map"
                     className="w-full h-full"
                     gestureHandling={'greedy'}
-                    disableDefaultUI={false}
+                    disableDefaultUI={true}
+                    zoomControl={true}
                     styles={truckingMapStyle}
                     onIdle={(map) => {
                         if (!mapInstance) setMapInstance(map.map)
                     }}
                 >
-                    <div className="absolute top-2 left-2 z-10">
-                        <button onClick={() => setShowTraffic(!showTraffic)} className={cn("bg-background/90 p-2 rounded-md shadow-md border hover:bg-muted transition-colors", showTraffic && "bg-primary text-primary-foreground hover:bg-primary/90")} title="Toggle Traffic">
-                            <Layers className="h-4 w-4" />
-                        </button>
-                    </div>
-
-                    <div className="absolute top-14 left-2 z-10">
-                        <button onClick={fitBounds} className="bg-background/90 p-2 rounded-md shadow-md border hover:bg-muted transition-colors" title="Fit entire route">
-                            <MapPin className="h-4 w-4" />
-                        </button>
-                    </div>
-
-                    <Traffic show={showTraffic} />
                     <Directions waypoints={waypoints} />
 
                     {displayWaypoints.map((point, index) => (
                         <AdvancedMarker key={index} position={{ lat: point.displayLat, lng: point.displayLng }}>
-                            <div className="flex flex-col items-center">
-                                <div className={cn("bg-white p-1.5 rounded-full shadow-lg border-2", point.type === 'pickup' ? "border-green-500 text-green-600" : point.type === 'dropoff' ? "border-red-500 text-red-600" : "border-blue-500 text-blue-600")}>
-                                    <span className="text-xs font-bold w-4 h-4 flex items-center justify-center">{index + 1}</span>
-                                </div>
-                                {point.type === 'pickup' && index === 0 && <div className="bg-background/90 text-xs px-2 py-0.5 rounded shadow mt-1 font-medium">Pickup</div>}
-                                {point.type === 'dropoff' && index === waypoints.length - 1 && <div className="bg-background/90 text-xs px-2 py-0.5 rounded shadow mt-1 font-medium">Delivery</div>}
+                            <div className="relative flex flex-col items-center drop-shadow-md">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="36" height="36" viewBox="0 0 24 24" fill="#dc2626" stroke="#b91c1c" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" />
+                                    <circle cx="12" cy="10" r="3" fill="white" stroke="none" />
+                                </svg>
                             </div>
                         </AdvancedMarker>
                     ))}
@@ -221,27 +218,28 @@ export function JobRouteMap({ pickup, delivery, waypoints: externalWaypoints, ve
                     {vehicleLocation && (
                         <AdvancedMarker position={{ lat: vehicleLocation.lat, lng: vehicleLocation.lng }}>
                             <div className="flex flex-col items-center">
-                                <div className="bg-blue-600 text-white p-2 rounded-full shadow-lg animate-pulse ring-4 ring-blue-500/30">
-                                    <Truck className="h-5 w-5 fill-current" />
+                                <div className="bg-white text-slate-800 p-1.5 rounded-md shadow-lg border border-slate-200">
+                                    <Truck className="h-5 w-5 fill-amber-400 stroke-amber-600" />
                                 </div>
-                                <div className="bg-background/90 text-xs px-2 py-0.5 rounded shadow mt-1 font-bold text-blue-600">Live</div>
                             </div>
                         </AdvancedMarker>
                     )}
+
+                    {fleetLocations?.map(loc => (
+                        <AdvancedMarker key={`fleet-${loc.id}`} position={{ lat: loc.lat, lng: loc.lng }}>
+                            <div className="flex flex-col items-center">
+                                <div className="bg-white text-slate-800 p-1.5 rounded-md shadow-md border border-slate-200 hover:scale-110 transition-transform cursor-pointer">
+                                    <Truck className="h-4 w-4 fill-amber-400 stroke-amber-600" />
+                                </div>
+                            </div>
+                        </AdvancedMarker>
+                    ))}
                 </Map>
             </APIProvider>
 
-            <div className="absolute bottom-4 left-4 bg-white/95 rounded-lg shadow-lg p-2 text-xs space-y-1">
-                {waypoints.length > 0 && (
-                    <>
-                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full border-2 border-green-500" /><span>Pickup</span></div>
-                        <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full border-2 border-red-500" /><span>Dropoff</span></div>
-                    </>
-                )}
-                {vehicleLocation && <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-blue-600" /><span>Vehicle</span></div>}
-            </div>
 
-            {waypoints.length === 0 && !vehicleLocation && (
+
+            {waypoints.length === 0 && !vehicleLocation && (!fleetLocations || fleetLocations.length === 0) && (
                 <div className="absolute inset-0 flex items-center justify-center bg-muted/50">
                     <div className="bg-white rounded-lg shadow-lg p-4 text-center max-w-xs">
                         <AlertCircle className="h-6 w-6 text-amber-500 mx-auto mb-2" />

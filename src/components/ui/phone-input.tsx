@@ -1,92 +1,83 @@
-import * as React from "react"
-import { Input } from "@/components/ui/input"
-import { cn } from "@/lib/utils"
+'use client'
 
-export interface PhoneInputProps
-    extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'onChange' | 'value'> {
+import * as React from 'react'
+import { cn } from '@/lib/utils'
+
+export interface PhoneInputProps {
     value?: string | null
     onChange?: (value: string) => void
+    placeholder?: string
+    className?: string
+    id?: string
+    disabled?: boolean
 }
 
-const formatPhoneNumber = (value: string) => {
-    if (!value) return ""
+/**
+ * Extract only the 10 local US digits from any phone string.
+ * Strips +1 prefix first before anything else.
+ */
+function extractDigits(val: string): string {
+    let cleaned = (val || '').trim()
+    // Strip +1 country code first
+    if (cleaned.startsWith('+1')) cleaned = cleaned.slice(2)
+    // Extract only digits from the remainder
+    return cleaned.replace(/\D/g, '').slice(0, 10)
+}
 
-    // Remove all non-digits
-    const digits = value.replace(/[^\d]/g, "")
-
-    // Remove leading 1 if present (US country code) to format the rest
-    const cleanNumber = digits.startsWith("1") && digits.length > 10
-        ? digits.slice(1)
-        : digits
-
-    // If we have existing +1 in the raw value but it's just '1', ignore. 
-    // Actually we usually receive '+1555...' so digits is '1555...'
-
-    // We want to format the LAST 10 digits effectively if possible, 
-    // or just format what we have.
-
-    // Let's assume standard US numbers.
-    // If digits > 10 (e.g. 15555555555), we strip the leading 1 for display formatting
-    const displayDigits = (digits.length === 11 && digits.startsWith('1'))
-        ? digits.slice(1)
-        : digits
-
-    const len = displayDigits.length
-
-    if (len < 4) return displayDigits
-    if (len < 7) return `(${displayDigits.slice(0, 3)}) ${displayDigits.slice(3)}`
-    return `(${displayDigits.slice(0, 3)}) ${displayDigits.slice(3, 6)}-${displayDigits.slice(6, 10)}`
+/**
+ * Formats a 10-digit string into (XXX) XXX-XXXX as the user types
+ */
+function formatDisplay(digits: string): string {
+    const d = digits.slice(0, 10)
+    if (d.length === 0) return ''
+    if (d.length <= 3) return `(${d}`
+    if (d.length <= 6) return `(${d.slice(0, 3)}) ${d.slice(3)}`
+    return `(${d.slice(0, 3)}) ${d.slice(3, 6)}-${d.slice(6)}`
 }
 
 const PhoneInput = React.forwardRef<HTMLInputElement, PhoneInputProps>(
-    ({ className, value, onChange, ...props }, ref) => {
+    ({ className, value, onChange, placeholder = '(555) 555-5555', id, disabled }, ref) => {
 
-        // Compute display value from the passed 'value' prop
-        const displayValue = React.useMemo(() => {
-            return formatPhoneNumber(value || "")
-        }, [value])
+        const displayValue = React.useMemo(
+            () => formatDisplay(extractDigits(value || '')),
+            [value]
+        )
 
         const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-            const inputValue = e.target.value
-
-            // Extract digits
-            // We allow user to type, we strip everything except digits
-            const digits = inputValue.replace(/[^\d]/g, "")
-
-            // Limit to 10 digits (US standard without prefix)
-            const constrainedDigits = digits.slice(0, 10)
-
-            // Form the value to send back: +1 + 10 digits
-            // But only if we have something
-            let finalValue = ""
-            if (constrainedDigits.length > 0) {
-                finalValue = `+1${constrainedDigits}`
-            }
-
-            if (onChange) {
-                onChange(finalValue)
-            }
+            const digits = e.target.value.replace(/\D/g, '').slice(0, 10)
+            // Store as +1XXXXXXXXXX, or empty string if no digits
+            onChange?.(digits.length > 0 ? `+1${digits}` : '')
         }
 
         return (
-            <div className="relative">
-                <span className="absolute left-3 top-2.5 h-4 text-muted-foreground text-sm z-10 pointer-events-none select-none flex items-center">
-                    +1
-                </span>
-                <Input
-                    type="tel"
-                    className={cn("pl-9", className)}
-                    onChange={handleChange}
+            <div className={cn('relative', className)}>
+                <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 pointer-events-none select-none z-10">
+                    <span className="text-base leading-none">🇺🇸</span>
+                    <span className="text-xs font-medium text-muted-foreground">+1</span>
+                    <span className="text-muted-foreground/30 text-sm ml-0.5">|</span>
+                </div>
+                <input
                     ref={ref}
+                    id={id}
+                    type="tel"
+                    inputMode="numeric"
+                    disabled={disabled}
                     value={displayValue}
-                    placeholder="(555) 555-5555"
-                    maxLength={14} // (555) 555-5555 is 14 chars
-                    {...props}
+                    onChange={handleChange}
+                    placeholder={placeholder}
+                    maxLength={14}
+                    className={cn(
+                        'flex h-10 w-full rounded-md border border-input bg-background pl-[4.5rem] pr-3 py-2 text-sm',
+                        'ring-offset-background placeholder:text-muted-foreground',
+                        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
+                        'disabled:cursor-not-allowed disabled:opacity-50 tracking-wide'
+                    )}
                 />
             </div>
         )
     }
 )
-PhoneInput.displayName = "PhoneInput"
+
+PhoneInput.displayName = 'PhoneInput'
 
 export { PhoneInput }

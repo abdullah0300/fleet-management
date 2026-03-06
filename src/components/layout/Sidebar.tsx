@@ -17,7 +17,8 @@ import {
     Wrench,
     CalendarDays,
     LogOut,
-    Building2 // New icon for companies
+    Building2,
+    ContactRound
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
@@ -35,6 +36,7 @@ const iconMap: Record<string, any> = {
     'Jobs': ClipboardList,
     'Manifests': ScrollText,
     'Costs': DollarSign,
+    'Customers': ContactRound,
     'Tracking': Navigation,
     'Maintenance': Wrench,
     'Reports': ChartBar,

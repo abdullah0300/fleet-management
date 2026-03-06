@@ -42,7 +42,7 @@ export function ManifestBuilder() {
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0])
     const [selectedDriver, setSelectedDriver] = useState<string>('')
     const [selectedVehicle, setSelectedVehicle] = useState<string>('')
-    const [selectedJobs, setSelectedJobs] = useState<Job[]>([])
+    const [selectedJobs, setSelectedJobs] = useState<(Job & { customers?: { name: string } | null })[]>([])
     const [searchQuery, setSearchQuery] = useState('')
     const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -82,7 +82,7 @@ export function ManifestBuilder() {
     })
 
     // Actions
-    const handleAddJob = (job: Job) => {
+    const handleAddJob = (job: any) => {
         if (selectedJobs.find(j => j.id === job.id)) return
         setSelectedJobs([...selectedJobs, job])
     }
@@ -136,6 +136,7 @@ export function ManifestBuilder() {
     const filteredPendingJobs = pendingJobs?.filter(job =>
         !selectedJobs.find(j => j.id === job.id) &&
         (job.job_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            job.customers?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             job.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()))
     ) || []
 
@@ -176,7 +177,7 @@ export function ManifestBuilder() {
                                 </div>
                                 <div className="text-sm text-muted-foreground mb-1">
                                     <User className="inline h-3 w-3 mr-1" />
-                                    {job.customer_name || 'No Name'}
+                                    {job.customers?.name || job.customer_name || 'No Name'}
                                 </div>
                                 <div className="text-xs text-muted-foreground line-clamp-1">
                                     <Map className="inline h-3 w-3 mr-1" />
@@ -262,7 +263,7 @@ export function ManifestBuilder() {
                                         <div className="flex-1">
                                             <div className="font-semibold">{job.job_number}</div>
                                             <div className="text-sm text-muted-foreground">
-                                                {job.customer_name} • {getJobDeliveryAddress(job as any)}
+                                                {job.customers?.name || job.customer_name} • {getJobDeliveryAddress(job as any)}
                                             </div>
                                         </div>
                                         <Button

@@ -28,6 +28,8 @@ export type Permission =
     | 'manage:settings'
     | 'view:companies'
     | 'manage:companies'
+    | 'view:customers'
+    | 'manage:customers'
 
 // Role-Permission Matrix
 const rolePermissions: Record<UserRole, Permission[]> = {
@@ -38,7 +40,8 @@ const rolePermissions: Record<UserRole, Permission[]> = {
         'view:manifests', 'manage:manifests', 'view:tracking',
         'view:maintenance', 'manage:maintenance', 'view:documents',
         'manage:documents', 'view:reports', 'view:settings', 'manage:settings',
-        'view:notifications' // Admin can view notifications
+        'view:notifications', // Admin can view notifications
+        'view:customers', 'manage:customers'
     ],
     fleet_manager: [
         'view:dashboard', 'view:vehicles', 'manage:vehicles',
@@ -47,14 +50,16 @@ const rolePermissions: Record<UserRole, Permission[]> = {
         'view:routes', 'manage:routes', 'view:dispatch', 'manage:dispatch',
         'view:manifests', 'manage:manifests', 'view:tracking',
         'view:maintenance', 'manage:maintenance', 'view:documents',
-        'manage:documents', 'view:reports', 'view:settings', 'view:notifications'
+        'manage:documents', 'view:reports', 'view:settings', 'view:notifications',
+        'view:customers', 'manage:customers'
     ],
     dispatcher: [
         'view:dashboard', 'view:vehicles', 'view:drivers',
         'view:dashboard', 'view:vehicles', 'view:drivers',
         'view:jobs', 'manage:jobs', 'view:routes', 'manage:routes',
         'view:dispatch', 'manage:dispatch', 'view:manifests', 'manage:manifests',
-        'view:tracking', 'view:maintenance', 'view:documents', 'view:notifications'
+        'view:tracking', 'view:maintenance', 'view:documents', 'view:notifications',
+        'view:customers', 'manage:customers'
     ],
     driver: [
         'view:dashboard', 'view:jobs', 'view:tracking', 'view:notifications'
@@ -109,6 +114,7 @@ const routePermissions: Record<string, Permission> = {
     '/dashboard/settings': 'view:settings',
     '/dashboard/costs': 'view:reports',
     '/dashboard/notifications': 'view:notifications',
+    '/dashboard/customers': 'view:customers',
 }
 
 // Check if a user can access a specific route
@@ -143,6 +149,7 @@ export function getAccessibleRoutes(role: UserRole | null, isPlatformAdmin: bool
         { path: '/dashboard/companies', name: 'Companies', permission: 'view:companies' as Permission },
         { path: '/dashboard/dispatch', name: 'Dispatch', permission: 'view:dispatch' as Permission }, // NEW
         { path: '/dashboard/jobs', name: 'Jobs', permission: 'view:jobs' as Permission },
+        { path: '/dashboard/customers', name: 'Customers', permission: 'view:customers' as Permission },
         { path: '/dashboard/routes', name: 'Routes', permission: 'view:routes' as Permission },
         { path: '/dashboard/manifests', name: 'Manifests', permission: 'view:manifests' as Permission }, // NEW
         { path: '/dashboard/vehicles', name: 'Vehicles', permission: 'view:vehicles' as Permission },

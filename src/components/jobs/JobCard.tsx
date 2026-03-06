@@ -15,8 +15,13 @@ interface JobCardProps {
         job_number: string
         status: string
         financial_status?: string | null
-        customer_name: string
+        customer_name: string | null
         customer_phone?: string | null
+        customers?: {
+            name: string
+            phone?: string | null
+            email?: string | null
+        } | null
         priority?: 'low' | 'normal' | 'high' | 'urgent' | null
         weight?: number | null
         notes?: string | null
@@ -148,7 +153,7 @@ export function JobCard({ job, onViewDetails }: JobCardProps) {
                         {/* Main Content */}
                         <div className="space-y-1 mb-3">
                             <h3 className="font-bold text-gray-900 truncate leading-tight">
-                                {job.customer_name}
+                                {job.customers?.name || job.customer_name || 'Unknown Customer'}
                             </h3>
                             {getLocationSummary()}
                         </div>

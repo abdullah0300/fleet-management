@@ -173,6 +173,7 @@ export async function getJobs(): Promise<Job[]> {
         .from('jobs')
         .select(`
             *,
+            customers (id, name, email, phone),
             job_stops (*),
             routes (id, name, distance_km),
             vehicles (id, license_plate, make, model),
@@ -198,6 +199,7 @@ export async function getJob(id: string): Promise<Job | null> {
         .from('jobs')
         .select(`
             *,
+            customers (id, name, email, phone),
             routes (id, name, distance_km, estimated_duration),
             vehicles (id, license_plate, make, model),
             drivers (
@@ -342,7 +344,8 @@ export async function getManifest(id: string): Promise<Manifest | null> {
             vehicles (license_plate, make, model),
             drivers (profiles (full_name, phone)),
             jobs (
-                id, job_number, status, sequence_order,
+                id, job_number, status, sequence_order, customer_id,
+                customers (name, phone, email),
                 customer_name, customer_phone, customer_email,
                 priority, notes,
                 job_stops (

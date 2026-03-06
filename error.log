@@ -1,0 +1,2 @@
+src/components/dashboard/v2/TrackingLoadsWidget.tsx(67,20): error TS18047: 'load.jobNumber' is possibly 'null'.
+src/components/jobs/JobCreationContent.tsx(484,17): error TS2353: Object literal may only specify known properties, and 'status' does not exist in type '{ id?: string | undefined; company_id?: string | null | undefined; job_number?: string | null | undefined; manifest_id?: string | null | undefined; sequence_order?: number | null | undefined; ... 16 more ...; updated_at?: string | undefined; }'.
