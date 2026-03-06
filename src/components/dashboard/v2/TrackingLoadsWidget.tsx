@@ -64,11 +64,11 @@ export function TrackingLoadsWidget({
 
         if (searchQuery) {
             const q = searchQuery.toLowerCase()
-            return load.jobNumber.toLowerCase().includes(q) ||
-                load.vehicleMake.toLowerCase().includes(q) ||
-                load.vehiclePlate.toLowerCase().includes(q) ||
-                load.startCity.toLowerCase().includes(q) ||
-                load.endCity.toLowerCase().includes(q)
+            return (load.jobNumber || '').toLowerCase().includes(q) ||
+                (load.vehicleMake || '').toLowerCase().includes(q) ||
+                (load.vehiclePlate || '').toLowerCase().includes(q) ||
+                (load.startCity || '').toLowerCase().includes(q) ||
+                (load.endCity || '').toLowerCase().includes(q)
         }
         return true
     })
