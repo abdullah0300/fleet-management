@@ -1,306 +1,211 @@
 'use client'
 
-import { Truck, Users, Package, Wrench, FileText, TrendingUp, TrendingDown, AlertTriangle, Clock, CheckCircle2, BarChart3, PieChart } from 'lucide-react'
-import { useDashboardStats, useFleetMetrics, useJobMetrics, useDriverMetrics } from '@/hooks/useReports'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState } from 'react'
+import { DateRange } from 'react-day-picker'
+import { subDays, startOfMonth } from 'date-fns'
+import {
+    DollarSign,
+    TrendingUp,
+    Truck,
+    Wrench,
+    Users,
+    PackageCheck,
+    Briefcase,
+    Activity
+} from 'lucide-react'
+
+// Hooks
+import {
+    useFinancialMetrics,
+    useJobMetrics,
+    useFleetMetrics,
+    useDriverMetrics
+} from '@/hooks/useReports'
+
+// Components
+import { DatePickerWithRange } from '@/components/ui/date-range-picker'
+import { MetricCard } from '@/components/reports/MetricCard'
+import {
+    RevenueChart,
+    JobCompletionChart,
+    CostBreakdownChart,
+    VehicleUtilizationChart,
+    StatusChart
+} from '@/components/reports/Charts'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
-import { StatusChart, ProgressGauge } from '@/components/reports/Charts'
-import { cn } from '@/lib/utils'
 
 export default function ReportsPage() {
-    const { data: dashboardStats, isLoading: dashboardLoading } = useDashboardStats()
-    const { data: fleetMetrics, isLoading: fleetLoading } = useFleetMetrics()
-    const { data: jobMetrics, isLoading: jobsLoading } = useJobMetrics()
-    const { data: driverMetrics, isLoading: driversLoading } = useDriverMetrics()
+    // Global Date Filter State (Default to last 30 days)
+    const [dateRange, setDateRange] = useState<DateRange | undefined>({
+        from: subDays(new Date(), 30),
+        to: new Date()
+    })
 
-    const isLoading = dashboardLoading || fleetLoading || jobsLoading || driversLoading
+    // Fetch all metrics
+    const { data: financials, isLoading: loadingFin } = useFinancialMetrics(dateRange as any)
+    const { data: jobs, isLoading: loadingJobs } = useJobMetrics(dateRange as any)
+    const { data: fleet, isLoading: loadingFleet } = useFleetMetrics(dateRange as any)
+    const { data: drivers, isLoading: loadingDrivers } = useDriverMetrics(dateRange as any)
 
-    // Calculate job trend
-    const jobTrend = jobMetrics
-        ? ((jobMetrics.jobsThisMonth - jobMetrics.jobsLastMonth) / (jobMetrics.jobsLastMonth || 1)) * 100
-        : 0
+    const isLoading = loadingFin || loadingJobs || loadingFleet || loadingDrivers
 
     return (
-        <div className="flex flex-col gap-4 sm:gap-6">
-            {/* Header */}
-            <div>
-                <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Reports & Analytics</h1>
-                <p className="text-muted-foreground text-sm">Fleet performance and operational insights</p>
-            </div>
-
-            {/* Quick Stats Row */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-                {isLoading ? (
-                    <>
-                        {[...Array(4)].map((_, i) => (
-                            <Skeleton key={i} className="h-24 rounded-xl" />
-                        ))}
-                    </>
-                ) : (
-                    <>
-                        <Card className="bg-gradient-to-br from-accent-purple to-accent-purple/80 text-white">
-                            <CardContent className="p-3 sm:p-4">
-                                <div className="flex items-center justify-between">
-                                    <Truck className="h-6 w-6 sm:h-8 sm:w-8 opacity-80" />
-                                    <span className="text-3xl sm:text-4xl font-bold">
-                                        {dashboardStats?.vehicles.total || 0}
-                                    </span>
-                                </div>
-                                <p className="text-xs sm:text-sm opacity-90 mt-1">Total Vehicles</p>
-                                <p className="text-[10px] sm:text-xs opacity-70">
-                                    {dashboardStats?.vehicles.available || 0} available
-                                </p>
-                            </CardContent>
-                        </Card>
-
-                        <Card className="bg-gradient-to-br from-status-info to-status-info/80 text-white">
-                            <CardContent className="p-3 sm:p-4">
-                                <div className="flex items-center justify-between">
-                                    <Users className="h-6 w-6 sm:h-8 sm:w-8 opacity-80" />
-                                    <span className="text-3xl sm:text-4xl font-bold">
-                                        {dashboardStats?.drivers.total || 0}
-                                    </span>
-                                </div>
-                                <p className="text-xs sm:text-sm opacity-90 mt-1">Total Drivers</p>
-                                <p className="text-[10px] sm:text-xs opacity-70">
-                                    {dashboardStats?.drivers.available || 0} available
-                                </p>
-                            </CardContent>
-                        </Card>
-
-                        <Card className="bg-gradient-to-br from-status-success to-status-success/80 text-white">
-                            <CardContent className="p-3 sm:p-4">
-                                <div className="flex items-center justify-between">
-                                    <Package className="h-6 w-6 sm:h-8 sm:w-8 opacity-80" />
-                                    <span className="text-3xl sm:text-4xl font-bold">
-                                        {dashboardStats?.jobs.completedThisMonth || 0}
-                                    </span>
-                                </div>
-                                <p className="text-xs sm:text-sm opacity-90 mt-1">Jobs This Month</p>
-                                <div className="flex items-center gap-1 text-[10px] sm:text-xs opacity-70">
-                                    {jobTrend >= 0 ? (
-                                        <><TrendingUp className="h-3 w-3" /> +{Math.round(jobTrend)}%</>
-                                    ) : (
-                                        <><TrendingDown className="h-3 w-3" /> {Math.round(jobTrend)}%</>
-                                    )}
-                                    <span>vs last month</span>
-                                </div>
-                            </CardContent>
-                        </Card>
-
-                        <Card className="bg-gradient-to-br from-status-warning to-status-warning/80 text-white">
-                            <CardContent className="p-3 sm:p-4">
-                                <div className="flex items-center justify-between">
-                                    <Wrench className="h-6 w-6 sm:h-8 sm:w-8 opacity-80" />
-                                    <span className="text-3xl sm:text-4xl font-bold">
-                                        {dashboardStats?.maintenance.scheduled || 0}
-                                    </span>
-                                </div>
-                                <p className="text-xs sm:text-sm opacity-90 mt-1">Maintenance Due</p>
-                                <p className="text-[10px] sm:text-xs opacity-70">
-                                    {dashboardStats?.maintenance.overdue || 0} overdue
-                                </p>
-                            </CardContent>
-                        </Card>
-                    </>
-                )}
-            </div>
-
-            {/* Alerts Section */}
-            {!isLoading && (dashboardStats?.maintenance.overdue || dashboardStats?.documents.expired) ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {dashboardStats?.maintenance.overdue ? (
-                        <Card className="border-status-error/50 bg-status-error-muted/30">
-                            <CardContent className="p-3 sm:p-4 flex items-center gap-3">
-                                <AlertTriangle className="h-6 w-6 text-status-error shrink-0" />
-                                <div>
-                                    <p className="font-semibold text-status-error">
-                                        {dashboardStats.maintenance.overdue} Overdue Maintenance
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">Requires immediate attention</p>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ) : null}
-
-                    {dashboardStats?.documents.expired ? (
-                        <Card className="border-status-warning/50 bg-status-warning-muted/30">
-                            <CardContent className="p-3 sm:p-4 flex items-center gap-3">
-                                <FileText className="h-6 w-6 text-status-warning shrink-0" />
-                                <div>
-                                    <p className="font-semibold text-status-warning">
-                                        {dashboardStats.documents.expired} Expired Documents
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                        Plus {dashboardStats.documents.expiringSoon} expiring soon
-                                    </p>
-                                </div>
-                            </CardContent>
-                        </Card>
-                    ) : null}
+        <div className="flex flex-col gap-8 pb-10">
+            {/* Header & Global Filters */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold tracking-tight">Executive Dashboard</h1>
+                    <p className="text-muted-foreground text-sm">Comprehensive performance analytics</p>
                 </div>
-            ) : null}
-
-            {/* Fleet Metrics */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <BarChart3 className="h-4 w-4" />
-                            Fleet Overview
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {isLoading ? (
-                            <div className="space-y-3">
-                                {[...Array(4)].map((_, i) => (
-                                    <Skeleton key={i} className="h-12" />
-                                ))}
-                            </div>
-                        ) : (
-                            <>
-                                {/* Utilization Gauge */}
-                                <div className="flex justify-center">
-                                    <ProgressGauge
-                                        value={fleetMetrics?.averageUtilization || 0}
-                                        label="Fleet Utilization"
-                                    />
-                                </div>
-
-                                {/* Fuel Efficiency */}
-                                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                                    <span className="text-sm">Avg Fuel Efficiency</span>
-                                    <span className="font-semibold">{fleetMetrics?.fuelEfficiency || 0} km/L</span>
-                                </div>
-
-                                {/* Maintenance Cost */}
-                                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                                    <span className="text-sm">YTD Maintenance Cost</span>
-                                    <span className="font-semibold">${(fleetMetrics?.maintenanceCost || 0).toLocaleString()}</span>
-                                </div>
-
-                                {/* Vehicles by Status Chart */}
-                                <div>
-                                    <p className="text-sm font-medium mb-2">Vehicles by Status</p>
-                                    <StatusChart
-                                        data={fleetMetrics?.vehiclesByStatus || {}}
-                                        type="bar"
-                                        height={150}
-                                    />
-                                </div>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-base flex items-center gap-2">
-                            <PieChart className="h-4 w-4" />
-                            Job Performance
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {isLoading ? (
-                            <div className="space-y-3">
-                                {[...Array(4)].map((_, i) => (
-                                    <Skeleton key={i} className="h-12" />
-                                ))}
-                            </div>
-                        ) : (
-                            <>
-                                {/* Completion Rate Gauge */}
-                                <div className="flex justify-center">
-                                    <ProgressGauge
-                                        value={jobMetrics?.completionRate || 0}
-                                        label="Completion Rate"
-                                        color="hsl(142, 76%, 36%)"
-                                    />
-                                </div>
-
-                                {/* Total Jobs */}
-                                <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
-                                    <span className="text-sm">Total Jobs</span>
-                                    <span className="font-semibold">{jobMetrics?.totalJobs || 0}</span>
-                                </div>
-
-                                {/* Active Jobs */}
-                                <div className="grid grid-cols-2 gap-2">
-                                    <div className="p-3 bg-status-warning-muted/30 rounded-lg text-center">
-                                        <Clock className="h-5 w-5 mx-auto text-status-warning mb-1" />
-                                        <p className="text-lg font-bold">{dashboardStats?.jobs.pending || 0}</p>
-                                        <p className="text-xs text-muted-foreground">Pending</p>
-                                    </div>
-                                    <div className="p-3 bg-accent-purple-muted/30 rounded-lg text-center">
-                                        <Package className="h-5 w-5 mx-auto text-accent-purple mb-1" />
-                                        <p className="text-lg font-bold">{dashboardStats?.jobs.inProgress || 0}</p>
-                                        <p className="text-xs text-muted-foreground">In Progress</p>
-                                    </div>
-                                </div>
-
-                                {/* Jobs by Status - Pie Chart */}
-                                <div>
-                                    <p className="text-sm font-medium mb-2">Jobs by Status</p>
-                                    <StatusChart
-                                        data={jobMetrics?.jobsByStatus || {}}
-                                        type="pie"
-                                        height={180}
-                                    />
-                                </div>
-                            </>
-                        )}
-                    </CardContent>
-                </Card>
+                <DatePickerWithRange date={dateRange} setDate={setDateRange} />
             </div>
 
-            {/* Driver Metrics */}
-            <Card>
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2">
-                        <Users className="h-4 w-4" />
-                        Driver Performance
-                    </CardTitle>
-                </CardHeader>
-                <CardContent>
-                    {isLoading ? (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                            {[...Array(4)].map((_, i) => (
-                                <Skeleton key={i} className="h-20" />
-                            ))}
+            {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <Skeleton className="h-32 rounded-xl" />
+                    <Skeleton className="h-32 rounded-xl" />
+                    <Skeleton className="h-32 rounded-xl" />
+                    <Skeleton className="h-32 rounded-xl" />
+                </div>
+            ) : (
+                <>
+                    {/* SECTION 1: FINANCIAL OVERVIEW */}
+                    <section className="space-y-4">
+                        <div className="flex items-center gap-2 border-b pb-2">
+                            <DollarSign className="h-5 w-5 text-emerald-600" />
+                            <h2 className="text-xl font-semibold">Financial Overview</h2>
                         </div>
-                    ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
-                            <div className="p-3 sm:p-4 bg-muted/50 rounded-lg text-center">
-                                <p className="text-2xl sm:text-3xl font-bold">{driverMetrics?.totalDrivers || 0}</p>
-                                <p className="text-xs sm:text-sm text-muted-foreground">Total Drivers</p>
-                            </div>
-                            <div className="p-3 sm:p-4 bg-status-success-muted/30 rounded-lg text-center">
-                                <p className="text-2xl sm:text-3xl font-bold text-status-success">
-                                    {dashboardStats?.drivers.available || 0}
-                                </p>
-                                <p className="text-xs sm:text-sm text-muted-foreground">Available</p>
-                            </div>
-                            <div className="p-3 sm:p-4 bg-accent-purple-muted/30 rounded-lg text-center">
-                                <p className="text-2xl sm:text-3xl font-bold text-accent-purple">
-                                    {driverMetrics?.activeDrivers || 0}
-                                </p>
-                                <p className="text-xs sm:text-sm text-muted-foreground">On Trip</p>
-                            </div>
-                            <div className="p-3 sm:p-4 bg-status-info-muted/30 rounded-lg text-center">
-                                <p className="text-2xl sm:text-3xl font-bold text-status-info">
-                                    {driverMetrics?.averageTripsPerDriver || 0}
-                                </p>
-                                <p className="text-xs sm:text-sm text-muted-foreground">Avg Trips/Driver</p>
-                            </div>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
 
-            {/* Footer Note */}
-            <p className="text-xs text-center text-muted-foreground">
-                Data refreshes every 5 minutes • Last updated: {new Date().toLocaleTimeString()}
-            </p>
+                        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                            <MetricCard
+                                title="Total Revenue"
+                                value={`$${financials?.totalRevenue.toLocaleString()}`}
+                                icon={<TrendingUp />}
+                                className="bg-emerald-50/50 dark:bg-emerald-950/20"
+                            />
+                            <MetricCard
+                                title="Net Profit"
+                                value={`$${financials?.netProfit.toLocaleString()}`}
+                                icon={<DollarSign />}
+                                trend={financials?.profitMargin}
+                                trendLabel="Margin"
+                            />
+                            <MetricCard
+                                title="Operating Costs"
+                                value={`$${financials?.totalCost.toLocaleString()}`}
+                                icon={<Activity />}
+                            />
+                            <MetricCard
+                                title="Jobs Billed"
+                                value={jobs?.totalJobs || 0}
+                                icon={<Briefcase />}
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            <Card className="lg:col-span-2">
+                                <CardHeader>
+                                    <CardTitle>Revenue vs. Cost Trend</CardTitle>
+                                    <CardDescription>Daily financial performance based on job completion and trip actuals.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {financials?.dailyData && financials.dailyData.length > 0 ? (
+                                        <RevenueChart data={financials.dailyData} />
+                                    ) : (
+                                        <div className="h-[350px] flex items-center justify-center text-muted-foreground">No data for this period</div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Cost Breakdown</CardTitle>
+                                    <CardDescription>Where your money is going.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <CostBreakdownChart data={financials?.costBreakdown || []} />
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </section>
+
+                    {/* SECTION 2: OPERATIONS & JOBS */}
+                    <section className="space-y-4 mt-8">
+                        <div className="flex items-center gap-2 border-b pb-2">
+                            <Briefcase className="h-5 w-5 text-blue-600" />
+                            <h2 className="text-xl font-semibold">Operations & Dispatch</h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                            <Card className="lg:col-span-2">
+                                <CardHeader>
+                                    <CardTitle>Job Volume Pipeline</CardTitle>
+                                    <CardDescription>Daily jobs completed versus those still pending.</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    {jobs?.dailyCompletion && jobs.dailyCompletion.length > 0 ? (
+                                        <JobCompletionChart data={jobs.dailyCompletion} />
+                                    ) : (
+                                        <div className="h-[300px] flex items-center justify-center text-muted-foreground">No jobs recorded for this period</div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Current Job Statuses</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <StatusChart data={jobs?.jobsByStatus || {}} height={250} />
+                                    <div className="mt-4 flex flex-col items-center">
+                                        <span className="text-3xl font-bold">{jobs?.completionRate.toFixed(1)}%</span>
+                                        <span className="text-sm text-muted-foreground">Completion Rate</span>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </section>
+
+                    {/* SECTION 3: FLEET & DRIVERS */}
+                    <section className="space-y-4 mt-8">
+                        <div className="flex items-center gap-2 border-b pb-2">
+                            <Truck className="h-5 w-5 text-purple-600" />
+                            <h2 className="text-xl font-semibold">Fleet & Workforce</h2>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <Card className="lg:col-span-1">
+                                <CardHeader className="pb-0">
+                                    <CardTitle className="text-md">Vehicle Utilization</CardTitle>
+                                </CardHeader>
+                                <CardContent className="pt-0">
+                                    <VehicleUtilizationChart utilizationRate={fleet?.utilizationRate || 0} />
+                                </CardContent>
+                            </Card>
+
+                            <MetricCard
+                                title="Fleet Size"
+                                value={fleet?.totalVehicles || 0}
+                                icon={<Truck />}
+                            />
+
+                            <MetricCard
+                                title="Active Drivers"
+                                value={`${drivers?.driversByStatus['on_trip'] || 0} / ${drivers?.totalDrivers || 0}`}
+                                icon={<Users />}
+                                description={`${drivers?.activeRate.toFixed(1)}% of workforce deployed`}
+                            />
+
+                            <MetricCard
+                                title="Upcoming Maintenance"
+                                value={`$${fleet?.maintenanceCostUpcoming.toLocaleString()}`}
+                                icon={<Wrench />}
+                                description="Scheduled repair liabilities"
+                                className="bg-orange-50/50 dark:bg-orange-950/20"
+                            />
+                        </div>
+                    </section>
+                </>
+            )}
         </div>
     )
 }

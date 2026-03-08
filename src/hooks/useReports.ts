@@ -1,275 +1,277 @@
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { useCurrentUser } from './useCurrentUser'
 
 const supabase = createClient()
 
-// Query keys factory for cache management
 export const reportKeys = {
     all: ['reports'] as const,
-    dashboard: () => [...reportKeys.all, 'dashboard'] as const,
-    fleet: () => [...reportKeys.all, 'fleet'] as const,
-    drivers: () => [...reportKeys.all, 'drivers'] as const,
-    jobs: () => [...reportKeys.all, 'jobs'] as const,
-    costs: () => [...reportKeys.all, 'costs'] as const,
+    dashboard: (range: any) => [...reportKeys.all, 'dashboard', range] as const,
+    fleet: (range: any) => [...reportKeys.all, 'fleet', range] as const,
+    drivers: (range: any) => [...reportKeys.all, 'drivers', range] as const,
+    jobs: (range: any) => [...reportKeys.all, 'jobs', range] as const,
+    financials: (range: any) => [...reportKeys.all, 'financials', range] as const,
 }
 
-// ==========================================
-// REPORT TYPES
-// ==========================================
-
-interface DashboardStats {
-    vehicles: {
-        total: number
-        available: number
-        inUse: number
-        maintenance: number
-    }
-    drivers: {
-        total: number
-        available: number
-        onTrip: number
-    }
-    jobs: {
-        total: number
-        pending: number
-        inProgress: number
-        completedThisMonth: number
-    }
-    maintenance: {
-        scheduled: number
-        overdue: number
-    }
-    documents: {
-        expiringSoon: number
-        expired: number
-    }
+export interface DateRange {
+    from: Date
+    to: Date
 }
 
-interface FleetMetrics {
-    totalVehicles: number
-    averageUtilization: number
-    fuelEfficiency: number
-    maintenanceCost: number
-    vehiclesByType: Record<string, number>
-    vehiclesByStatus: Record<string, number>
+// ----------------------------------------------------------------------
+// FINANCIAL METRICS
+// ----------------------------------------------------------------------
+export interface FinancialMetrics {
+    totalRevenue: number
+    totalCost: number
+    profitMargin: number
+    netProfit: number
+    dailyData: { date: string; revenue: number; cost: number; profit: number }[]
+    costBreakdown: { name: string; value: number }[]
 }
 
-interface DriverMetrics {
-    totalDrivers: number
-    activeDrivers: number
-    averageTripsPerDriver: number
-    driversByStatus: Record<string, number>
-}
+async function fetchFinancialMetrics(companyId: string | null, range?: DateRange): Promise<FinancialMetrics> {
+    if (!companyId) throw new Error("No company ID provided")
 
-interface JobMetrics {
-    totalJobs: number
-    completionRate: number
-    averageJobDuration: number
-    jobsByStatus: Record<string, number>
-    jobsThisMonth: number
-    jobsLastMonth: number
-}
+    // Default to last 30 days
+    const endDate = range?.to ? new Date(range.to) : new Date()
+    const startDate = range?.from ? new Date(range.from) : new Date()
+    if (!range?.from) startDate.setDate(endDate.getDate() - 30)
 
-// ==========================================
-// FETCH FUNCTIONS
-// ==========================================
+    // Ensure inclusive end of day
+    const endOfDay = new Date(endDate)
+    endOfDay.setHours(23, 59, 59, 999)
 
-async function fetchDashboardStats(): Promise<DashboardStats> {
-    // Fetch vehicles stats
-    const { data: vehicles } = await supabase.from('vehicles').select('status')
-    const vehicleStats = vehicles?.reduce((acc, v) => {
-        acc.total++
-        if (v.status === 'available') acc.available++
-        if (v.status === 'in_use') acc.inUse++
-        if (v.status === 'maintenance') acc.maintenance++
-        return acc
-    }, { total: 0, available: 0, inUse: 0, maintenance: 0 }) || { total: 0, available: 0, inUse: 0, maintenance: 0 }
+    // 1. Fetch Revenue from Jobs
+    const { data: jobs } = await supabase
+        .from('jobs')
+        .select('created_at, revenue, status')
+        .eq('company_id', companyId)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endOfDay.toISOString())
 
-    // Fetch drivers stats
-    const { data: drivers } = await supabase.from('drivers').select('status')
-    const driverStats = drivers?.reduce((acc, d) => {
-        acc.total++
-        if (d.status === 'available') acc.available++
-        if (d.status === 'on_trip') acc.onTrip++
-        return acc
-    }, { total: 0, available: 0, onTrip: 0 }) || { total: 0, available: 0, onTrip: 0 }
+    // 2. Fetch Trips (Fuel + Toll + Driver Earnings)
+    const { data: trips } = await supabase
+        .from('trips')
+        .select('created_at, actual_fuel_cost, actual_toll_cost, driver_earnings')
+        // Using relationship via jobs/manifests to get company_id in RLS, or we can just fetch all trips and let RLS filter
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endOfDay.toISOString())
 
-    // Fetch jobs stats
-    const { data: jobs } = await supabase.from('jobs').select('status, created_at')
-    const thisMonth = new Date()
-    thisMonth.setDate(1)
-    thisMonth.setHours(0, 0, 0, 0)
-
-    const jobStats = jobs?.reduce((acc, j) => {
-        acc.total++
-        if (j.status === 'pending') acc.pending++
-        if (j.status === 'in_progress') acc.inProgress++
-        if (j.status === 'completed' && new Date(j.created_at) >= thisMonth) acc.completedThisMonth++
-        return acc
-    }, { total: 0, pending: 0, inProgress: 0, completedThisMonth: 0 }) || { total: 0, pending: 0, inProgress: 0, completedThisMonth: 0 }
-
-    // Fetch maintenance stats
-    const today = new Date().toISOString().split('T')[0]
+    // 3. Fetch Maintenance Costs
     const { data: maintenance } = await supabase
         .from('maintenance_records')
-        .select('status, next_service_date')
-        .neq('status', 'completed')
+        .select('created_at, cost')
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endOfDay.toISOString())
 
-    const maintenanceStats = maintenance?.reduce((acc, m) => {
-        if (m.status === 'scheduled') acc.scheduled++
-        if (m.next_service_date && m.next_service_date < today) acc.overdue++
-        return acc
-    }, { scheduled: 0, overdue: 0 }) || { scheduled: 0, overdue: 0 }
+    // Grouping by Date
+    const dailyMap: Record<string, { revenue: number, cost: number }> = {}
+    let totalRevenue = 0
+    let totalFuel = 0
+    let totalToll = 0
+    let totalDriverPay = 0
+    let totalMaintenance = 0
 
-    // Fetch documents stats
-    const thirtyDays = new Date()
-    thirtyDays.setDate(thirtyDays.getDate() + 30)
-    const { data: documents } = await supabase
-        .from('documents')
-        .select('expiry_date')
-        .not('expiry_date', 'is', null)
-        .lte('expiry_date', thirtyDays.toISOString())
+    // Initialize daily map with 0s for the range
+    for (let d = new Date(startDate); d <= endOfDay; d.setDate(d.getDate() + 1)) {
+        dailyMap[d.toISOString().split('T')[0]] = { revenue: 0, cost: 0 }
+    }
 
-    const docStats = documents?.reduce((acc, d) => {
-        if (d.expiry_date && new Date(d.expiry_date) < new Date()) acc.expired++
-        else acc.expiringSoon++
-        return acc
-    }, { expiringSoon: 0, expired: 0 }) || { expiringSoon: 0, expired: 0 }
+    jobs?.forEach(j => {
+        if (!j.revenue) return
+        const rev = Number(j.revenue)
+        totalRevenue += rev
+        const dateKey = j.created_at.split('T')[0]
+        if (dailyMap[dateKey]) dailyMap[dateKey].revenue += rev
+    })
+
+    trips?.forEach(t => {
+        const cost = Number(t.actual_fuel_cost || 0) + Number(t.actual_toll_cost || 0) + Number(t.driver_earnings || 0)
+        totalFuel += Number(t.actual_fuel_cost || 0)
+        totalToll += Number(t.actual_toll_cost || 0)
+        totalDriverPay += Number(t.driver_earnings || 0)
+
+        const dateKey = t.created_at.split('T')[0]
+        if (dailyMap[dateKey]) dailyMap[dateKey].cost += cost
+    })
+
+    maintenance?.forEach(m => {
+        const cost = Number(m.cost || 0)
+        totalMaintenance += cost
+        const dateKey = m.created_at.split('T')[0]
+        if (dailyMap[dateKey]) dailyMap[dateKey].cost += cost
+    })
+
+    const totalCost = totalFuel + totalToll + totalDriverPay + totalMaintenance
+    const netProfit = totalRevenue - totalCost
+    const profitMargin = totalRevenue > 0 ? (netProfit / totalRevenue) * 100 : 0
+
+    const dailyData = Object.keys(dailyMap).sort().map(date => ({
+        date,
+        revenue: dailyMap[date].revenue,
+        cost: dailyMap[date].cost,
+        profit: dailyMap[date].revenue - dailyMap[date].cost,
+    }))
+
+    const costBreakdown = [
+        { name: 'Fuel', value: totalFuel },
+        { name: 'Tolls', value: totalToll },
+        { name: 'Driver Pay', value: totalDriverPay },
+        { name: 'Maintenance', value: totalMaintenance },
+    ].filter(item => item.value > 0)
 
     return {
-        vehicles: vehicleStats,
-        drivers: driverStats,
-        jobs: jobStats,
-        maintenance: maintenanceStats,
-        documents: docStats,
+        totalRevenue,
+        totalCost,
+        netProfit,
+        profitMargin,
+        dailyData,
+        costBreakdown,
     }
 }
 
-async function fetchFleetMetrics(): Promise<FleetMetrics> {
-    const { data: vehicles } = await supabase
-        .from('vehicles')
-        .select('status, vehicle_type, fuel_efficiency')
+// ----------------------------------------------------------------------
+// JOB METRICS
+// ----------------------------------------------------------------------
+export interface JobMetrics {
+    totalJobs: number
+    completionRate: number
+    jobsByStatus: Record<string, number>
+    dailyCompletion: { date: string; completed: number; pending: number }[]
+}
 
-    const vehiclesByType: Record<string, number> = {}
-    const vehiclesByStatus: Record<string, number> = {}
-    let totalFuelEfficiency = 0
-    let fuelCount = 0
+async function fetchJobMetrics(companyId: string | null, range?: DateRange): Promise<JobMetrics> {
+    if (!companyId) throw new Error("No company ID provided")
 
-    vehicles?.forEach(v => {
-        // By type
-        const type = v.vehicle_type || 'Unknown'
-        vehiclesByType[type] = (vehiclesByType[type] || 0) + 1
+    const endDate = range?.to ? new Date(range.to) : new Date()
+    const startDate = range?.from ? new Date(range.from) : new Date()
+    if (!range?.from) startDate.setDate(endDate.getDate() - 30)
+    const endOfDay = new Date(endDate)
+    endOfDay.setHours(23, 59, 59, 999)
 
-        // By status
-        const status = v.status || 'Unknown'
-        vehiclesByStatus[status] = (vehiclesByStatus[status] || 0) + 1
+    const { data: jobs } = await supabase
+        .from('jobs')
+        .select('created_at, status')
+        .eq('company_id', companyId)
+        .gte('created_at', startDate.toISOString())
+        .lte('created_at', endOfDay.toISOString())
 
-        // Fuel efficiency
-        if (v.fuel_efficiency) {
-            totalFuelEfficiency += v.fuel_efficiency
-            fuelCount++
+    const jobsByStatus: Record<string, number> = {}
+    let completedCount = 0
+    const dailyMap: Record<string, { completed: number; pending: number }> = {}
+
+    for (let d = new Date(startDate); d <= endOfDay; d.setDate(d.getDate() + 1)) {
+        dailyMap[d.toISOString().split('T')[0]] = { completed: 0, pending: 0 }
+    }
+
+    jobs?.forEach(j => {
+        const s = j.status || 'unknown'
+        jobsByStatus[s] = (jobsByStatus[s] || 0) + 1
+
+        if (s === 'completed') completedCount++
+
+        const dateKey = j.created_at.split('T')[0]
+        if (dailyMap[dateKey]) {
+            if (s === 'completed') dailyMap[dateKey].completed++
+            else if (s === 'pending' || s === 'assigned' || s === 'in_progress') dailyMap[dateKey].pending++
         }
     })
 
-    // Get maintenance costs this year
-    const yearStart = new Date()
-    yearStart.setMonth(0, 1)
-    const { data: maintenanceRecords } = await supabase
-        .from('maintenance_records')
-        .select('cost')
-        .gte('service_date', yearStart.toISOString())
+    const totalJobs = jobs?.length || 0
+    const completionRate = totalJobs > 0 ? (completedCount / totalJobs) * 100 : 0
 
-    const maintenanceCost = maintenanceRecords?.reduce((sum, m) => sum + (m.cost || 0), 0) || 0
-
-    const inUseCount = vehiclesByStatus['in_use'] || 0
-    const totalVehicles = vehicles?.length || 1
+    const dailyCompletion = Object.keys(dailyMap).sort().map(date => ({
+        date,
+        completed: dailyMap[date].completed,
+        pending: dailyMap[date].pending,
+    }))
 
     return {
-        totalVehicles: vehicles?.length || 0,
-        averageUtilization: Math.round((inUseCount / totalVehicles) * 100),
-        fuelEfficiency: fuelCount > 0 ? Math.round(totalFuelEfficiency / fuelCount * 10) / 10 : 0,
-        maintenanceCost,
-        vehiclesByType,
+        totalJobs,
+        completionRate,
+        jobsByStatus,
+        dailyCompletion,
+    }
+}
+
+// ----------------------------------------------------------------------
+// FLEET METRICS
+// ----------------------------------------------------------------------
+export interface FleetMetrics {
+    totalVehicles: number
+    utilizationRate: number // in_use / total
+    maintenanceCostUpcoming: number
+    vehiclesByStatus: Record<string, number>
+}
+
+async function fetchFleetMetrics(companyId: string | null): Promise<FleetMetrics> {
+    if (!companyId) throw new Error("No company ID provided")
+
+    const { data: vehicles } = await supabase
+        .from('vehicles')
+        .select('status')
+        .eq('company_id', companyId)
+
+    const vehiclesByStatus: Record<string, number> = {}
+    vehicles?.forEach(v => {
+        const s = v.status || 'unknown'
+        vehiclesByStatus[s] = (vehiclesByStatus[s] || 0) + 1
+    })
+
+    const totalVehicles = vehicles?.length || 0
+    const inUse = vehiclesByStatus['in_use'] || 0
+    const utilizationRate = totalVehicles > 0 ? (inUse / totalVehicles) * 100 : 0
+
+    // Fetch upcoming maintenance costs
+    const today = new Date().toISOString()
+    const { data: upcomingMaintenance } = await supabase
+        .from('maintenance_records')
+        .select('cost')
+        .gte('service_date', today)
+        .eq('status', 'scheduled') // Adjust depending on accurate status values
+
+    const maintenanceCostUpcoming = upcomingMaintenance?.reduce((sum, m) => sum + Number(m.cost || 0), 0) || 0
+
+    return {
+        totalVehicles,
+        utilizationRate,
+        maintenanceCostUpcoming,
         vehiclesByStatus,
     }
 }
 
-async function fetchDriverMetrics(): Promise<DriverMetrics> {
+// ----------------------------------------------------------------------
+// DRIVER METRICS
+// ----------------------------------------------------------------------
+export interface DriverMetrics {
+    totalDrivers: number
+    activeRate: number // on_trip / total
+    driversByStatus: Record<string, number>
+}
+
+async function fetchDriverMetrics(companyId: string | null): Promise<DriverMetrics> {
+    if (!companyId) throw new Error("No company ID provided")
+
     const { data: drivers } = await supabase
         .from('drivers')
-        .select('id, status')
+        .select('status')
+        .eq('company_id', companyId)
 
     const driversByStatus: Record<string, number> = {}
     drivers?.forEach(d => {
-        const status = d.status || 'Unknown'
-        driversByStatus[status] = (driversByStatus[status] || 0) + 1
+        const s = d.status || 'unknown'
+        driversByStatus[s] = (driversByStatus[s] || 0) + 1
     })
 
-    // Get trip counts per driver (simplified)
-    const { data: jobs } = await supabase
-        .from('jobs')
-        .select('driver_id')
-        .eq('status', 'completed')
-
-    const driverIds = new Set(drivers?.map(d => d.id) || [])
-    const tripsPerDriver = jobs?.reduce((acc, j) => {
-        if (j.driver_id && driverIds.has(j.driver_id)) {
-            acc[j.driver_id] = (acc[j.driver_id] || 0) + 1
-        }
-        return acc
-    }, {} as Record<string, number>) || {}
-
-    const tripCounts = Object.values(tripsPerDriver)
-    const avgTrips = tripCounts.length > 0
-        ? Math.round(tripCounts.reduce((a, b) => a + b, 0) / tripCounts.length * 10) / 10
-        : 0
+    const totalDrivers = drivers?.length || 0
+    const active = driversByStatus['on_trip'] || 0
+    const activeRate = totalDrivers > 0 ? (active / totalDrivers) * 100 : 0
 
     return {
-        totalDrivers: drivers?.length || 0,
-        activeDrivers: driversByStatus['on_trip'] || 0,
-        averageTripsPerDriver: avgTrips,
+        totalDrivers,
+        activeRate,
         driversByStatus,
-    }
-}
-
-async function fetchJobMetrics(): Promise<JobMetrics> {
-    const { data: jobs } = await supabase
-        .from('jobs')
-        .select('status, created_at')
-
-    const thisMonth = new Date()
-    thisMonth.setDate(1)
-    thisMonth.setHours(0, 0, 0, 0)
-
-    const lastMonth = new Date(thisMonth)
-    lastMonth.setMonth(lastMonth.getMonth() - 1)
-
-    const jobsByStatus: Record<string, number> = {}
-    let jobsThisMonth = 0
-    let jobsLastMonth = 0
-    let completedCount = 0
-
-    jobs?.forEach(j => {
-        const status = j.status || 'Unknown'
-        jobsByStatus[status] = (jobsByStatus[status] || 0) + 1
-
-        const createdAt = new Date(j.created_at)
-        if (createdAt >= thisMonth) jobsThisMonth++
-        else if (createdAt >= lastMonth) jobsLastMonth++
-
-        if (status === 'completed') completedCount++
-    })
-
-    const total = jobs?.length || 1
-    const completionRate = Math.round((completedCount / total) * 100)
-
-    return {
-        totalJobs: jobs?.length || 0,
-        completionRate,
-        averageJobDuration: 45, // Placeholder - would need trip data
-        jobsByStatus,
-        jobsThisMonth,
-        jobsLastMonth,
     }
 }
 
@@ -277,47 +279,44 @@ async function fetchJobMetrics(): Promise<JobMetrics> {
 // QUERY HOOKS
 // ==========================================
 
-/**
- * Hook to fetch dashboard stats
- * Uses TanStack Query with 5 minute cache
- */
-export function useDashboardStats() {
+export function useFinancialMetrics(range?: DateRange) {
+    const { data: user } = useCurrentUser()
     return useQuery({
-        queryKey: reportKeys.dashboard(),
-        queryFn: fetchDashboardStats,
-        staleTime: 5 * 60 * 1000, // 5 minutes
-    })
-}
-
-/**
- * Hook to fetch fleet metrics
- */
-export function useFleetMetrics() {
-    return useQuery({
-        queryKey: reportKeys.fleet(),
-        queryFn: fetchFleetMetrics,
+        queryKey: reportKeys.financials(range),
+        queryFn: () => fetchFinancialMetrics(user?.company_id || null, range),
+        enabled: !!user?.company_id,
         staleTime: 5 * 60 * 1000,
     })
 }
 
-/**
- * Hook to fetch driver metrics
- */
-export function useDriverMetrics() {
+export function useJobMetrics(range?: DateRange) {
+    const { data: user } = useCurrentUser()
     return useQuery({
-        queryKey: reportKeys.drivers(),
-        queryFn: fetchDriverMetrics,
+        queryKey: reportKeys.jobs(range),
+        queryFn: () => fetchJobMetrics(user?.company_id || null, range),
+        enabled: !!user?.company_id,
         staleTime: 5 * 60 * 1000,
     })
 }
 
-/**
- * Hook to fetch job metrics
- */
-export function useJobMetrics() {
+export function useFleetMetrics(range?: DateRange) {
+    const { data: user } = useCurrentUser()
     return useQuery({
-        queryKey: reportKeys.jobs(),
-        queryFn: fetchJobMetrics,
+        // date range not strictly applying to current fleet snapshot, 
+        // but included in key if we want to expand it to historical fleet size
+        queryKey: reportKeys.fleet(range),
+        queryFn: () => fetchFleetMetrics(user?.company_id || null),
+        enabled: !!user?.company_id,
+        staleTime: 5 * 60 * 1000,
+    })
+}
+
+export function useDriverMetrics(range?: DateRange) {
+    const { data: user } = useCurrentUser()
+    return useQuery({
+        queryKey: reportKeys.drivers(range),
+        queryFn: () => fetchDriverMetrics(user?.company_id || null),
+        enabled: !!user?.company_id,
         staleTime: 5 * 60 * 1000,
     })
 }
