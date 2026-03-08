@@ -399,7 +399,7 @@ export default function SettingsPage() {
 
                                 <div className="space-y-2">
                                     <Label>System Measurement Metric</Label>
-                                    <Select value={metricSystem} onValueChange={setMetricSystem}>
+                                    <Select value={metricSystem} onValueChange={(value) => setMetricSystem(value as "imperial" | "metric")}>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select metric" />
                                         </SelectTrigger>
