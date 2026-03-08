@@ -319,7 +319,7 @@ export default function JobDetailPage() {
                         </div>
                         {job.manifests && (
                             <button
-                                onClick={() => router.push(`/dashboard/manifests/${job.manifests.id}`)}
+                                onClick={() => router.push(`/dashboard/manifests/${job.manifests!.id}`)}
                                 className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors text-xs font-semibold cursor-pointer"
                             >
                                 <Truck className="h-3 w-3" />
