@@ -12,7 +12,7 @@ import { EntityDocuments } from '@/components/documents/EntityDocuments'
 import {
     Truck, User, Calendar, MapPin, CheckCircle2, Play, Navigation,
     AlertCircle, Clock, Package, Info, ArrowRight, Smartphone,
-    Route, CircleDot, Timer
+    Route, CircleDot, Timer, DollarSign
 } from 'lucide-react'
 import { useStartTrip, useCompleteTrip } from '@/hooks/useTrips'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -22,6 +22,9 @@ import { format } from 'date-fns'
 import { useRealtimeUpdate } from '@/hooks/useRealtimeUpdate'
 import { manifestKeys, useUpdateManifest } from '@/hooks/useManifests'
 import { formatDate, formatTime, parseTime } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { ManifestFinancialReviewModal } from '@/components/manifests/ManifestFinancialReviewModal'
 
 interface ManifestDetailsClientProps {
     manifest: any
@@ -92,6 +95,10 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
     const completeTrip = useCompleteTrip()
     const updateManifestMutation = useUpdateManifest()
     const [isActionLoading, setIsActionLoading] = useState(false)
+    const [isStartModalOpen, setIsStartModalOpen] = useState(false)
+    const [startOdometer, setStartOdometer] = useState(manifest.vehicles?.odometer_reading?.toString() || '')
+
+    const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
 
     // --- Real-time Updates ---
     // 1. Listen for changes to THIS manifest
@@ -174,9 +181,10 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                 manifestId: manifest.id,
                 driverId: manifest.driver_id,
                 vehicleId: manifest.vehicle_id,
-                startOdometer: manifest.vehicles?.odometer_reading || undefined
+                startOdometer: startOdometer ? parseInt(startOdometer) : undefined
             })
             alert("Trip Started. Manifest is now In Transit.")
+            setIsStartModalOpen(false)
             router.refresh()
         } catch (error: any) {
             alert(error.message)
@@ -228,11 +236,48 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                 {/* Action Buttons */}
                 <div className="flex gap-2 flex-shrink-0">
                     {manifest.status === 'scheduled' && (
-                        <Button onClick={handleStartTrip} disabled={isActionLoading} size="lg">
-                            <Play className="mr-2 h-4 w-4" />
-                            Start Trip
+                        <Dialog open={isStartModalOpen} onOpenChange={setIsStartModalOpen}>
+                            <DialogTrigger asChild>
+                                <Button disabled={isActionLoading} size="lg">
+                                    <Play className="mr-2 h-4 w-4" />
+                                    Start Trip
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Start Trip</DialogTitle>
+                                </DialogHeader>
+                                <div className="space-y-4 py-4">
+                                    <div className="space-y-2">
+                                        <Label>Starting Odometer Reading</Label>
+                                        <Input
+                                            type="number"
+                                            value={startOdometer}
+                                            onChange={(e) => setStartOdometer(e.target.value)}
+                                            placeholder="Enter current odometer reading"
+                                        />
+                                        <p className="text-sm text-muted-foreground">
+                                            Last recorded: {manifest.vehicles?.odometer_reading || 'None'}
+                                        </p>
+                                    </div>
+                                    <Button onClick={handleStartTrip} className="w-full" disabled={isActionLoading || !startOdometer}>
+                                        {isActionLoading ? 'Starting...' : 'Confirm & Start Trip'}
+                                    </Button>
+                                </div>
+                            </DialogContent>
+                        </Dialog>
+                    )}
+
+                    {manifest.status === 'completed' && jobStats.totalJobs > 0 && (
+                        <Button
+                            onClick={() => setIsReviewModalOpen(true)}
+                            variant="default"
+                            className="bg-green-600 hover:bg-green-700"
+                        >
+                            <DollarSign className="mr-2 h-4 w-4" /> Authorize Finances
                         </Button>
                     )}
+
                     {manifest.status !== 'cancelled' && manifest.status !== 'completed' && (
                         <Button variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={handleCancelManifest} disabled={isActionLoading}>
                             <AlertCircle className="mr-2 h-4 w-4" /> Cancel Manifest
@@ -549,7 +594,15 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                     </Card>
                 </TabsContent>
             </Tabs>
-        </div >
+
+            {/* Financial Review Wizard */}
+            <ManifestFinancialReviewModal
+                isOpen={isReviewModalOpen}
+                onClose={() => setIsReviewModalOpen(false)}
+                manifestId={manifest.id}
+                jobs={manifest.jobs || []}
+            />
+        </div>
     )
 }
 

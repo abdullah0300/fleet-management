@@ -14,7 +14,8 @@ interface FinancialReviewModalProps {
     job: JobWithRelations
     isOpen: boolean
     onClose: () => void
-    onConfirm: (finalData: {
+    onSuccess?: () => void
+    onConfirm?: (finalData: {
         revenue: number,
         fuel_cost: number,
         toll_cost: number,
@@ -22,9 +23,15 @@ interface FinancialReviewModalProps {
         other_costs: number
     }) => void
     isSubmitting?: boolean
+    titleOverride?: string
+    descriptionOverride?: string
+    isNested?: boolean
 }
 
-export function FinancialReviewModal({ job, isOpen, onClose, onConfirm, isSubmitting = false }: FinancialReviewModalProps) {
+export function FinancialReviewModal({
+    job, isOpen, onClose, onSuccess, onConfirm, isSubmitting = false,
+    titleOverride, descriptionOverride, isNested = false
+}: FinancialReviewModalProps) {
     // We run the estimate algorithm locally to get base line numbers.
     // In a real app we'd trigger calculateJobCosts inside a useEffect or rely on previously saved estimates if we still wanted them generated early.
     // Here we provide the estimated fallback based on the final distance.
@@ -74,14 +81,18 @@ export function FinancialReviewModal({ job, isOpen, onClose, onConfirm, isSubmit
         }
     }, [isOpen, job])
 
-    const handleSubmit = () => {
-        onConfirm({
-            revenue: Number(formValues.revenue),
-            fuel_cost: Number(formValues.fuel_cost),
-            toll_cost: Number(formValues.toll_cost),
-            driver_cost: Number(formValues.driver_cost),
-            other_costs: Number(formValues.other_costs)
-        })
+    const handleSubmit = async () => {
+        if (onConfirm) {
+            onConfirm({
+                revenue: Number(formValues.revenue),
+                fuel_cost: Number(formValues.fuel_cost),
+                toll_cost: Number(formValues.toll_cost),
+                driver_cost: Number(formValues.driver_cost),
+                other_costs: Number(formValues.other_costs)
+            })
+        } else if (onSuccess) {
+            onSuccess() // Let parent handle successful progression
+        }
     }
 
     const handleApplyEstimate = (field: keyof typeof estimatedCosts) => {
@@ -92,9 +103,9 @@ export function FinancialReviewModal({ job, isOpen, onClose, onConfirm, isSubmit
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
                 <DialogHeader className="px-1">
-                    <DialogTitle className="text-xl">Financial Review: Job {job.job_number}</DialogTitle>
+                    <DialogTitle className="text-xl">{titleOverride || `Financial Review: Job ${job.job_number}`}</DialogTitle>
                     <DialogDescription>
-                        Carefully review the driver's uploaded receipts and enter the exact costs to finalize the profitability of this job.
+                        {descriptionOverride || "Carefully review the driver's uploaded receipts and enter the exact costs to finalize the profitability of this job."}
                     </DialogDescription>
                 </DialogHeader>
 

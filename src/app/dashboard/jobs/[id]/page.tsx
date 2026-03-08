@@ -191,18 +191,38 @@ export default function JobDetailPage() {
         if (!job) return
         setIsCompleting(true)
         try {
-            // 1. Update vehicle odometer + reset status
+            // Check if this job belongs to a manifest with other active jobs
+            let hasActiveSiblings = false
+            if (job.manifest_id) {
+                const { data: siblingJobs } = await supabase
+                    .from('jobs')
+                    .select('id, status')
+                    .eq('manifest_id', job.manifest_id)
+                    .neq('id', job.id)
+                if (siblingJobs) {
+                    hasActiveSiblings = siblingJobs.some(
+                        (j: any) => j.status !== 'completed' && j.status !== 'cancelled'
+                    )
+                }
+            }
+
+            // 1. Update vehicle odometer (always), but only reset status if no active siblings
             let startOdo = 0
             if (job.vehicle_id) {
-                const vehicleUpdate: Record<string, any> = { status: 'available' }
+                const vehicleUpdate: Record<string, any> = {}
                 startOdo = (job.vehicles as any)?.odometer_reading || 0
                 if (endOdometer) {
                     vehicleUpdate.odometer_reading = Number(endOdometer)
                 }
-                await supabase.from('vehicles').update(vehicleUpdate).eq('id', job.vehicle_id)
+                if (!hasActiveSiblings) {
+                    vehicleUpdate.status = 'available'
+                }
+                if (Object.keys(vehicleUpdate).length > 0) {
+                    await supabase.from('vehicles').update(vehicleUpdate).eq('id', job.vehicle_id)
+                }
             }
-            // 2. Reset driver status
-            if (job.driver_id) {
+            // 2. Only reset driver status if no active siblings in the manifest
+            if (job.driver_id && !hasActiveSiblings) {
                 await supabase.from('drivers').update({ status: 'available' }).eq('id', job.driver_id)
             }
             // 3. Mark job completed
@@ -212,7 +232,6 @@ export default function JobDetailPage() {
             if (job.vehicle_id && job.driver_id) {
                 const endOdo = endOdometer ? Number(endOdometer) : startOdo
                 const distanceDriven = Math.max(0, endOdo - startOdo)
-                // App uses miles mostly, but our calculate function takes distanceKm for naming, treating as unit.
                 const costEstimate = calculateJobCosts(job, job.vehicles, job.drivers, job.routes, distanceDriven, 0)
                 await saveCostMutation.mutateAsync(costEstimate)
             }
@@ -298,6 +317,15 @@ export default function JobDetailPage() {
                             <Package className="h-4 w-4" />
                             <span>{stopCount} Stops</span>
                         </div>
+                        {job.manifests && (
+                            <button
+                                onClick={() => router.push(`/dashboard/manifests/${job.manifests.id}`)}
+                                className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors text-xs font-semibold cursor-pointer"
+                            >
+                                <Truck className="h-3 w-3" />
+                                Manifest: {job.manifests.manifest_number || 'View'}
+                            </button>
+                        )}
                     </div>
                 </div>
 

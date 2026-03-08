@@ -96,20 +96,7 @@ function validateStopSequence(
         }
     }
 
-    // Rule 2: Current stop's start time must be >= previous stop's end time
-    // For sequential stops, the next stop can only begin after the previous one ends
-    if (prevEndTime) {
-        const currStartTime = currMode === 'window'
-            ? (currentStop.window_start ? new Date(currentStop.window_start) : null)
-            : (currentStop.scheduled_arrival ? new Date(currentStop.scheduled_arrival) : null)
-
-        if (currStartTime && currStartTime < prevEndTime) {
-            return {
-                isValid: false,
-                message: `Must be after ${prevEndTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-            }
-        }
-    }
+    // Rule 2 has been removed to allow for overlapping Time Windows logically found in standard routing scenarios.
 
     return { isValid: true, message: null }
 }
@@ -495,6 +482,8 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
                 weight: weight ? parseFloat(weight) : null,
                 route_id: selectedRouteId || null,
                 billing_type: billingType,
+                revenue: revenue ? parseFloat(revenue) : null,
+                driver_pay_rate_override: driverPayOverride ? parseFloat(driverPayOverride) : null,
             },
             stops: validStops.map((stop, index) => ({
                 sequence_order: index + 1,

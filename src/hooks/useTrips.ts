@@ -176,6 +176,13 @@ export function useStartTrip() {
                     .from('manifests')
                     .update({ status: 'in_transit' })
                     .eq('id', data.manifestId)
+
+                // Bulk-Update child Jobs explicitly
+                await supabase
+                    .from('jobs')
+                    .update({ status: 'dispatched' })
+                    .eq('manifest_id', data.manifestId)
+                    .eq('status', 'assigned')
             } else if (data.jobId) {
                 // Update Job
                 await supabase

@@ -180,7 +180,8 @@ export async function getJobs(): Promise<Job[]> {
             drivers (
                 id,
                 profiles (full_name)
-            )
+            ),
+            manifests (id, manifest_number, status)
         `)
         .order('created_at', { ascending: false })
 
