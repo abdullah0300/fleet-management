@@ -29,7 +29,7 @@ export function JobCreationModal({ onClose, onSave, defaultOpen, trigger }: JobC
             setOpen(isOpen)
         }}>
             {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
-            <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col bg-white p-0 gap-0 outline-none">
+            <DialogContent className="sm:!max-w-3xl max-h-[85vh] flex flex-col bg-white p-0 gap-0 outline-none">
                 <DialogHeader className="px-6 py-4 bg-white border-b shrink-0">
                     <DialogTitle>Create New Job</DialogTitle>
                     <DialogDescription className="sr-only">
