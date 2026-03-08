@@ -15,6 +15,7 @@ import { calculateTolls } from '@/lib/services/tollguru'
 import { RouteMap } from './RouteMap'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
+import { useCompanySettings } from '@/hooks/useCompanySettings'
 
 const routeFormSchema = z.object({
     name: z.string().min(1, 'Route name is required'),
@@ -143,6 +144,8 @@ export function RouteForm({ initialData, onSubmit, isSubmitting }: RouteFormProp
     const [isCalculating, setIsCalculating] = useState(false)
     const [isFetchingPrice, setIsFetchingPrice] = useState(false)
 
+    const { data: settings } = useCompanySettings()
+
     const {
         register,
         handleSubmit,
@@ -181,9 +184,14 @@ export function RouteForm({ initialData, onSubmit, isSubmitting }: RouteFormProp
     // Fetch fuel price on mount if no initial data
     useEffect(() => {
         if (!initialData?.id) {
-            fetchFuelPrice()
+            if (settings?.defaultFuelPrice) {
+                // Use tenant override
+                setValue('fuel_price_per_liter', Number(settings.defaultFuelPrice), { shouldValidate: true })
+            } else {
+                fetchFuelPrice()
+            }
         }
-    }, [initialData?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+    }, [initialData?.id, settings, setValue]) // eslint-disable-line react-hooks/exhaustive-deps
 
     const distanceKm = watch('distance_km')
     const fuelPrice = watch('fuel_price_per_liter')
@@ -191,11 +199,11 @@ export function RouteForm({ initialData, onSubmit, isSubmitting }: RouteFormProp
     // Recalculate fuel cost if price changes
     useEffect(() => {
         if (distanceKm > 0 && fuelPrice > 0) {
-            // Assume 8 MPG efficiency for trucks
-            const fuelCost = (distanceKm / 8) * fuelPrice
+            const efficiency = Number(settings?.defaultFuelEfficiency) || 8
+            const fuelCost = (distanceKm / efficiency) * fuelPrice
             setValue('estimated_fuel_cost', Number(fuelCost.toFixed(2)))
         }
-    }, [distanceKm, fuelPrice, setValue])
+    }, [distanceKm, fuelPrice, setValue, settings])
 
     // Update stop address/coords
     const updateStop = (id: string, address: string, coords?: { lat: number; lng: number }) => {

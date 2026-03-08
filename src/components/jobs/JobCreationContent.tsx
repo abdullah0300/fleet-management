@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { useCreateJobWithStops, useUpdateJobWithStops, CreateJobWithStopsInput, JobWithRelations } from '@/hooks/useJobs'
 import { useRoutes } from '@/hooks/useRoutes'
 import { useCustomers } from '@/hooks/useCustomers'
+import { useCompanySettings } from '@/hooks/useCompanySettings'
 import { Route, Customer } from '@/types/database'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -245,6 +246,9 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
     const [newCustPhone, setNewCustPhone] = useState('')
     const [newCustEmail, setNewCustEmail] = useState('')
 
+    // Company Settings Defaults
+    const { data: settings } = useCompanySettings()
+
     // Fetch customers on mount
     useEffect(() => {
         fetchCustomers()
@@ -257,6 +261,15 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
     const [billingType, setBillingType] = useState<'flat_rate' | 'per_mile' | 'per_weight' | 'hourly'>(
         (initialData?.billing_type as any) || 'flat_rate'
     )
+
+    // Set defaults from DB settings once they load (if creating new)
+    useEffect(() => {
+        if (!isEditing && !initialData && settings) {
+            if (settings.defaultPriority) setPriority(settings.defaultPriority)
+            if (settings.defaultBillingType) setBillingType(settings.defaultBillingType)
+            // if you need other defaults in the future they go here
+        }
+    }, [settings, isEditing, initialData])
     const [revenue, setRevenue] = useState(initialData?.revenue?.toString() || '')
     const [driverPayOverride, setDriverPayOverride] = useState(initialData?.driver_pay_rate_override?.toString() || '')
 

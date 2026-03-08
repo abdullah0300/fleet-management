@@ -145,21 +145,34 @@ export function canAccessRoute(role: UserRole | null, pathname: string, isPlatfo
 // Get sidebar items based on role
 export function getAccessibleRoutes(role: UserRole | null, isPlatformAdmin: boolean = false) {
     const allRoutes = [
-        { path: '/dashboard', name: 'Dashboard', permission: 'view:dashboard' as Permission },
-        { path: '/dashboard/companies', name: 'Companies', permission: 'view:companies' as Permission },
-        { path: '/dashboard/dispatch', name: 'Dispatch', permission: 'view:dispatch' as Permission }, // NEW
-        { path: '/dashboard/jobs', name: 'Jobs', permission: 'view:jobs' as Permission },
-        { path: '/dashboard/customers', name: 'Customers', permission: 'view:customers' as Permission },
-        { path: '/dashboard/routes', name: 'Routes', permission: 'view:routes' as Permission },
-        { path: '/dashboard/manifests', name: 'Manifests', permission: 'view:manifests' as Permission }, // NEW
-        { path: '/dashboard/vehicles', name: 'Vehicles', permission: 'view:vehicles' as Permission },
-        { path: '/dashboard/drivers', name: 'Drivers', permission: 'view:drivers' as Permission },
-        { path: '/dashboard/tracking', name: 'Tracking', permission: 'view:tracking' as Permission },
-        { path: '/dashboard/maintenance', name: 'Maintenance', permission: 'view:maintenance' as Permission },
-        { path: '/dashboard/documents', name: 'Documents', permission: 'view:documents' as Permission },
-        { path: '/dashboard/reports', name: 'Reports', permission: 'view:reports' as Permission },
-        { path: '/dashboard/costs', name: 'Costs', permission: 'view:reports' as Permission },
-        { path: '/dashboard/settings', name: 'Settings', permission: 'view:settings' as Permission },
+        // Overview
+        { path: '/dashboard', name: 'Dashboard', permission: 'view:dashboard' as Permission, group: 'Overview' },
+
+        // Operations
+        { path: '/dashboard/dispatch', name: 'Dispatch', permission: 'view:dispatch' as Permission, group: 'Operations' },
+        { path: '/dashboard/jobs', name: 'Jobs', permission: 'view:jobs' as Permission, group: 'Operations' },
+        { path: '/dashboard/manifests', name: 'Manifests', permission: 'view:manifests' as Permission, group: 'Operations' },
+        { path: '/dashboard/tracking', name: 'Tracking', permission: 'view:tracking' as Permission, group: 'Operations' },
+
+        // Assets
+        { path: '/dashboard/vehicles', name: 'Vehicles', permission: 'view:vehicles' as Permission, group: 'Assets' },
+        { path: '/dashboard/drivers', name: 'Drivers', permission: 'view:drivers' as Permission, group: 'Assets' },
+
+        // Planning
+        { path: '/dashboard/routes', name: 'Routes', permission: 'view:routes' as Permission, group: 'Planning' },
+        { path: '/dashboard/customers', name: 'Customers', permission: 'view:customers' as Permission, group: 'Planning' },
+
+        // Finance
+        { path: '/dashboard/costs', name: 'Finances', permission: 'view:reports' as Permission, group: 'Finance' },
+        { path: '/dashboard/reports', name: 'Reports', permission: 'view:reports' as Permission, group: 'Finance' },
+
+        // Management
+        { path: '/dashboard/maintenance', name: 'Maintenance', permission: 'view:maintenance' as Permission, group: 'Management' },
+        { path: '/dashboard/documents', name: 'Documents', permission: 'view:documents' as Permission, group: 'Management' },
+
+        // Admin
+        { path: '/dashboard/companies', name: 'Companies', permission: 'view:companies' as Permission, group: 'Admin' },
+        { path: '/dashboard/settings', name: 'Settings', permission: 'view:settings' as Permission, group: 'Admin' },
     ]
 
     return allRoutes.filter(route => hasPermission(role, route.permission, isPlatformAdmin))

@@ -33,6 +33,7 @@ export interface Database {
           phone: string | null
           email: string | null
           status: 'active' | 'suspended' | 'trial' | null
+          settings: Json | null
           created_at: string
           updated_at: string
         }
@@ -45,6 +46,7 @@ export interface Database {
           phone?: string | null
           email?: string | null
           status?: 'active' | 'suspended' | 'trial' | null
+          settings?: Json | null
           created_at?: string
           updated_at?: string
         }
@@ -57,6 +59,7 @@ export interface Database {
           phone?: string | null
           email?: string | null
           status?: 'active' | 'suspended' | 'trial' | null
+          settings?: Json | null
           created_at?: string
           updated_at?: string
         }

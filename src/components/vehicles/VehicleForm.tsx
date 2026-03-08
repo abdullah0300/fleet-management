@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +13,7 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { VehicleInsert, Vehicle } from '@/types/database'
+import { useCompanySettings } from '@/hooks/useCompanySettings'
 
 interface VehicleFormProps {
     initialData?: Partial<Vehicle>
@@ -39,6 +40,16 @@ export function VehicleForm({ initialData, onSubmit, isSubmitting }: VehicleForm
 
     const currentFuelType = watch('fuel_type')
     const currentStatus = watch('status')
+
+    const { data: settings } = useCompanySettings()
+
+    // Apply company defaults when loading a new vehicle form
+    useEffect(() => {
+        if (!initialData?.id && settings?.defaultFuelType) {
+            // Only set if user hasn't touched the form yet, or on initial load
+            setValue('fuel_type', settings.defaultFuelType as any)
+        }
+    }, [settings, initialData, setValue])
 
     const handleFormSubmit = async (data: VehicleInsert) => {
         await onSubmit(data)

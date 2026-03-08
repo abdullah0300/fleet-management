@@ -64,28 +64,39 @@ export function Sidebar({ className }: { className?: string }) {
     }
 
     return (
-        <div className={cn("flex h-full flex-col gap-2", className)}>
-            <div className="flex-1 overflow-auto py-2">
-                <nav className="grid gap-1 px-2 text-sm font-medium">
-                    {routes.map((item) => {
-                        const Icon = iconMap[item.name] || LayoutDashboard
+        <div className={cn("flex flex-1 flex-col gap-2 min-h-0 overflow-hidden", className)}>
+            <div className="flex-1 overflow-y-auto overflow-x-hidden py-4">
+                <nav className="flex flex-col gap-1 px-3 text-sm font-medium">
+                    {routes.map((item, index) => {
+                        const Icon = iconMap[item.name === 'Finances' ? 'Costs' : item.name] || LayoutDashboard
                         const isActive = pathname === item.path ||
                             (item.path !== '/dashboard' && pathname.startsWith(item.path))
 
+                        // Check if we need to render a group header
+                        const isNewGroup = index === 0 || item.group !== routes[index - 1].group
+
                         return (
-                            <Link
-                                key={item.path}
-                                href={item.path}
-                                className={cn(
-                                    "flex items-center gap-3 rounded-lg px-3 py-2 transition-colors",
-                                    isActive
-                                        ? "bg-primary text-primary-foreground"
-                                        : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                            <div key={item.path} className="flex flex-col w-full">
+                                {isNewGroup && item.group !== 'Overview' && (
+                                    <div className="mt-5 mb-1.5 px-2">
+                                        <p className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider">
+                                            {item.group}
+                                        </p>
+                                    </div>
                                 )}
-                            >
-                                <Icon className="h-4 w-4" />
-                                {item.name}
-                            </Link>
+                                <Link
+                                    href={item.path}
+                                    className={cn(
+                                        "flex items-center gap-3 rounded-lg px-3 py-2 transition-all w-full",
+                                        isActive
+                                            ? "bg-primary text-primary-foreground font-medium shadow-sm"
+                                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                                    )}
+                                >
+                                    <Icon className="h-4 w-4 shrink-0" />
+                                    <span className="truncate">{item.name}</span>
+                                </Link>
+                            </div>
                         )
                     })}
                 </nav>

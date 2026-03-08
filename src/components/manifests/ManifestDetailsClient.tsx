@@ -12,7 +12,7 @@ import { EntityDocuments } from '@/components/documents/EntityDocuments'
 import {
     Truck, User, Calendar, MapPin, CheckCircle2, Play, Navigation,
     AlertCircle, Clock, Package, Info, ArrowRight, Smartphone,
-    Route, CircleDot, Timer, DollarSign
+    Route, CircleDot, Timer, DollarSign, Download
 } from 'lucide-react'
 import { useStartTrip, useCompleteTrip } from '@/hooks/useTrips'
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
@@ -25,6 +25,7 @@ import { formatDate, formatTime, parseTime } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ManifestFinancialReviewModal } from '@/components/manifests/ManifestFinancialReviewModal'
+import { generateManifestPDF } from '@/lib/generateManifestPDF'
 
 interface ManifestDetailsClientProps {
     manifest: any
@@ -275,6 +276,15 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                             className="bg-green-600 hover:bg-green-700"
                         >
                             <DollarSign className="mr-2 h-4 w-4" /> Authorize Finances
+                        </Button>
+                    )}
+
+                    {jobStats.totalJobs > 0 && (
+                        <Button
+                            variant="outline"
+                            onClick={() => generateManifestPDF(manifest)}
+                        >
+                            <Download className="mr-2 h-4 w-4" /> Download PDF
                         </Button>
                     )}
 

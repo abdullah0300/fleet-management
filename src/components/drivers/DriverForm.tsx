@@ -16,6 +16,7 @@ import {
     SelectValue,
 } from '@/components/ui/select'
 import { DriverInsert, Driver, Profile } from '@/types/database'
+import { useCompanySettings } from '@/hooks/useCompanySettings'
 
 interface DriverFormProps {
     initialData?: {
@@ -45,6 +46,20 @@ export function DriverForm({ initialData, onSubmit, isSubmitting }: DriverFormPr
 
     const currentPaymentType = watch('payment_type')
     const currentStatus = watch('status')
+
+    const { data: settings } = useCompanySettings()
+
+    // Apply company defaults when loading a new driver form
+    useEffect(() => {
+        if (!initialData?.driver?.id && settings) {
+            if (settings.defaultPaymentType) {
+                setValue('payment_type', settings.defaultPaymentType as any)
+            }
+            if (settings.defaultDriverRate) {
+                setValue('rate_amount', Number(settings.defaultDriverRate))
+            }
+        }
+    }, [settings, initialData, setValue])
 
     const handleFormSubmit = async (data: any) => {
         const driverData: DriverInsert = {
