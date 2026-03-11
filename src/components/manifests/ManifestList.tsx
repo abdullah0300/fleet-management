@@ -15,6 +15,7 @@ import {
 import { Manifest } from '@/types/database'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { formatDate } from '@/lib/utils'
 
 interface ManifestListProps {
     initialData: Manifest[]
@@ -194,7 +195,7 @@ export function ManifestList({ initialData }: ManifestListProps) {
                                         </span>
                                         <span className="flex items-center text-xs">
                                             <Clock className="mr-1 h-3 w-3" />
-                                            {manifest.created_at ? new Date(manifest.created_at).toLocaleDateString() : '-'}
+                                            {manifest.created_at ? formatDate(manifest.created_at) : '-'}
                                         </span>
                                     </div>
 

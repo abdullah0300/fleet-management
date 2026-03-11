@@ -69,3 +69,18 @@ export function formatTime(dateStr: string | null | undefined): string | null {
     minute: '2-digit'
   })
 }
+
+/**
+ * Returns a YYYY-MM-DD string derived strictly from local time,
+ * avoiding the UTC shift inherent in Date.prototype.toISOString().
+ */
+export function formatLocalISODate(date: Date | string | null | undefined): string | null {
+  if (!date) return null
+  const d = typeof date === 'string' ? new Date(date) : date
+  if (isNaN(d.getTime())) return null
+  
+  const year = d.getFullYear()
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}

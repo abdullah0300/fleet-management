@@ -20,7 +20,7 @@ import { useCustomers } from '@/hooks/useCustomers'
 import { useCompanySettings } from '@/hooks/useCompanySettings'
 import { Route, Customer } from '@/types/database'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
+import { cn, formatLocalISODate } from '@/lib/utils'
 
 // Helper: Get the effective end time of a stop
 // For fixed mode: scheduled_arrival + service_duration
@@ -55,11 +55,11 @@ function getStopStartDate(stop: any): string | null {
 
     if (mode === 'window') {
         if (stop.window_start) {
-            return stop.window_start.split('T')[0]
+            return formatLocalISODate(stop.window_start)
         }
     } else {
         if (stop.scheduled_arrival) {
-            return stop.scheduled_arrival.split('T')[0]
+            return formatLocalISODate(stop.scheduled_arrival)
         }
     }
     return null
@@ -158,7 +158,7 @@ function DateTimeInput({
     const handleTimeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newTime = e.target.value
         if (!newTime) return
-        const dateToUse = dateVal || new Date().toISOString().split('T')[0]
+        const dateToUse = dateVal || formatLocalISODate(new Date())
         onChange(`${dateToUse}T${newTime}`)
     }
 
@@ -473,10 +473,10 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
                 : firstStop.scheduled_arrival
 
             if (startTime) {
-                // Extract YYYY-MM-DD and HH:mm:ss from ISO string
+                // Extract YYYY-MM-DD safely
                 const dateObj = new Date(startTime)
                 if (!isNaN(dateObj.getTime())) {
-                    legacyDate = dateObj.toISOString().split('T')[0]
+                    legacyDate = formatLocalISODate(dateObj)
                     legacyTime = dateObj.toLocaleTimeString('en-GB', { hour12: false }) // HH:mm:ss
                 }
             }

@@ -11,6 +11,7 @@ import { JobCreationModal } from './JobCreationModal'
 import { Button } from '@/components/ui/button'
 import { getJobDeliveryAddress, getJobStopCount } from '@/hooks/useJobs'
 import { Job } from '@/types/database'
+import { formatDate, formatTime } from '@/lib/utils'
 
 // Accept any job type (with or without job_stops)
 type PoolJob = Job & { job_stops?: any[] }
@@ -126,13 +127,13 @@ function PoolJobCard({ job }: { job: PoolJob }) {
                 {job.scheduled_date && (
                     <Badge variant="secondary" className="text-[10px] h-4 px-1 gap-1 font-normal bg-orange-50 text-orange-700 hover:bg-orange-100 border-orange-200">
                         <Calendar className="h-2.5 w-2.5" />
-                        {new Date(job.scheduled_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                        {formatDate(job.scheduled_date)}
                     </Badge>
                 )}
                 {job.scheduled_time && (
                     <Badge variant="secondary" className="text-[10px] h-4 px-1 gap-1 font-normal">
                         <Clock className="h-2.5 w-2.5" />
-                        {job.scheduled_time.slice(0, 5)}
+                        {formatTime(job.scheduled_time)}
                     </Badge>
                 )}
             </div>

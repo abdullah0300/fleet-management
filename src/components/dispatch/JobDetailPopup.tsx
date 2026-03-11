@@ -10,6 +10,7 @@ import { useMemo } from 'react'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { EntityDocuments } from '@/components/documents/EntityDocuments'
+import { formatDate, formatTime } from '@/lib/utils'
 
 interface JobDetailPopupProps {
     job: any
@@ -79,7 +80,7 @@ export function JobDetailPopup({ job, open, onOpenChange, onEdit }: JobDetailPop
                         {job.scheduled_date && (
                             <span className="flex items-center gap-1">
                                 <Calendar className="h-3.5 w-3.5" />
-                                {new Date(job.scheduled_date).toLocaleDateString()}
+                                {formatDate(job.scheduled_date)}
                             </span>
                         )}
                     </DialogDescription>
@@ -177,12 +178,12 @@ export function JobDetailPopup({ job, open, onOpenChange, onEdit }: JobDetailPop
                                                         {(stop.arrival_mode === 'window' && stop.window_start && stop.window_end) ? (
                                                             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700 border border-blue-200">
                                                                 <Clock className="w-3 h-3 mr-1" />
-                                                                {new Date(stop.window_start).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} - {new Date(stop.window_end).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                                                                {formatTime(stop.window_start)} - {formatTime(stop.window_end)}
                                                             </span>
                                                         ) : (stop.arrival_mode === 'fixed' && stop.scheduled_arrival) ? (
                                                             <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-orange-50 text-orange-700 border border-orange-200">
                                                                 <Clock className="w-3 h-3 mr-1" />
-                                                                {new Date(stop.scheduled_arrival).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}
+                                                                {formatTime(stop.scheduled_arrival)}
                                                             </span>
                                                         ) : null}
                                                     </div>

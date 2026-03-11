@@ -81,7 +81,7 @@ export function JobCard({ job, onViewDetails }: JobCardProps) {
         const startTime = (firstStop as any)?.scheduled_arrival || (firstStop as any)?.window_start
 
         if (startTime) {
-            return new Date(startTime).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            return formatDate(startTime)
         }
         if (job.scheduled_date) {
             // Use local formatter to avoid UTC shift
