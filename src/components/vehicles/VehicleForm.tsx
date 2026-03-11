@@ -17,16 +17,18 @@ import { useCompanySettings } from '@/hooks/useCompanySettings'
 
 const VEHICLE_TYPES = [
     'Van',
-    'Box Truck',
-    'Semi-Truck',
-    'Flatbed',
     'Reefer',
-    'Pickup',
-    'Sedan',
-    'SUV',
-    'Box Van',
-    'Dump Truck',
-    'Curtain Side'
+    'Flatbed',
+    'Step Deck',
+    'Double Drop',
+    'RGN',
+    'Power Only',
+    'Hotshot',
+    'Box Truck',
+    'Cargo Van',
+    'Conestoga',
+    'Tanker',
+    'Intermodal'
 ]
 
 interface VehicleFormProps {
