@@ -15,6 +15,20 @@ import {
 import { VehicleInsert, Vehicle } from '@/types/database'
 import { useCompanySettings } from '@/hooks/useCompanySettings'
 
+const VEHICLE_TYPES = [
+    'Van',
+    'Box Truck',
+    'Semi-Truck',
+    'Flatbed',
+    'Reefer',
+    'Pickup',
+    'Sedan',
+    'SUV',
+    'Box Van',
+    'Dump Truck',
+    'Curtain Side'
+]
+
 interface VehicleFormProps {
     initialData?: Partial<Vehicle>
     onSubmit: (data: VehicleInsert) => Promise<void>
@@ -40,6 +54,23 @@ export function VehicleForm({ initialData, onSubmit, isSubmitting }: VehicleForm
 
     const currentFuelType = watch('fuel_type')
     const currentStatus = watch('status')
+    const currentVehicleType = watch('vehicle_type')
+
+    // Track if we need the custom input
+    const [isOtherType, setIsOtherType] = useState(false)
+    const [customType, setCustomType] = useState('')
+
+    // Initialize "Other" state if initialData is custom
+    useEffect(() => {
+        if (initialData?.vehicle_type) {
+            const isStandard = VEHICLE_TYPES.some(t => t.toLowerCase() === initialData.vehicle_type?.toLowerCase())
+            if (!isStandard && initialData.vehicle_type !== '') {
+                setIsOtherType(true)
+                setCustomType(initialData.vehicle_type)
+                setValue('vehicle_type', 'other')
+            }
+        }
+    }, [initialData, setValue])
 
     const { data: settings } = useCompanySettings()
 
@@ -52,7 +83,13 @@ export function VehicleForm({ initialData, onSubmit, isSubmitting }: VehicleForm
     }, [settings, initialData, setValue])
 
     const handleFormSubmit = async (data: VehicleInsert) => {
-        await onSubmit(data)
+        const finalData = { ...data }
+        if (isOtherType) {
+            finalData.vehicle_type = customType
+        } else if (finalData.vehicle_type === 'other') {
+            finalData.vehicle_type = customType
+        }
+        await onSubmit(finalData)
     }
 
     return (
@@ -111,11 +148,37 @@ export function VehicleForm({ initialData, onSubmit, isSubmitting }: VehicleForm
             <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                     <Label htmlFor="vehicle_type">Vehicle Type</Label>
-                    <Input
-                        id="vehicle_type"
-                        placeholder="Van, Truck, Sedan..."
-                        {...register('vehicle_type')}
-                    />
+                    <Select
+                        value={isOtherType ? 'other' : (currentVehicleType || '')}
+                        onValueChange={(value) => {
+                            if (value === 'other') {
+                                setIsOtherType(true)
+                                setValue('vehicle_type', 'other')
+                            } else {
+                                setIsOtherType(false)
+                                setValue('vehicle_type', value)
+                            }
+                        }}
+                    >
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {VEHICLE_TYPES.map(type => (
+                                <SelectItem key={type} value={type.toLowerCase()}>{type}</SelectItem>
+                            ))}
+                            <SelectItem value="other">Other (Manual Entry)</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    {isOtherType && (
+                        <Input
+                            placeholder="Enter custom vehicle type..."
+                            className="mt-2"
+                            value={customType}
+                            onChange={(e) => setCustomType(e.target.value)}
+                        />
+                    )}
                 </div>
 
                 <div className="space-y-2">

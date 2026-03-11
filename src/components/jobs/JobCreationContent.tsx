@@ -22,6 +22,16 @@ import { Route, Customer } from '@/types/database'
 import { toast } from 'sonner'
 import { cn, formatLocalISODate } from '@/lib/utils'
 
+/**
+ * Helper: Convert local ISO string (e.g. 2024-03-12T14:00) 
+ * into full UTC ISO string for DB storage.
+ */
+function toUTCISO(localStr: string | null | undefined): string | null {
+    if (!localStr) return null
+    const date = new Date(localStr)
+    return isNaN(date.getTime()) ? null : date.toISOString()
+}
+
 // Helper: Get the effective end time of a stop
 // For fixed mode: scheduled_arrival + service_duration
 // For window mode: window_end + service_duration
@@ -509,9 +519,9 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
                 scheduled_time: null, // Legacy field, we use sched_arrival now
                 service_duration: (stop as any).service_duration || 0,
                 arrival_mode: (stop as any).arrival_mode || 'fixed',
-                scheduled_arrival: (stop as any).scheduled_arrival || null,
-                window_start: (stop as any).window_start || null,
-                window_end: (stop as any).window_end || null
+                scheduled_arrival: toUTCISO((stop as any).scheduled_arrival),
+                window_start: toUTCISO((stop as any).window_start),
+                window_end: toUTCISO((stop as any).window_end)
             }))
         }
 
