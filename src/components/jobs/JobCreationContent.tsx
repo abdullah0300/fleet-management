@@ -10,7 +10,8 @@ import { PhoneInput } from '@/components/ui/phone-input'
 
 import { LocationPicker } from '@/components/ui/LocationPicker'
 import { JobRouteMap } from '@/components/jobs/JobRouteMap'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
@@ -18,6 +19,7 @@ import { useCreateJobWithStops, useUpdateJobWithStops, CreateJobWithStopsInput, 
 import { useRoutes } from '@/hooks/useRoutes'
 import { useCustomers } from '@/hooks/useCustomers'
 import { useCompanySettings } from '@/hooks/useCompanySettings'
+import { useSaveCostEstimate, calculateJobCosts } from '@/hooks/useCostEstimates'
 import { Route, Customer } from '@/types/database'
 import { toast } from 'sonner'
 import { cn, formatLocalISODate } from '@/lib/utils'
@@ -236,6 +238,24 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
     // Use the new hook for creating jobs with stops
     const createJobMutation = useCreateJobWithStops()
     const updateJobMutation = useUpdateJobWithStops()
+    const saveCostMutation = useSaveCostEstimate()
+
+    // --- Cost Estimation State ---
+    const [distanceMeters, setDistanceMeters] = useState(0)
+    const [fuelPrice, setFuelPrice] = useState('4.50') // Default fallback
+    const [plannedTolls, setPlannedTolls] = useState('0.00')
+    const [totalEstimatedCost, setTotalEstimatedCost] = useState(0)
+
+    // Calculate live estimate whenever distance or prices change
+    useEffect(() => {
+        const miles = distanceMeters / 1609.34
+        const fPrice = parseFloat(fuelPrice) || 0
+        const tCost = parseFloat(plannedTolls) || 0
+        
+        // Use a default efficiency of 10 mpg for now
+        const estimatedFuelCost = (miles / 10) * fPrice
+        setTotalEstimatedCost(estimatedFuelCost + tCost)
+    }, [distanceMeters, fuelPrice, plannedTolls])
 
     // Core Job Data
     const [jobNumber, setJobNumber] = useState(initialData?.job_number || '')
@@ -340,6 +360,10 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
             { id: '1', address: '', type: 'pickup' as const, notes: '', location_name: '' },
             { id: '2', address: '', type: 'dropoff' as const, notes: '', location_name: '' }
         ])
+        setDistanceMeters(0)
+        setFuelPrice('4.50')
+        setPlannedTolls('0.00')
+        setTotalEstimatedCost(0)
         setActiveTab('details')
     }
 
@@ -533,11 +557,35 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
                     job: input.job,
                     stops: input.stops
                 })
+
+                // Save/Update the cost estimate record
+                await saveCostMutation.mutateAsync({
+                    job_id: initialData.id,
+                    distance_km: distanceMeters / 1000,
+                    fuel_price_per_liter: parseFloat(fuelPrice), // We are treating gal as L for matching DB field for now
+                    fuel_cost: (distanceMeters / 1609.34 / 10) * parseFloat(fuelPrice),
+                    toll_cost: parseFloat(plannedTolls),
+                    total_cost: totalEstimatedCost,
+                    status: 'estimate'
+                })
+
                 toast.success('Job updated successfully!')
                 if (onSave) onSave(updatedJob)
             } else {
                 // Create new job
                 const newJob = await createJobMutation.mutateAsync(input)
+
+                // Save the cost estimate record for the new job
+                await saveCostMutation.mutateAsync({
+                    job_id: newJob.id,
+                    distance_km: distanceMeters / 1000,
+                    fuel_price_per_liter: parseFloat(fuelPrice),
+                    fuel_cost: (distanceMeters / 1609.34 / 10) * parseFloat(fuelPrice),
+                    toll_cost: parseFloat(plannedTolls),
+                    total_cost: totalEstimatedCost,
+                    status: 'estimate'
+                })
+
                 toast.success('Job created successfully!')
                 if (onSave) onSave(newJob)
                 resetForm()
@@ -1078,11 +1126,75 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
                                         pickup={pickupStop ? { lat: pickupStop.lat!, lng: pickupStop.lng!, address: pickupStop.address } : undefined}
                                         delivery={dropoffStop ? { lat: dropoffStop.lat!, lng: dropoffStop.lng!, address: dropoffStop.address } : undefined}
                                         waypoints={waypointStops}
+                                        onDistanceChange={setDistanceMeters}
                                     />
                                 </div>
                             </Card>
                         )
                     })()}
+
+                    {/* Cost Estimation Card */}
+                    <Card className="bg-slate-50 border-slate-200 shadow-sm mt-6">
+                        <CardHeader className="pb-3 border-b bg-white/50">
+                            <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-2">
+                                    <DollarSign className="h-4 w-4 text-green-600" />
+                                    <CardTitle className="text-sm font-semibold">Cost Estimation</CardTitle>
+                                </div>
+                                <Badge variant="outline" className="bg-white text-[10px] py-0 px-2">
+                                    Planned vs Actual
+                                </Badge>
+                            </div>
+                            <CardDescription className="text-[11px] mt-1">
+                                Estimate trip costs based on route distance and manual price overrides.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="pt-4 grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <Label className="text-xs font-medium">Route Distance</Label>
+                                <div className="h-9 px-3 flex items-center bg-white border rounded-md text-sm font-semibold text-slate-700">
+                                    {(distanceMeters / 1609.34).toFixed(1)} miles
+                                </div>
+                                <p className="text-[10px] text-muted-foreground italic">Calculated and fetched from map</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-medium">Fuel Price ($/gal)</Label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-2.5 text-slate-400 text-sm">$</span>
+                                    <Input 
+                                        type="number" 
+                                        step="0.01"
+                                        className="pl-7 h-9 text-sm"
+                                        value={fuelPrice}
+                                        onChange={(e) => setFuelPrice(e.target.value)}
+                                    />
+                                </div>
+                                <p className="text-[10px] text-muted-foreground italic">Override avg. price used for estimates</p>
+                            </div>
+                            <div className="space-y-2">
+                                <Label className="text-xs font-medium">Planned Tolls ($)</Label>
+                                <div className="relative">
+                                    <span className="absolute left-3 top-2.5 text-slate-400 text-sm">$</span>
+                                    <Input 
+                                        type="number" 
+                                        step="0.01"
+                                        className="pl-7 h-9 text-sm"
+                                        value={plannedTolls}
+                                        onChange={(e) => setPlannedTolls(e.target.value)}
+                                    />
+                                </div>
+                                <p className="text-[10px] text-muted-foreground italic">Enter projected toll expenses ($)</p>
+                            </div>
+                        </CardContent>
+                        <div className="px-6 py-3 bg-white/50 border-t flex justify-between items-center rounded-b-xl">
+                            <span className="text-sm font-medium text-slate-600">Total Estimated Cost:</span>
+                            <span className="text-lg font-bold text-green-700">
+                                ${new Intl.NumberFormat('en-US', { minimumFractionDigits: 2 }).format(
+                                    ((distanceMeters / 1609.34) / 10) * Number(fuelPrice) + Number(plannedTolls)
+                                )}
+                            </span>
+                        </div>
+                    </Card>
                 </TabsContent>
             </Tabs>
 

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { CheckCircle2, Copy, FileText, Image as ImageIcon } from 'lucide-react'
 import { JobWithRelations } from '@/hooks/useJobs'
-import { calculateJobCosts } from '@/hooks/useCostEstimates'
+import { calculateJobCosts, useJobCostEstimate } from '@/hooks/useCostEstimates'
 import { formatCurrency } from '@/lib/utils'
 
 interface FinancialReviewModalProps {
@@ -50,36 +50,54 @@ export function FinancialReviewModal({
         other_costs: '0'
     })
 
+    const { data: savedEstimate, isLoading: isLoadingEstimate } = useJobCostEstimate(job.id)
+
     useEffect(() => {
         if (isOpen && job) {
-            // Distance Calculation Fallback
-            let distance = 0;
-            if (job.vehicles && 'odometer_reading' in job.vehicles) {
-                // If we recorded a start/end we would use it, but since we're just reading existing we use the route fallback or actuals if stored.
-                // For this example, we'll rely on the existing route's distance.
-                distance = job.routes?.distance_km || 0
+            // Use saved estimate if it exists, otherwise fall back to local calculation
+            if (savedEstimate) {
+                setEstimatedCosts({
+                    fuel_cost: savedEstimate.fuel_cost || 0,
+                    toll_cost: savedEstimate.toll_cost || 0,
+                    driver_cost: savedEstimate.driver_cost || 0,
+                    other_costs: savedEstimate.other_costs || 0
+                })
+
+                setFormValues({
+                    revenue: (job.revenue || 0).toString(),
+                    fuel_cost: (savedEstimate.fuel_cost || 0).toFixed(2).toString(),
+                    toll_cost: (savedEstimate.toll_cost || 0).toFixed(2).toString(),
+                    driver_cost: (savedEstimate.driver_cost || 0).toFixed(2).toString(),
+                    other_costs: (savedEstimate.other_costs || 0).toFixed(2).toString()
+                })
+            } else {
+                // Distance Calculation Fallback
+                let distance = 0;
+                if (job.vehicles && 'odometer_reading' in job.vehicles) {
+                    distance = job.routes?.distance_km || 0
+                }
+
+                // Estimate calculate
+                const estimates = calculateJobCosts(job, job.vehicles, job.drivers, job.routes, distance, 0)
+
+                setEstimatedCosts({
+                    fuel_cost: estimates.fuel_cost || 0,
+                    toll_cost: estimates.toll_cost || 0,
+                    driver_cost: estimates.driver_cost || 0,
+                    other_costs: estimates.other_costs || 0
+                })
+
+                // Populate form
+                setFormValues({
+                    revenue: (job.revenue || 0).toString(),
+                    fuel_cost: (estimates.fuel_cost || 0).toFixed(2).toString(),
+                    toll_cost: (estimates.toll_cost || 0).toFixed(2).toString(),
+                    driver_cost: (estimates.driver_cost || 0).toFixed(2).toString(),
+                    other_costs: (estimates.other_costs || 0).toFixed(2).toString()
+                })
             }
-
-            // Estimate calculate
-            const estimates = calculateJobCosts(job, job.vehicles, job.drivers, job.routes, distance, 0)
-
-            setEstimatedCosts({
-                fuel_cost: estimates.fuel_cost || 0,
-                toll_cost: estimates.toll_cost || 0,
-                driver_cost: estimates.driver_cost || 0,
-                other_costs: estimates.other_costs || 0
-            })
-
-            // Populate form
-            setFormValues({
-                revenue: (job.revenue || 0).toString(),
-                fuel_cost: (estimates.fuel_cost || 0).toFixed(2).toString(),
-                toll_cost: (estimates.toll_cost || 0).toFixed(2).toString(),
-                driver_cost: (estimates.driver_cost || 0).toFixed(2).toString(),
-                other_costs: (estimates.other_costs || 0).toFixed(2).toString()
-            })
         }
-    }, [isOpen, job])
+    }, [isOpen, job, savedEstimate])
 
     const handleSubmit = async () => {
         if (onConfirm) {

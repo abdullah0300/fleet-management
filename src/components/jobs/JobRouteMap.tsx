@@ -28,6 +28,7 @@ interface JobRouteMapProps {
     vehicleLocation?: { lat: number; lng: number }
     vehicleId?: string | null
     fleetLocations?: { id: string; lat: number; lng: number; label?: string }[]
+    onDistanceChange?: (meters: number) => void
 }
 
 function Traffic({ show }: { show: boolean }) {
@@ -50,7 +51,7 @@ function Traffic({ show }: { show: boolean }) {
     return null;
 }
 
-function Directions({ waypoints }: { waypoints: Waypoint[] }) {
+function Directions({ waypoints, onDistanceChange }: { waypoints: Waypoint[], onDistanceChange?: (meters: number) => void }) {
     const map = useMap();
     const routesLibrary = useMapsLibrary('routes');
     const [directionsService, setDirectionsService] = useState<google.maps.DirectionsService>();
@@ -91,16 +92,29 @@ function Directions({ waypoints }: { waypoints: Waypoint[] }) {
             travelMode: google.maps.TravelMode.DRIVING,
         }).then(response => {
             directionsRenderer.setDirections(response);
+            
+            // Extract and sum distance from all legs
+            const totalDistance = response.routes[0]?.legs.reduce((sum, leg) => sum + (leg.distance?.value || 0), 0) || 0;
+            if (onDistanceChange) onDistanceChange(totalDistance);
         }).catch(e => {
             console.error('Directions request failed:', e);
             directionsRenderer.setDirections({ routes: [] } as any);
+            if (onDistanceChange) onDistanceChange(0);
         });
-    }, [directionsService, directionsRenderer, waypoints]);
+    }, [directionsService, directionsRenderer, waypoints, onDistanceChange]);
 
     return null;
 }
 
-export function JobRouteMap({ pickup, delivery, waypoints: externalWaypoints, vehicleLocation: initialVehicleLocation, vehicleId, fleetLocations }: JobRouteMapProps) {
+export function JobRouteMap({ 
+    pickup, 
+    delivery, 
+    waypoints: externalWaypoints, 
+    vehicleLocation: initialVehicleLocation, 
+    vehicleId, 
+    fleetLocations,
+    onDistanceChange
+}: JobRouteMapProps) {
     const [apiKey, setApiKey] = useState<string>('')
     const [showTraffic, setShowTraffic] = useState(false)
     const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null)
@@ -202,7 +216,7 @@ export function JobRouteMap({ pickup, delivery, waypoints: externalWaypoints, ve
                         if (!mapInstance) setMapInstance(map.map)
                     }}
                 >
-                    <Directions waypoints={waypoints} />
+                    <Directions waypoints={waypoints} onDistanceChange={onDistanceChange} />
 
                     {displayWaypoints.map((point, index) => (
                         <AdvancedMarker key={index} position={{ lat: point.displayLat, lng: point.displayLng }}>
