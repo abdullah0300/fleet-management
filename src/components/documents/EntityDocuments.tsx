@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useDocuments, getDocumentTypeLabel, useDeleteDocument } from '@/hooks/useDocuments'
 import { UploadDialog } from '@/components/documents/UploadDialog'
 import { Button } from '@/components/ui/button'
@@ -11,9 +12,10 @@ interface EntityDocumentsProps {
     entityIds?: string[]
     relatedJobs?: any[]
     className?: string
+    excludeTypes?: string[]
 }
 
-export function EntityDocuments({ entityId, entityType, entityIds, relatedJobs, className }: EntityDocumentsProps) {
+export function EntityDocuments({ entityId, entityType, entityIds, relatedJobs, className, excludeTypes }: EntityDocumentsProps) {
     const { data: documentsResult, isLoading } = useDocuments({
         entityType,
         entityId: entityIds ? undefined : entityId,
@@ -22,6 +24,13 @@ export function EntityDocuments({ entityId, entityType, entityIds, relatedJobs, 
 
     // safe access to documents array
     const documents = documentsResult?.data || []
+
+    // Filter documents based on excludeTypes
+    const filteredDocuments = useMemo(() => {
+        if (!excludeTypes || excludeTypes.length === 0) return documents
+        const excluded = excludeTypes.map(t => t.toLowerCase())
+        return documents.filter(doc => !excluded.includes((doc.document_type || '').toLowerCase()))
+    }, [documents, excludeTypes])
 
     const deleteMutation = useDeleteDocument()
 
@@ -66,14 +75,14 @@ export function EntityDocuments({ entityId, entityType, entityIds, relatedJobs, 
                 />
             </div>
 
-            {!documents.length ? (
+            {!filteredDocuments.length ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 border-2 border-dashed border-slate-100 rounded-lg text-slate-400">
                     <FileText className="h-10 w-10 mb-2 opacity-50" />
                     <p className="text-sm">No documents attached yet</p>
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                    {documents.map((doc) => (
+                    {filteredDocuments.map((doc) => (
                         <Card key={doc.id} className="group relative border-slate-200 hover:border-blue-300 transition-all bg-white shadow-sm hover:shadow-md">
                             <CardContent className="p-3 space-y-3">
                                 <div className="flex items-start justify-between gap-2">

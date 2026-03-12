@@ -19,6 +19,7 @@ export type JobWithRelations = JobWithStops & {
     drivers: DriverWithProfile | null
     manifests?: { id: string; manifest_number: string | null; status: string | null } | null
     proof_of_delivery?: any[]
+    trips?: any[]
 }
 
 // ============================================

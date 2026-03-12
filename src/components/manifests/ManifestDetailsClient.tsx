@@ -26,6 +26,9 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { ManifestFinancialReviewModal } from '@/components/manifests/ManifestFinancialReviewModal'
 import { generateManifestPDF } from '@/lib/generateManifestPDF'
+import { JobPODViewer } from '@/components/jobs/JobPODViewer'
+import { JobFinancialsCard } from '@/components/jobs/JobFinancialsCard'
+import { TrendingUp, PieChart, FileText, IndianRupee } from 'lucide-react'
 
 interface ManifestDetailsClientProps {
     manifest: any
@@ -155,6 +158,24 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
         return manifest?.jobs?.map((j: any) => j.id) || []
     }, [manifest?.jobs])
 
+    // Aggregate Proof of Delivery data from all jobs
+    const allPodData = useMemo(() => {
+        return manifest?.jobs?.flatMap((j: any) => j.proof_of_delivery || []) || []
+    }, [manifest?.jobs])
+
+    // Calculate Manifest Financial Summary
+    const financialSummary = useMemo(() => {
+        const jobs = manifest?.jobs || []
+        const authorizedJobs = jobs.filter((j: any) => j.financial_status === 'approved')
+        
+        const totalRevenue = authorizedJobs.reduce((sum: number, j: any) => sum + (j.revenue || 0), 0)
+        
+        // This is tricky because costs are in a separate table
+        // But we can show what we have in the jobs table (revenue) 
+        // and later integrate more if needed.
+        return { totalRevenue, authorizedCount: authorizedJobs.length }
+    }, [manifest?.jobs])
+
     // Mock driver location (in real app, this would come from real-time tracking)
     // For now, show the first waypoint as "last known location" when in transit
     const vehicleLocation = useMemo(() => {
@@ -233,6 +254,28 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                         </div>
                     </div>
                 </div>
+                {/* Financial Overview Card */}
+                {manifest.status === 'completed' && financialSummary.authorizedCount > 0 && financialSummary.authorizedCount < jobStats.totalJobs && (
+                    <Card className="flex-1 max-w-xs bg-green-50 border-green-100 shadow-sm hidden md:flex">
+                        <CardContent className="p-3 flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                                    <TrendingUp className="h-5 w-5 text-green-600" />
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-semibold text-green-700 uppercase tracking-wider">Total Revenue</p>
+                                    <p className="text-lg font-bold text-green-900">
+                                        {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(financialSummary.totalRevenue)}
+                                    </p>
+                                </div>
+                            </div>
+                            <div className="text-right">
+                                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider">Authorized</p>
+                                <p className="text-sm font-bold text-slate-700">{financialSummary.authorizedCount} / {jobStats.totalJobs}</p>
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* Action Buttons */}
                 <div className="flex gap-2 flex-shrink-0">
@@ -269,7 +312,7 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                         </Dialog>
                     )}
 
-                    {manifest.status === 'completed' && jobStats.totalJobs > 0 && (
+                    {manifest.status === 'completed' && jobStats.totalJobs > 0 && financialSummary.authorizedCount < jobStats.totalJobs && (
                         <Button
                             onClick={() => setIsReviewModalOpen(true)}
                             variant="default"
@@ -314,9 +357,10 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
 
             {/* Main Content */}
             <Tabs defaultValue="overview" className="flex-1 flex flex-col min-h-0">
-                <TabsList className="grid w-[400px] grid-cols-2 mb-4">
+                <TabsList className="grid w-[600px] grid-cols-3 mb-4">
                     <TabsTrigger value="overview">Overview</TabsTrigger>
                     <TabsTrigger value="documents">Documents</TabsTrigger>
+                    <TabsTrigger value="finance">Finance</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="overview" className="flex-1 min-h-0 mt-0">
@@ -581,27 +625,104 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                     </div>
                 </TabsContent>
 
-                <TabsContent value="documents" className="flex-1 mt-0">
-                    <Card className="h-full border-none shadow-none p-0">
-                        <CardHeader className="px-0 pt-0 pb-3">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <CardTitle className="text-base">Job Documents</CardTitle>
-                                    <CardDescription>
-                                        Manage documents for jobs in this manifest. All uploads must be linked to a specific job.
-                                    </CardDescription>
+                <TabsContent value="documents" className="flex-1 mt-0 overflow-y-auto px-1 pb-10">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 min-h-full">
+                        {allPodData.length > 0 && (
+                            <div className="h-full overflow-y-auto">
+                                <div className="mb-4">
+                                    <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
+                                        <FileText className="h-4 w-4 text-blue-600" />
+                                        Driver Proof of Delivery
+                                    </h3>
+                                    <JobPODViewer podData={allPodData} />
                                 </div>
                             </div>
-                        </CardHeader>
-                        <CardContent className="h-full px-0">
-                            <EntityDocuments
-                                entityType="job"
-                                entityIds={jobIds}
-                                relatedJobs={manifest.jobs} // Enables "Smart Upload" to specific jobs
-                                className="h-full"
-                            />
-                        </CardContent>
-                    </Card>
+                        )}
+                        
+                        <Card className="h-full border-slate-200 shadow-sm flex flex-col">
+                            <CardHeader className="pb-3 px-4 pt-4">
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <CardTitle className="text-base">Job Documents</CardTitle>
+                                        <CardDescription className="text-xs">
+                                            All uploaded files for jobs in this manifest.
+                                        </CardDescription>
+                                    </div>
+                                </div>
+                            </CardHeader>
+                            <CardContent className="flex-1 px-4 pb-4 overflow-y-auto">
+                                <EntityDocuments
+                                    entityType="job"
+                                    entityIds={jobIds}
+                                    relatedJobs={manifest.jobs}
+                                    excludeTypes={[
+                                        'proof_of_delivery', 'Proof of Delivery', 
+                                        'proof_of_pickup', 'Proof of Pick Up', 
+                                        'proof_of_completion', 'Proof of Completion'
+                                    ]}
+                                    className="h-full"
+                                />
+                            </CardContent>
+                        </Card>
+                    </div>
+                </TabsContent>
+
+                <TabsContent value="finance" className="flex-1 mt-0 h-full min-h-0">
+                    <div className="space-y-6 h-full overflow-y-auto pr-2 pb-6 pt-4">
+                        {/* Summary Header */}
+                        {financialSummary.authorizedCount > 0 && (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <Card className="bg-green-50 border-green-100">
+                                    <CardContent className="p-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                                                <DollarSign className="h-5 w-5 text-green-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-semibold text-green-700 uppercase tracking-wider">Total Revenue</p>
+                                                <p className="text-xl font-bold text-green-900">
+                                                    {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(financialSummary.totalRevenue)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                                <Card className="bg-blue-50 border-blue-100">
+                                    <CardContent className="p-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                                <CheckCircle2 className="h-5 w-5 text-blue-600" />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-semibold text-blue-700 uppercase tracking-wider">Authorized Jobs</p>
+                                                <p className="text-xl font-bold text-blue-900">{financialSummary.authorizedCount} / {jobStats.totalJobs}</p>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                            {(manifest.jobs || []).map((job: any) => (
+                                <div key={job.id} className="space-y-2">
+                                    <div className="flex items-center justify-between px-2">
+                                        <h4 className="text-sm font-bold text-slate-700">Job #{job.job_number}</h4>
+                                        <Badge className={job.financial_status === 'approved' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}>
+                                            {job.financial_status === 'approved' ? 'Authorized' : 'Pending Review'}
+                                        </Badge>
+                                    </div>
+                                    <JobFinancialsCard job={job} />
+                                </div>
+                            ))}
+                        </div>
+                        
+                        {(!manifest.jobs || manifest.jobs.length === 0) && (
+                            <div className="text-center py-20 text-slate-400 italic">
+                                No jobs assigned to this manifest.
+                            </div>
+                        )}
+                    </div>
                 </TabsContent>
             </Tabs>
 

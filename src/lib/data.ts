@@ -348,11 +348,13 @@ export async function getManifest(id: string): Promise<Manifest | null> {
                 id, job_number, status, sequence_order, customer_id,
                 customers (name, phone, email),
                 customer_name, customer_phone, customer_email,
-                priority, notes,
+                priority, notes, revenue, financial_status,
                 job_stops (
                     id, sequence_order, type, address,
                     latitude, longitude, notes, status
-                )
+                ),
+                trips (*),
+                proof_of_delivery (*)
             )
         `)
         .eq('id', id)
