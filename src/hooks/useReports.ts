@@ -42,28 +42,40 @@ async function fetchFinancialMetrics(companyId: string | null, range?: DateRange
     const endOfDay = new Date(endDate)
     endOfDay.setHours(23, 59, 59, 999)
 
-    // 1. Fetch Revenue from Jobs
-    const { data: jobs } = await supabase
+    // 1. Fetch Revenue from Jobs joined with their Finalized Cost Estimates
+    const { data: jobCosts, error: jobError } = await supabase
         .from('jobs')
-        .select('created_at, revenue, status')
+        .select(`
+            id,
+            created_at,
+            updated_at,
+            revenue,
+            status,
+            cost_estimates!inner (
+                fuel_cost,
+                toll_cost,
+                driver_cost,
+                other_costs,
+                total_cost
+            )
+        `)
         .eq('company_id', companyId)
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endOfDay.toISOString())
+        .eq('status', 'completed')
+        .eq('financial_status', 'approved')
+        .gte('updated_at', startDate.toISOString())
+        .lte('updated_at', endOfDay.toISOString())
 
-    // 2. Fetch Trips (Fuel + Toll + Driver Earnings)
-    const { data: trips } = await supabase
-        .from('trips')
-        .select('created_at, actual_fuel_cost, actual_toll_cost, driver_earnings')
-        // Using relationship via jobs/manifests to get company_id in RLS, or we can just fetch all trips and let RLS filter
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endOfDay.toISOString())
+    if (jobError) {
+        console.error('Error fetching job costs for reports:', jobError)
+    }
 
-    // 3. Fetch Maintenance Costs
+    // 2. Fetch Maintenance Costs
     const { data: maintenance } = await supabase
         .from('maintenance_records')
-        .select('created_at, cost')
-        .gte('created_at', startDate.toISOString())
-        .lte('created_at', endOfDay.toISOString())
+        .select('created_at, service_date, cost')
+        .eq('status', 'completed')
+        .gte('service_date', startDate.toISOString())
+        .lte('service_date', endOfDay.toISOString())
 
     // Grouping by Date
     const dailyMap: Record<string, { revenue: number, cost: number }> = {}
@@ -78,28 +90,37 @@ async function fetchFinancialMetrics(companyId: string | null, range?: DateRange
         dailyMap[d.toISOString().split('T')[0]] = { revenue: 0, cost: 0 }
     }
 
-    jobs?.forEach(j => {
-        if (!j.revenue) return
-        const rev = Number(j.revenue)
+    jobCosts?.forEach(job => {
+        const rev = Number(job.revenue || 0)
         totalRevenue += rev
-        const dateKey = j.created_at.split('T')[0]
-        if (dailyMap[dateKey]) dailyMap[dateKey].revenue += rev
-    })
+        
+        const est = (job as any).cost_estimates?.[0] || (job as any).cost_estimates
+        if (!est) return
 
-    trips?.forEach(t => {
-        const cost = Number(t.actual_fuel_cost || 0) + Number(t.actual_toll_cost || 0) + Number(t.driver_earnings || 0)
-        totalFuel += Number(t.actual_fuel_cost || 0)
-        totalToll += Number(t.actual_toll_cost || 0)
-        totalDriverPay += Number(t.driver_earnings || 0)
+        const fCost = Number(est.fuel_cost || 0)
+        const tCost = Number(est.toll_cost || 0)
+        const dPay = Number(est.driver_cost || 0)
+        const oCost = Number(est.other_costs || 0)
+        
+        const totalJobCost = fCost + tCost + dPay + oCost
+        
+        totalFuel += fCost
+        totalToll += tCost
+        totalDriverPay += dPay
 
-        const dateKey = t.created_at.split('T')[0]
-        if (dailyMap[dateKey]) dailyMap[dateKey].cost += cost
+        // For daily tracking, we use the date the job was finalized (updated_at)
+        const dateKey = (job.updated_at || job.created_at).split('T')[0]
+        if (dailyMap[dateKey]) {
+            dailyMap[dateKey].revenue += rev
+            dailyMap[dateKey].cost += totalJobCost
+        }
     })
 
     maintenance?.forEach(m => {
         const cost = Number(m.cost || 0)
         totalMaintenance += cost
-        const dateKey = m.created_at.split('T')[0]
+        // use service_date (YYYY-MM-DD) or fallback to created_at
+        const dateKey = m.service_date || m.created_at.split('T')[0]
         if (dailyMap[dateKey]) dailyMap[dateKey].cost += cost
     })
 
