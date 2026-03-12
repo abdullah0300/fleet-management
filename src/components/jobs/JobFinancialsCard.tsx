@@ -30,7 +30,7 @@ export function JobFinancialsCard({ job }: { job: JobWithRelations }) {
                     <div>
                         <CardTitle className="text-sm font-medium flex items-center gap-2">
                             <DollarSign className="h-4 w-4 text-green-600" />
-                            Job Financials
+                            Job Financials • {(Array.isArray(job.customers) ? job.customers[0]?.name : job.customers?.name) || job.customer_name || 'No Customer'}
                         </CardTitle>
                         <CardDescription className="text-xs">No cost data available</CardDescription>
                     </div>
@@ -58,7 +58,7 @@ export function JobFinancialsCard({ job }: { job: JobWithRelations }) {
                 <div className="pl-2">
                     <CardTitle className="text-sm font-medium flex items-center gap-2">
                         <Receipt className="h-4 w-4 text-slate-500" />
-                        Job Financials
+                        Job Financials • {(Array.isArray(job.customers) ? job.customers[0]?.name : job.customers?.name) || job.customer_name || 'No Customer'}
                     </CardTitle>
                     <CardDescription className="text-xs">Revenue, Costs & Profitability</CardDescription>
                 </div>

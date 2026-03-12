@@ -270,7 +270,7 @@ export function ManifestFinancialReviewModal({ isOpen, onClose, manifestId, jobs
                                 Manifest Review: Job {currentIndex + 1} of {allJobs.length}
                             </DialogTitle>
                             <DialogDescription>
-                                {currentJob?.job_number} • {currentJob?.customer_name || 'No Customer'}
+                                {currentJob?.job_number} • {(Array.isArray(currentJob?.customers) ? currentJob?.customers[0]?.name : currentJob?.customers?.name) || currentJob?.customer_name || 'No Customer'}
                                 {!isLastJob && ` • Next: Job ${currentIndex + 2}`}
                             </DialogDescription>
                         </div>
