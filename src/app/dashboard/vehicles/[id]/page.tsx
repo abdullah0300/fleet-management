@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams, useRouter } from 'next/navigation'
-import { ArrowLeft, Edit, Trash2, Truck, Gauge, Fuel, Calendar, MapPin, User, Stethoscope, Wrench } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, Truck, Gauge, Fuel, Calendar, MapPin, User, Stethoscope, Wrench, ShieldAlert, CheckCircle2 } from 'lucide-react'
 import { useVehicle, useUpdateVehicle, useDeleteVehicle, VehicleWithDriver } from '@/hooks/useVehicles'
 import { useVehicleMaintenanceStatus } from '@/hooks/useSmartMaintenance'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,7 @@ import { VehicleForm } from '@/components/vehicles/VehicleForm'
 import { VehicleHealthVisualizer } from '@/components/maintenance/VehicleHealthVisualizer'
 import { VehicleUpdate } from '@/types/database'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from 'sonner'
 import { useState } from 'react'
 
 export default function VehicleDetailPage() {
@@ -27,6 +28,7 @@ export default function VehicleDetailPage() {
     const updateMutation = useUpdateVehicle()
     const deleteMutation = useDeleteVehicle()
     const [isEditing, setIsEditing] = useState(false)
+    const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false)
 
     const handleDelete = async () => {
         if (!confirm('Are you sure you want to delete this vehicle?')) return
@@ -37,6 +39,40 @@ export default function VehicleDetailPage() {
     const handleUpdate = async (data: VehicleUpdate) => {
         await updateMutation.mutateAsync({ id, updates: data })
         setIsEditing(false)
+    }
+
+    // Send to maintenance: only allowed when vehicle is not currently on an active job
+    const handleSendToMaintenance = async () => {
+        if (!vehicle) return
+        if (vehicle.status === 'in_use') {
+            toast.error('Vehicle is currently in use. Complete or cancel the active job first.')
+            return
+        }
+        if (!confirm('Send this vehicle to maintenance? It will be marked unavailable until returned.')) return
+        setIsTogglingMaintenance(true)
+        try {
+            await updateMutation.mutateAsync({ id, updates: { status: 'maintenance' } })
+            toast.success('Vehicle sent to maintenance')
+        } catch (err: any) {
+            toast.error('Failed to update vehicle: ' + err.message)
+        } finally {
+            setIsTogglingMaintenance(false)
+        }
+    }
+
+    // Return from maintenance: sets vehicle back to available
+    const handleReturnFromMaintenance = async () => {
+        if (!vehicle) return
+        if (!confirm('Return this vehicle from maintenance and mark it available?')) return
+        setIsTogglingMaintenance(true)
+        try {
+            await updateMutation.mutateAsync({ id, updates: { status: 'available' } })
+            toast.success('Vehicle returned from maintenance and is now available')
+        } catch (err: any) {
+            toast.error('Failed to update vehicle: ' + err.message)
+        } finally {
+            setIsTogglingMaintenance(false)
+        }
     }
 
     const getStatusBadge = (status: string | null) => {
@@ -109,6 +145,28 @@ export default function VehicleDetailPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2 ml-10 sm:ml-0">
+                    {/* Maintenance toggle buttons */}
+                    {vehicle.status === 'maintenance' ? (
+                        <Button
+                            variant="outline"
+                            className="gap-2 border-green-500 text-green-700 hover:bg-green-50"
+                            onClick={handleReturnFromMaintenance}
+                            disabled={isTogglingMaintenance}
+                        >
+                            <CheckCircle2 className="h-4 w-4" />
+                            <span className="hidden sm:inline">Return from Maintenance</span>
+                        </Button>
+                    ) : vehicle.status !== 'in_use' ? (
+                        <Button
+                            variant="outline"
+                            className="gap-2 border-orange-400 text-orange-700 hover:bg-orange-50"
+                            onClick={handleSendToMaintenance}
+                            disabled={isTogglingMaintenance}
+                        >
+                            <ShieldAlert className="h-4 w-4" />
+                            <span className="hidden sm:inline">Send to Maintenance</span>
+                        </Button>
+                    ) : null}
                     <Dialog open={isEditing} onOpenChange={setIsEditing}>
                         <Button variant="outline" className="gap-2" onClick={() => setIsEditing(true)}>
                             <Edit className="h-4 w-4" />

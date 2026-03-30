@@ -2,7 +2,7 @@
 
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useMemo } from 'react'
-import { ArrowLeft, Edit, Trash2, User, Phone, CreditCard, Truck, IdCard, Calendar, Mail, Package, TrendingUp } from 'lucide-react'
+import { ArrowLeft, Edit, Trash2, User, Phone, CreditCard, Truck, IdCard, Calendar, Mail, Package, TrendingUp, Power } from 'lucide-react'
 import { useDriver, useDeleteDriver, useUpdateDriver } from '@/hooks/useDrivers'
 import { useDriverJobs } from '@/hooks/useJobs'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,7 @@ export default function DriverDetailPage() {
     const id = params.id as string
     const [isEditing, setIsEditing] = useState(false)
     const [isUpdating, setIsUpdating] = useState(false)
+    const [isTogglingDuty, setIsTogglingDuty] = useState(false)
 
     // Use the single driver hook - fetches only this driver, uses cache if available
     const { data: driver, isLoading, error } = useDriver(id)
@@ -69,6 +70,33 @@ export default function DriverDetailPage() {
         if (!confirm('Are you sure you want to delete this driver?')) return
         await deleteMutation.mutateAsync(id)
         router.push('/dashboard/drivers')
+    }
+
+    // Toggle between 'available' and 'off_duty'.
+    // Does not allow toggling while driver is 'on_trip' — they must finish their job first.
+    const handleToggleDuty = async () => {
+        if (!driver) return
+        if (driver.status === 'on_trip') {
+            toast.error('Driver is currently on a trip. Complete or cancel the job first.')
+            return
+        }
+        const newStatus = driver.status === 'off_duty' ? 'available' : 'off_duty'
+        setIsTogglingDuty(true)
+        try {
+            const supabase = (await import('@/lib/supabase/client')).createClient()
+            const { error } = await supabase
+                .from('drivers')
+                .update({ status: newStatus })
+                .eq('id', id)
+            if (error) throw error
+            queryClient.invalidateQueries({ queryKey: driverKeys.detail(id) })
+            queryClient.invalidateQueries({ queryKey: driverKeys.lists() })
+            toast.success(newStatus === 'off_duty' ? 'Driver set to Off Duty' : 'Driver set to Available')
+        } catch (err: any) {
+            toast.error('Failed to update driver status: ' + err.message)
+        } finally {
+            setIsTogglingDuty(false)
+        }
     }
 
     const handleUpdate = async (data: { driver: DriverInsert; profile?: Partial<Profile> }) => {
@@ -203,6 +231,19 @@ export default function DriverDetailPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2 ml-10 sm:ml-0">
+                    {/* Off Duty / Available toggle — disabled while driver is on_trip */}
+                    <Button
+                        variant="outline"
+                        className={`gap-2 ${driver.status === 'off_duty' ? 'border-green-500 text-green-700 hover:bg-green-50' : driver.status === 'on_trip' ? 'opacity-50 cursor-not-allowed' : 'border-slate-400 text-slate-600 hover:bg-slate-50'}`}
+                        onClick={handleToggleDuty}
+                        disabled={isTogglingDuty || driver.status === 'on_trip'}
+                        title={driver.status === 'on_trip' ? 'Cannot change status while on a trip' : ''}
+                    >
+                        <Power className="h-4 w-4" />
+                        <span className="hidden sm:inline">
+                            {driver.status === 'off_duty' ? 'Set Available' : 'Set Off Duty'}
+                        </span>
+                    </Button>
                     <Dialog open={isEditing} onOpenChange={setIsEditing}>
                         <DialogTrigger asChild>
                             <Button variant="outline" className="gap-2">
