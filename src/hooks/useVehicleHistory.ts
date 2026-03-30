@@ -31,14 +31,12 @@ async function fetchVehicleHistory(
 
     if (endTime) {
         query = query.lte('timestamp', endTime)
-    } else {
-        // If no end time, maybe limit to last 24h by default if also no start time?
-        // But if start time is provided, we want everything since then.
-        // If neither, let's limit to 1000 records to be safe.
-        if (!startTime) {
-            query = query.limit(500)
-        }
     }
+
+    // Always apply a row limit to prevent unbounded fetches.
+    // With no time filters this caps a full history load.
+    // With only startTime it prevents fetching from a past date to now with no ceiling.
+    query = query.limit(500)
 
     const { data, error } = await query
 

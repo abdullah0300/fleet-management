@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { FleetMap } from '@/components/tracking/FleetMap'
 import { cn } from '@/lib/utils'
 import { useVehicleLocation } from '@/hooks/useVehicleLocation'
+import { getVehiclePosition, isVehicleLive } from '@/lib/vehiclePosition'
 
 const STATUS = {
     in_use: { label: 'Active', ring: 'ring-green-500/30 border-green-500', dot: 'bg-green-500', text: 'text-green-600', badge: 'bg-[#A5D6A7]/30 text-green-800' },
@@ -48,13 +49,7 @@ export default function TrackingPage() {
     const inactiveCnt = vehicles.filter(v => v.status === 'maintenance' || v.status === 'inactive').length
     const activeJobs = jobs.filter(j => j.status === 'in_progress' || j.status === 'assigned')
 
-    // Live count calculates by merging WebSocket memory with initial DB payload
-    const liveCount = vehicles.filter(v => {
-        const live = liveLocations[v.id] || v.current_location as any
-        if (!live?.timestamp) return false
-        const diffSeconds = (new Date().getTime() - new Date(live.timestamp).getTime()) / 1000
-        return diffSeconds < 60
-    }).length
+    const liveCount = vehicles.filter(v => isVehicleLive(v, liveLocations)).length
 
     const isLoading = vehiclesLoading || jobsLoading
 
@@ -176,14 +171,8 @@ export default function TrackingPage() {
                                 const activeJob = activeJobs.find(j => j.vehicle_id === vehicle.id)
                                 const isSelected = selectedVehicle === vehicle.id
 
-                                // Merge WebSocket updates with initial DB fetch
-                                const live = liveLocations[vehicle.id] || vehicle.current_location as any
-
-                                let hasLive = false
-                                if (live?.lat && live?.lng && live?.timestamp) {
-                                    const diffSeconds = (new Date().getTime() - new Date(live.timestamp).getTime()) / 1000
-                                    if (diffSeconds < 60) hasLive = true
-                                }
+                                const hasLive = isVehicleLive(vehicle, liveLocations)
+                                const live = liveLocations[vehicle.id] ?? vehicle.current_location as any
 
                                 return (
                                     <div
@@ -251,11 +240,7 @@ export default function TrackingPage() {
                         {/* Map Overlay Badge */}
                         <div className="absolute top-4 left-4 bg-white/95 backdrop-blur px-3 py-2 rounded-xl shadow-md border border-slate-200 flex items-center gap-2 text-xs font-bold text-slate-700">
                             <Radio className="h-4 w-4 text-blue-500" />
-                            {vehicles.filter(v => {
-                                const loc = v.current_location as any
-                                const live = liveLocations[v.id]
-                                return (live?.lat && live?.lng) || (loc?.lat && loc?.lng)
-                            }).length} of {vehicles.length} tracking on map
+                            {vehicles.filter(v => getVehiclePosition(v, liveLocations) !== null).length} of {vehicles.length} tracking on map
                         </div>
 
                         {/* Last Updated Footer */}

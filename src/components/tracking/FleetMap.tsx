@@ -12,6 +12,7 @@ import { VehicleWithDriver } from '@/hooks/useVehicles'
 import { cn } from '@/lib/utils'
 import { useVehicleLocation } from '@/hooks/useVehicleLocation'
 import { truckingMapStyle } from '@/lib/map-styles'
+import { getVehiclePosition, getVehicleLiveData, isVehicleLive } from '@/lib/vehiclePosition'
 
 interface FleetMapProps {
     vehicles: VehicleWithDriver[]
@@ -49,21 +50,12 @@ function InnerMap({ vehicles, activeJobs = [], selectedVehicle, onSelectVehicle,
     }, [selectedVehicle, vehicles])
 
     const getVehicleLocation = useCallback((vehicle: VehicleWithDriver) => {
-        const live = liveLocations[vehicle.id]
-        // Prioritize websocket
-        if (live?.lat && live?.lng) return { lat: live.lat, lng: live.lng }
-
-        // Fallback to database
-        const loc = vehicle.current_location as { lat?: number; lng?: number } | null
-        if (loc?.lat && loc?.lng) return { lat: loc.lat, lng: loc.lng }
-        return null
+        return getVehiclePosition(vehicle, liveLocations)
     }, [liveLocations])
 
-    const getLiveData = (vehicle: VehicleWithDriver) => {
-        const wsLive = liveLocations[vehicle.id]
-        if (wsLive && wsLive.lat && wsLive.lng) return wsLive
-        return vehicle.current_location as any || null
-    }
+    const getLiveData = useCallback((vehicle: VehicleWithDriver) => {
+        return getVehicleLiveData(vehicle, liveLocations)
+    }, [liveLocations])
 
     // Auto-fit bounds logic
     const fitBounds = useCallback(() => {
@@ -81,13 +73,9 @@ function InnerMap({ vehicles, activeJobs = [], selectedVehicle, onSelectVehicle,
                 hasAnyPoints = true
 
                 // Only consider truly LIVE vehicles for the primary bounding box
-                const live = getLiveData(v)
-                if (live?.timestamp) {
-                    const diffSeconds = (new Date().getTime() - new Date(live.timestamp).getTime()) / 1000
-                    if (diffSeconds < 60) {
-                        liveBounds.extend(loc)
-                        hasLivePoints = true
-                    }
+                if (isVehicleLive(v, liveLocations)) {
+                    liveBounds.extend(loc)
+                    hasLivePoints = true
                 }
             }
         })
@@ -167,12 +155,7 @@ function InnerMap({ vehicles, activeJobs = [], selectedVehicle, onSelectVehicle,
 
                 if (!location) return null
 
-                // Only consider it "Live" on the map dot if updated within last 60 seconds
-                let isLiveDot = false
-                if (live?.timestamp) {
-                    const diffSeconds = (new Date().getTime() - new Date(live.timestamp).getTime()) / 1000
-                    if (diffSeconds < 60) isLiveDot = true
-                }
+                const isLiveDot = isVehicleLive(vehicle, liveLocations)
 
                 return (
                     <AdvancedMarker
@@ -310,12 +293,9 @@ function InnerMap({ vehicles, activeJobs = [], selectedVehicle, onSelectVehicle,
 }
 
 export function FleetMap({ vehicles, activeJobs = [], selectedVehicle, onSelectVehicle }: FleetMapProps) {
-    const [googleMapsKey, setGoogleMapsKey] = useState<string>('')
+    // NEXT_PUBLIC_* vars are inlined at build time — read directly, no useEffect needed
+    const googleMapsKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
     const { locations: liveLocations } = useVehicleLocation()
-
-    useEffect(() => {
-        setGoogleMapsKey(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '')
-    }, [])
 
     if (!googleMapsKey) {
         return (
