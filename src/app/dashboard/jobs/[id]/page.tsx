@@ -289,8 +289,31 @@ export default function JobDetailPage() {
         }
     }
 
+    // Overdue: scheduled_date in the past and job not yet active/completed
+    const isOverdue = (() => {
+        if (!job.scheduled_date) return false
+        if (!['pending', 'assigned'].includes(job.status)) return false
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        return new Date(job.scheduled_date) < today
+    })()
+
+    const overdueDays = isOverdue && job.scheduled_date
+        ? Math.floor((Date.now() - new Date(job.scheduled_date).getTime()) / 86400000)
+        : 0
+
     return (
         <div className="flex flex-col h-[calc(100vh-6rem)] gap-6">
+            {/* Overdue Banner */}
+            {isOverdue && (
+                <Alert className="border-red-300 bg-red-50 text-red-800">
+                    <AlertCircle className="h-4 w-4 text-red-600" />
+                    <AlertTitle className="text-red-700 font-semibold">Job Overdue</AlertTitle>
+                    <AlertDescription className="text-red-600">
+                        This job was scheduled for {formatDate(job.scheduled_date!)} — {overdueDays} day{overdueDays !== 1 ? 's' : ''} ago. It has not been started yet.
+                    </AlertDescription>
+                </Alert>
+            )}
             {/* Header */}
             <div className="flex items-start justify-between gap-4">
                 <div className="space-y-1">

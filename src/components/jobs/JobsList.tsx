@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Search, Package, Clock, CheckCircle2, Truck, Filter, CircleDot, AlertCircle } from 'lucide-react'
+import { Plus, Search, Package, Clock, CheckCircle2, Truck, Filter, CircleDot, AlertCircle, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { JobCard } from '@/components/jobs/JobCard'
@@ -29,6 +29,14 @@ export function JobsList({ initialData }: JobsListProps) {
     // Use initialData from server
     const jobs = initialData
 
+    // Overdue = scheduled_date is in the past AND status is pending or assigned
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const isJobOverdue = (job: any) =>
+        job.scheduled_date &&
+        new Date(job.scheduled_date) < today &&
+        ['pending', 'assigned'].includes(job.status)
+
     // Stats from initial data
     const stats = {
         total: jobs.length,
@@ -36,6 +44,7 @@ export function JobsList({ initialData }: JobsListProps) {
         inProgress: jobs.filter((j) => j.status === 'in_progress').length,
         pendingReview: jobs.filter((j) => j.financial_status === 'pending_review').length,
         completed: jobs.filter((j) => j.status === 'completed' && j.financial_status === 'approved').length,
+        overdue: (jobs as any[]).filter(isJobOverdue).length,
     }
 
     // Filter jobs
@@ -48,6 +57,8 @@ export function JobsList({ initialData }: JobsListProps) {
         let matchesStatus = false;
         if (statusFilter === 'all') {
             matchesStatus = true;
+        } else if (statusFilter === 'overdue') {
+            matchesStatus = isJobOverdue(job);
         } else if (statusFilter === 'pending_review') {
             matchesStatus = job.financial_status === 'pending_review';
         } else if (statusFilter === 'completed') {
@@ -70,7 +81,7 @@ export function JobsList({ initialData }: JobsListProps) {
         value: number;
         icon: any;
         active: boolean;
-        type: 'total' | 'pending' | 'in_progress' | 'pending_review' | 'completed'
+        type: 'total' | 'pending' | 'in_progress' | 'pending_review' | 'completed' | 'overdue'
     }) => {
         const styles = {
             total: {
@@ -102,6 +113,12 @@ export function JobsList({ initialData }: JobsListProps) {
                 border: 'border-green-200',
                 text: 'text-green-600',
                 hover: 'hover:bg-green-50'
+            },
+            overdue: {
+                bg: 'bg-red-100',
+                border: 'border-red-300',
+                text: 'text-red-600',
+                hover: 'hover:bg-red-50'
             }
         }
 
@@ -152,7 +169,7 @@ export function JobsList({ initialData }: JobsListProps) {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 <StatCard
                     label="Total Jobs"
                     value={stats.total}
@@ -173,6 +190,13 @@ export function JobsList({ initialData }: JobsListProps) {
                     icon={Truck}
                     active={statusFilter === 'in_progress'}
                     type="in_progress"
+                />
+                <StatCard
+                    label="Overdue"
+                    value={stats.overdue}
+                    icon={AlertTriangle}
+                    active={statusFilter === 'overdue'}
+                    type="overdue"
                 />
                 <StatCard
                     label="Pending Review"
@@ -210,6 +234,7 @@ export function JobsList({ initialData }: JobsListProps) {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Jobs</SelectItem>
+                            <SelectItem value="overdue">⚠ Overdue</SelectItem>
                             <SelectItem value="pending">Pending</SelectItem>
                             <SelectItem value="assigned">Assigned</SelectItem>
                             <SelectItem value="in_progress">In Progress</SelectItem>

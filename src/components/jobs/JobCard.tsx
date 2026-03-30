@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { MapPin, Truck, User, Calendar, Flame, Layers, DollarSign, TrendingUp, TrendingDown } from 'lucide-react'
+import { MapPin, Truck, User, Calendar, Flame, Layers, DollarSign, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { useJobCostEstimate, useJobPayAdjustments } from '@/hooks/useCostEstimates'
 import { Badge } from '@/components/ui/badge'
@@ -54,6 +54,15 @@ export function JobCard({ job, onViewDetails }: JobCardProps) {
         const revenue = (job as any).revenue || 0
         netProfit = revenue - finalCost
     }
+
+    // Overdue: scheduled_date is in the past and job is not yet active/done
+    const isOverdue = (() => {
+        if (!job.scheduled_date) return false
+        if (!['pending', 'assigned'].includes(job.status)) return false
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        return new Date(job.scheduled_date) < today
+    })()
 
     // Priority stripe color
     const stripeColor = {
@@ -143,6 +152,12 @@ export function JobCard({ job, onViewDetails }: JobCardProps) {
                                 </span>
                                 {job.priority === 'urgent' && (
                                     <Flame className="h-3.5 w-3.5 text-red-500 fill-red-500/10" />
+                                )}
+                                {isOverdue && (
+                                    <span className="flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded">
+                                        <AlertTriangle className="h-3 w-3" />
+                                        OVERDUE
+                                    </span>
                                 )}
                             </div>
                             <Badge className={cn("text-[10px] uppercase font-bold tracking-wide px-2 py-0.5 rounded-md border-0 shadow-none", statusStyles[job.financial_status === 'pending_review' ? 'pending_review' : job.status])}>
