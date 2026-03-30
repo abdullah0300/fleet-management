@@ -58,7 +58,8 @@ serve(async (req) => {
         // 2. Parse the request body
         const { lat, lng, heading, speed, timestamp } = await req.json()
 
-        if (!lat || !lng) {
+        // Use null-equality — lat/lng of 0 is a valid coordinate, falsy check would incorrectly reject it
+        if (lat == null || lng == null) {
             return new Response(
                 JSON.stringify({ error: 'Missing latitude/longitude' }),
                 { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -93,10 +94,9 @@ serve(async (req) => {
             last_updated: new Date().toISOString()
         }
 
-        // Parallel update: Update current location + Insert history
-        // Using Promise.allSettled to ensure transient history insert failures don't block the critical location update response
-        // However, Promise.all is usually fine if we handle errors inside. Here we use Promise.all to conform to the user's robust approach.
-
+        // Run both writes in parallel. Promise.all is correct here because the Supabase
+        // client never throws — it always resolves with { data, error }. Both results
+        // are checked individually below: vehicle update failure is fatal, history failure is not.
         const [updateResult, insertHistoryResult] = await Promise.all([
             // Update current location (Critical)
             supabaseAdmin

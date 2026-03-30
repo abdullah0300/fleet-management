@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo } from 'react'
 import {
     APIProvider,
     Map,
     AdvancedMarker,
-    useMap
 } from '@vis.gl/react-google-maps'
 import { Card, CardHeader, CardTitle } from "@/components/ui/card"
 import { useVehicles } from '@/hooks/useVehicles'
@@ -15,16 +14,13 @@ import { cn } from '@/lib/utils'
 import { truckingMapStyle } from '@/lib/map-styles'
 
 export function FleetMapWidget() {
-    const [apiKey, setApiKey] = useState<string>('')
+    // NEXT_PUBLIC_* vars are inlined at build time — read directly, no useEffect needed
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
     const { data: vehiclesData, refetch } = useVehicles()
     const vehicles = vehiclesData?.data || []
     const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null)
 
     const activeVehicles = vehicles.filter(v => v.current_location && (v.status === 'in_use' || v.status === 'available'))
-
-    useEffect(() => {
-        setApiKey(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '')
-    }, [])
 
     const fitBounds = useCallback(() => {
         if (!mapInstance || activeVehicles.length === 0) return

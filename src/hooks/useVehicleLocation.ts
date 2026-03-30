@@ -1,21 +1,15 @@
 'use client'
 
 import { useVehicleLocationContext } from '@/contexts/VehicleLocationContext'
-
-interface LocationUpdate {
-    lat: number
-    lng: number
-    heading?: number
-    speed?: number
-    timestamp?: string
-}
+// LocationUpdate is exported from VehicleLocationContext — re-export here for convenience
+export type { LocationUpdate } from '@/contexts/VehicleLocationContext'
 
 /**
- * Hook to listen for real-time vehicle location updates
- * Uses the global VehicleLocationContext to avoid multiple socket connections.
- * 
- * @param vehicleId - Optional. If provided, returns location for specific vehicle. 
- *                    If null/undefined, returns map of all vehicles.
+ * Hook to access real-time vehicle location updates.
+ * Uses the global VehicleLocationContext to avoid multiple WebSocket connections.
+ *
+ * @param vehicleId - Optional. If provided, returns `location` for that specific vehicle.
+ *                    If omitted, `location` is null but `locations` holds all vehicles.
  */
 export function useVehicleLocation(vehicleId?: string | null) {
     const { locations, getLocation } = useVehicleLocationContext()

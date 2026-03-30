@@ -4,7 +4,10 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { createClient } from '@/lib/supabase/client'
 import { Vehicle } from '@/types/database'
 
-interface LocationUpdate {
+// Single module-level client — never recreated on re-renders
+const supabase = createClient()
+
+export interface LocationUpdate {
     lat: number
     lng: number
     heading?: number
@@ -21,10 +24,9 @@ const VehicleLocationContext = createContext<VehicleLocationContextType | undefi
 
 export function VehicleLocationProvider({ children }: { children: ReactNode }) {
     const [locations, setLocations] = useState<Record<string, LocationUpdate>>({})
-    const supabase = createClient()
 
     useEffect(() => {
-        // Single global subscription
+        // Single global subscription — stable because supabase is module-level
         const channel = supabase
             .channel('global-vehicle-locations')
             .on(
@@ -38,7 +40,8 @@ export function VehicleLocationProvider({ children }: { children: ReactNode }) {
                     const newVehicle = payload.new as Vehicle
                     const newLocation = newVehicle.current_location as unknown as LocationUpdate
 
-                    if (newLocation && newLocation.lat && newLocation.lng) {
+                    // Use null checks instead of falsy — correctly handles lat/lng = 0
+                    if (newLocation && newLocation.lat != null && newLocation.lng != null) {
                         setLocations(prev => ({
                             ...prev,
                             [newVehicle.id]: newLocation
@@ -51,7 +54,7 @@ export function VehicleLocationProvider({ children }: { children: ReactNode }) {
         return () => {
             supabase.removeChannel(channel)
         }
-    }, [supabase])
+    }, []) // No deps — supabase is stable, no need to re-subscribe
 
     const getLocation = (vehicleId: string) => locations[vehicleId] || null
 

@@ -115,16 +115,13 @@ export function JobRouteMap({
     fleetLocations,
     onDistanceChange
 }: JobRouteMapProps) {
-    const [apiKey, setApiKey] = useState<string>('')
+    // NEXT_PUBLIC_* vars are inlined at build time — read directly, no useEffect needed
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
     const [showTraffic, setShowTraffic] = useState(false)
     const [mapInstance, setMapInstance] = useState<google.maps.Map | null>(null)
 
     const { location: liveLocation } = useVehicleLocation(vehicleId)
     const vehicleLocation = liveLocation || initialVehicleLocation
-
-    useEffect(() => {
-        setApiKey(process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || '')
-    }, [])
 
     const waypoints = useMemo(() => {
         if (externalWaypoints && externalWaypoints.length > 0) {
