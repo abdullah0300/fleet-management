@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { DriverCard } from '@/components/drivers/DriverCard'
 import { BulkDriverImport } from '@/components/drivers/BulkDriverImport'
 import { Driver } from '@/types/database'
+import { PermissionGate } from '@/components/auth/PermissionGate'
 
 interface DriversListProps {
     initialData: Driver[]
@@ -48,14 +49,16 @@ export function DriversList({ initialData }: DriversListProps) {
                     <p className="text-muted-foreground text-sm">Manage your fleet drivers</p>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <BulkDriverImport />
-                    <Button
-                        onClick={() => router.push('/dashboard/drivers/new')}
-                        className="gap-2 flex-1 sm:flex-none"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Add Driver
-                    </Button>
+                    <PermissionGate permission="manage:drivers">
+                        <BulkDriverImport />
+                        <Button
+                            onClick={() => router.push('/dashboard/drivers/new')}
+                            className="gap-2 flex-1 sm:flex-none"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Add Driver
+                        </Button>
+                    </PermissionGate>
                 </div>
             </div>
 
@@ -123,13 +126,15 @@ export function DriversList({ initialData }: DriversListProps) {
                         {searchQuery ? 'Try a different search term' : 'Add your first driver to get started'}
                     </p>
                     {!searchQuery && (
-                        <Button
-                            className="mt-4 gap-2"
-                            onClick={() => router.push('/dashboard/drivers/new')}
-                        >
-                            <Plus className="h-4 w-4" />
-                            Add Driver
-                        </Button>
+                        <PermissionGate permission="manage:drivers">
+                            <Button
+                                className="mt-4 gap-2"
+                                onClick={() => router.push('/dashboard/drivers/new')}
+                            >
+                                <Plus className="h-4 w-4" />
+                                Add Driver
+                            </Button>
+                        </PermissionGate>
                     )}
                 </div>
             ) : (

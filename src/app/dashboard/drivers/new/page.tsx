@@ -9,13 +9,19 @@ import { createDriver } from '../actions'
 import { DriverInsert, Profile } from '@/types/database'
 import { useQueryClient } from '@tanstack/react-query'
 import { driverKeys } from '@/hooks/useDrivers'
-import { useCompanyId } from '@/hooks/useCurrentUser'
+import { useCompanyId, useHasPermission } from '@/hooks/useCurrentUser'
+import { AccessDenied } from '@/components/auth/PermissionGate'
 
 export default function NewDriverPage() {
     const router = useRouter()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const queryClient = useQueryClient()
     const companyId = useCompanyId()
+    const canManageDrivers = useHasPermission('manage:drivers')
+
+    if (!canManageDrivers) {
+        return <AccessDenied message="You don't have permission to add drivers." />
+    }
 
     const handleSubmit = async (data: { driver: DriverInsert; profile?: Partial<Profile> }) => {
         setIsSubmitting(true)

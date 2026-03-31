@@ -6,10 +6,17 @@ import { Button } from '@/components/ui/button'
 import { ServiceForm } from '@/components/maintenance/ServiceForm'
 import { useCreateMaintenance } from '@/hooks/useMaintenance'
 import { MaintenanceRecordInsert } from '@/types/database'
+import { useHasPermission } from '@/hooks/useCurrentUser'
+import { AccessDenied } from '@/components/auth/PermissionGate'
 
 export default function NewMaintenancePage() {
     const router = useRouter()
     const createMutation = useCreateMaintenance()
+    const canManageMaintenance = useHasPermission('manage:maintenance')
+
+    if (!canManageMaintenance) {
+        return <AccessDenied message="You don't have permission to schedule maintenance." />
+    }
 
     const handleSubmit = async (data: MaintenanceRecordInsert) => {
         await createMutation.mutateAsync(data)

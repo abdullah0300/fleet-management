@@ -30,6 +30,7 @@ import { format } from 'date-fns'
 import { useRealtimeUpdate } from '@/hooks/useRealtimeUpdate'
 import { jobKeys } from '@/hooks/useJobs'
 import { formatDate, formatTime } from '@/lib/utils'
+import { PermissionGate } from '@/components/auth/PermissionGate'
 
 const supabase = createClient()
 
@@ -360,15 +361,17 @@ export default function JobDetailPage() {
                     <Button variant="destructive" size="icon" onClick={handleDelete} disabled={deleteMutation.isPending}>
                         <Trash2 className="h-4 w-4" />
                     </Button>
-                    {/* Dispatcher Financial Review Action */}
+                    {/* Financial Review Action — only for roles with manage:reports */}
                     {job.status === 'completed' && job.financial_status === 'pending_review' && (
-                        <Button
-                            className="bg-orange-500 hover:bg-orange-600 text-white shadow-sm"
-                            onClick={() => setIsReviewModalOpen(true)}
-                        >
-                            <AlertCircle className="mr-2 h-4 w-4" />
-                            Authorize Finances
-                        </Button>
+                        <PermissionGate permission="manage:reports">
+                            <Button
+                                className="bg-orange-500 hover:bg-orange-600 text-white shadow-sm"
+                                onClick={() => setIsReviewModalOpen(true)}
+                            >
+                                <AlertCircle className="mr-2 h-4 w-4" />
+                                Authorize Finances
+                            </Button>
+                        </PermissionGate>
                     )}
                     {/* ── START JOB with Odometer Dialog ── */}
                     {job.status === 'assigned' && (
