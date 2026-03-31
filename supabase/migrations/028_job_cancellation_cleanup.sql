@@ -24,7 +24,7 @@ BEGIN
       FROM jobs
       WHERE driver_id = NEW.driver_id
         AND id != NEW.id
-        AND status IN ('assigned', 'dispatched', 'in_progress');
+        AND status IN ('assigned', 'in_progress');
 
       IF v_active_count = 0 THEN
         UPDATE drivers
@@ -39,7 +39,7 @@ BEGIN
       FROM jobs
       WHERE vehicle_id = NEW.vehicle_id
         AND id != NEW.id
-        AND status IN ('assigned', 'dispatched', 'in_progress');
+        AND status IN ('assigned', 'in_progress');
 
       IF v_active_count = 0 THEN
         UPDATE vehicles
@@ -77,7 +77,7 @@ BEGIN
     SELECT COUNT(*) INTO v_active_count
     FROM jobs
     WHERE driver_id = OLD.driver_id
-      AND status IN ('assigned', 'dispatched', 'in_progress');
+      AND status IN ('assigned', 'in_progress');
 
     IF v_active_count = 0 THEN
       UPDATE drivers
@@ -113,7 +113,7 @@ BEGIN
     SELECT COUNT(*) INTO v_active_count
     FROM jobs
     WHERE vehicle_id = OLD.vehicle_id
-      AND status IN ('assigned', 'dispatched', 'in_progress');
+      AND status IN ('assigned', 'in_progress');
 
     IF v_active_count = 0 THEN
       UPDATE vehicles
