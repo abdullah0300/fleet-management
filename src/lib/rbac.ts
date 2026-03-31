@@ -24,6 +24,7 @@ export type Permission =
     | 'view:documents'
     | 'manage:documents'
     | 'view:reports'
+    | 'manage:reports'
     | 'view:settings'
     | 'manage:settings'
     | 'view:companies'
@@ -39,18 +40,17 @@ const rolePermissions: Record<UserRole, Permission[]> = {
         'view:routes', 'manage:routes', 'view:dispatch', 'manage:dispatch',
         'view:manifests', 'manage:manifests', 'view:tracking',
         'view:maintenance', 'manage:maintenance', 'view:documents',
-        'manage:documents', 'view:reports', 'view:settings', 'manage:settings',
+        'manage:documents', 'view:reports', 'manage:reports', 'view:settings', 'manage:settings',
         'view:notifications', // Admin can view notifications
         'view:customers', 'manage:customers'
     ],
     fleet_manager: [
         'view:dashboard', 'view:vehicles', 'manage:vehicles',
-        'view:dashboard', 'view:vehicles', 'manage:vehicles',
         'view:drivers', 'manage:drivers', 'view:jobs', 'manage:jobs',
         'view:routes', 'manage:routes', 'view:dispatch', 'manage:dispatch',
         'view:manifests', 'manage:manifests', 'view:tracking',
         'view:maintenance', 'manage:maintenance', 'view:documents',
-        'manage:documents', 'view:reports', 'view:settings', 'view:notifications',
+        'manage:documents', 'view:reports', 'manage:reports', 'view:settings', 'view:notifications',
         'view:customers', 'manage:customers'
     ],
     dispatcher: [

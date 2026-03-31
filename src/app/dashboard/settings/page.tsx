@@ -10,13 +10,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { Building2, Save, Upload, Loader2, MapPin, Mail, Phone, Settings2, Truck, DollarSign, Users } from 'lucide-react'
-import { useCurrentUser } from '@/hooks/useCurrentUser'
+import { useCurrentUser, useHasPermission } from '@/hooks/useCurrentUser'
+import { AccessDenied } from '@/components/auth/PermissionGate'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 
 export default function SettingsPage() {
     const { data: user, isLoading: isUserLoading } = useCurrentUser()
+    const canManageSettings = useHasPermission('manage:settings')
     const [company, setCompany] = useState<any>(null)
     const [teamMembers, setTeamMembers] = useState<any[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -192,6 +194,10 @@ export default function SettingsPage() {
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
         )
+    }
+
+    if (!canManageSettings && !user?.is_platform_admin) {
+        return <AccessDenied message="You don't have permission to access settings." />
     }
 
     if (!company && !user?.is_platform_admin) {

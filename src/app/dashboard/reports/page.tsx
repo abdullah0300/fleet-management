@@ -21,6 +21,8 @@ import {
     useFleetMetrics,
     useDriverMetrics
 } from '@/hooks/useReports'
+import { useHasPermission } from '@/hooks/useCurrentUser'
+import { AccessDenied } from '@/components/auth/PermissionGate'
 
 // Components
 import { DatePickerWithRange } from '@/components/ui/date-range-picker'
@@ -36,11 +38,17 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Skeleton } from '@/components/ui/skeleton'
 
 export default function ReportsPage() {
+    const canViewReports = useHasPermission('view:reports')
+
     // Global Date Filter State (Default to last 30 days)
     const [dateRange, setDateRange] = useState<DateRange | undefined>({
         from: subDays(new Date(), 30),
         to: new Date()
     })
+
+    if (!canViewReports) {
+        return <AccessDenied message="You don't have permission to view reports." />
+    }
 
     // Fetch all metrics
     const { data: financials, isLoading: loadingFin } = useFinancialMetrics(dateRange as any)

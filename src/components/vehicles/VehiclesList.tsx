@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { VehicleCard } from '@/components/vehicles/VehicleCard'
 import { BulkVehicleImport } from '@/components/vehicles/BulkVehicleImport'
+import { PermissionGate } from '@/components/auth/PermissionGate'
 
 interface VehiclesListProps {
     initialData: any[]
@@ -48,14 +49,16 @@ export function VehiclesList({ initialData }: VehiclesListProps) {
                     <p className="text-muted-foreground text-sm">Manage your fleet vehicles</p>
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
-                    <BulkVehicleImport />
-                    <Button
-                        onClick={() => router.push('/dashboard/vehicles/new')}
-                        className="gap-2 flex-1 sm:flex-none"
-                    >
-                        <Plus className="h-4 w-4" />
-                        Add Vehicle
-                    </Button>
+                    <PermissionGate permission="manage:vehicles">
+                        <BulkVehicleImport />
+                        <Button
+                            onClick={() => router.push('/dashboard/vehicles/new')}
+                            className="gap-2 flex-1 sm:flex-none"
+                        >
+                            <Plus className="h-4 w-4" />
+                            Add Vehicle
+                        </Button>
+                    </PermissionGate>
                 </div>
             </div>
 
@@ -123,13 +126,15 @@ export function VehiclesList({ initialData }: VehiclesListProps) {
                         {searchQuery ? 'Try a different search term' : 'Add your first vehicle to get started'}
                     </p>
                     {!searchQuery && (
-                        <Button
-                            className="mt-4 gap-2"
-                            onClick={() => router.push('/dashboard/vehicles/new')}
-                        >
-                            <Plus className="h-4 w-4" />
-                            Add Vehicle
-                        </Button>
+                        <PermissionGate permission="manage:vehicles">
+                            <Button
+                                className="mt-4 gap-2"
+                                onClick={() => router.push('/dashboard/vehicles/new')}
+                            >
+                                <Plus className="h-4 w-4" />
+                                Add Vehicle
+                            </Button>
+                        </PermissionGate>
                     )}
                 </div>
             ) : (
