@@ -292,7 +292,7 @@ export default function JobDetailPage() {
     // Overdue: scheduled_date in the past and job not yet active/completed
     const isOverdue = (() => {
         if (!job.scheduled_date) return false
-        if (!['pending', 'assigned'].includes(job.status)) return false
+        if (!job.status || !['pending', 'assigned'].includes(job.status)) return false
         const today = new Date()
         today.setHours(0, 0, 0, 0)
         return new Date(job.scheduled_date) < today
