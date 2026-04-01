@@ -3,6 +3,8 @@
 import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useHasPermission } from '@/hooks/useCurrentUser'
+import { AccessDenied } from '@/components/auth/PermissionGate'
 import {
     LineChart,
     Line,
@@ -30,8 +32,13 @@ import { cn } from '@/lib/utils'
 import { format } from 'date-fns'
 
 export default function FinancialsDashboardPage() {
+    const canViewReports = useHasPermission('view:reports')
     const [days, setDays] = useState<number>(30)
     const { data: financials, isLoading } = useFinancials(days)
+
+    if (!canViewReports) {
+        return <AccessDenied message="You don't have permission to view financial data." />
+    }
 
     const formatCurrency = (amount: number) => {
         return new Intl.NumberFormat('en-US', {

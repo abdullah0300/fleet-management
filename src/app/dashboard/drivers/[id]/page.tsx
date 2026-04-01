@@ -17,6 +17,7 @@ import { updateDriver } from '../actions'
 import { useQueryClient } from '@tanstack/react-query'
 import { driverKeys } from '@/hooks/useDrivers'
 import { formatDate } from '@/lib/utils'
+import { PermissionGate } from '@/components/auth/PermissionGate'
 
 export default function DriverDetailPage() {
     const params = useParams()
@@ -231,48 +232,50 @@ export default function DriverDetailPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2 ml-10 sm:ml-0">
-                    {/* Off Duty / Available toggle — disabled while driver is on_trip */}
-                    <Button
-                        variant="outline"
-                        className={`gap-2 ${driver.status === 'off_duty' ? 'border-green-500 text-green-700 hover:bg-green-50' : driver.status === 'on_trip' ? 'opacity-50 cursor-not-allowed' : 'border-slate-400 text-slate-600 hover:bg-slate-50'}`}
-                        onClick={handleToggleDuty}
-                        disabled={isTogglingDuty || driver.status === 'on_trip'}
-                        title={driver.status === 'on_trip' ? 'Cannot change status while on a trip' : ''}
-                    >
-                        <Power className="h-4 w-4" />
-                        <span className="hidden sm:inline">
-                            {driver.status === 'off_duty' ? 'Set Available' : 'Set Off Duty'}
-                        </span>
-                    </Button>
-                    <Dialog open={isEditing} onOpenChange={setIsEditing}>
-                        <DialogTrigger asChild>
-                            <Button variant="outline" className="gap-2">
-                                <Edit className="h-4 w-4" />
-                                <span className="hidden sm:inline">Edit</span>
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-                            <DialogHeader>
-                                <DialogTitle>Edit Driver</DialogTitle>
-                            </DialogHeader>
-                            <DriverForm
-                                initialData={{
-                                    driver: driver,
-                                    profile: driver.profiles || undefined
-                                }}
-                                onSubmit={handleUpdate}
-                                isSubmitting={isUpdating}
-                            />
-                        </DialogContent>
-                    </Dialog>
-                    <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={handleDelete}
-                        disabled={deleteMutation.isPending}
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <PermissionGate permission="manage:drivers">
+                        {/* Off Duty / Available toggle — disabled while driver is on_trip */}
+                        <Button
+                            variant="outline"
+                            className={`gap-2 ${driver.status === 'off_duty' ? 'border-green-500 text-green-700 hover:bg-green-50' : driver.status === 'on_trip' ? 'opacity-50 cursor-not-allowed' : 'border-slate-400 text-slate-600 hover:bg-slate-50'}`}
+                            onClick={handleToggleDuty}
+                            disabled={isTogglingDuty || driver.status === 'on_trip'}
+                            title={driver.status === 'on_trip' ? 'Cannot change status while on a trip' : ''}
+                        >
+                            <Power className="h-4 w-4" />
+                            <span className="hidden sm:inline">
+                                {driver.status === 'off_duty' ? 'Set Available' : 'Set Off Duty'}
+                            </span>
+                        </Button>
+                        <Dialog open={isEditing} onOpenChange={setIsEditing}>
+                            <DialogTrigger asChild>
+                                <Button variant="outline" className="gap-2">
+                                    <Edit className="h-4 w-4" />
+                                    <span className="hidden sm:inline">Edit</span>
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                                <DialogHeader>
+                                    <DialogTitle>Edit Driver</DialogTitle>
+                                </DialogHeader>
+                                <DriverForm
+                                    initialData={{
+                                        driver: driver,
+                                        profile: driver.profiles || undefined
+                                    }}
+                                    onSubmit={handleUpdate}
+                                    isSubmitting={isUpdating}
+                                />
+                            </DialogContent>
+                        </Dialog>
+                        <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={handleDelete}
+                            disabled={deleteMutation.isPending}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </PermissionGate>
                 </div>
             </div>
 

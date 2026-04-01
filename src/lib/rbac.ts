@@ -24,6 +24,7 @@ export type Permission =
     | 'view:documents'
     | 'manage:documents'
     | 'view:reports'
+    | 'manage:reports'
     | 'view:settings'
     | 'manage:settings'
     | 'view:companies'
@@ -39,22 +40,20 @@ const rolePermissions: Record<UserRole, Permission[]> = {
         'view:routes', 'manage:routes', 'view:dispatch', 'manage:dispatch',
         'view:manifests', 'manage:manifests', 'view:tracking',
         'view:maintenance', 'manage:maintenance', 'view:documents',
-        'manage:documents', 'view:reports', 'view:settings', 'manage:settings',
+        'manage:documents', 'view:reports', 'manage:reports', 'view:settings', 'manage:settings',
         'view:notifications', // Admin can view notifications
         'view:customers', 'manage:customers'
     ],
     fleet_manager: [
         'view:dashboard', 'view:vehicles', 'manage:vehicles',
-        'view:dashboard', 'view:vehicles', 'manage:vehicles',
         'view:drivers', 'manage:drivers', 'view:jobs', 'manage:jobs',
         'view:routes', 'manage:routes', 'view:dispatch', 'manage:dispatch',
         'view:manifests', 'manage:manifests', 'view:tracking',
         'view:maintenance', 'manage:maintenance', 'view:documents',
-        'manage:documents', 'view:reports', 'view:settings', 'view:notifications',
+        'manage:documents', 'view:reports', 'manage:reports', 'view:settings', 'view:notifications',
         'view:customers', 'manage:customers'
     ],
     dispatcher: [
-        'view:dashboard', 'view:vehicles', 'view:drivers',
         'view:dashboard', 'view:vehicles', 'view:drivers',
         'view:jobs', 'manage:jobs', 'view:routes', 'manage:routes',
         'view:dispatch', 'manage:dispatch', 'view:manifests', 'manage:manifests',
@@ -131,9 +130,18 @@ export function canAccessRoute(role: UserRole | null, pathname: string, isPlatfo
         return hasPermission(role, requiredPermission)
     }
 
-    // Check for dynamic routes (e.g., /dashboard/vehicles/[id])
-    const basePath = pathname.split('/').slice(0, 3).join('/')
+    const segments = pathname.split('/')
+    const lastSegment = segments[segments.length - 1]
+    const basePath = segments.slice(0, 3).join('/')
     const basePermission = routePermissions[basePath]
+
+    // Paths ending in /edit (e.g. /dashboard/jobs/abc/edit) require manage permission
+    if (lastSegment === 'edit' && basePermission) {
+        const managePermission = basePermission.replace('view:', 'manage:') as Permission
+        return hasPermission(role, managePermission)
+    }
+
+    // Check for dynamic routes (e.g., /dashboard/vehicles/[id])
     if (basePermission) {
         return hasPermission(role, basePermission)
     }

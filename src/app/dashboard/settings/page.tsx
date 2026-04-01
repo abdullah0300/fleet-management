@@ -9,14 +9,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { Building2, Save, Upload, Loader2, MapPin, Mail, Phone, Settings2, Truck, DollarSign, Users } from 'lucide-react'
-import { useCurrentUser } from '@/hooks/useCurrentUser'
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from '@/components/ui/dialog'
+import { Building2, Save, Upload, Loader2, MapPin, Mail, Phone, Settings2, Truck, DollarSign, Users, Plus, Pencil, Trash2, KeyRound } from 'lucide-react'
+import { useCurrentUser, useHasPermission } from '@/hooks/useCurrentUser'
+import { AccessDenied } from '@/components/auth/PermissionGate'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { useTeamMembers, useCreateTeamMember, useUpdateTeamMember, useDeleteTeamMember, useResetTeamMemberPassword } from '@/hooks/useTeam'
+import { Profile } from '@/types/database'
 
 export default function SettingsPage() {
     const { data: user, isLoading: isUserLoading } = useCurrentUser()
+    const canManageSettings = useHasPermission('manage:settings')
     const [company, setCompany] = useState<any>(null)
     const [teamMembers, setTeamMembers] = useState<any[]>([])
     const [isLoading, setIsLoading] = useState(true)
@@ -194,6 +205,10 @@ export default function SettingsPage() {
         )
     }
 
+    if (!canManageSettings && !user?.is_platform_admin) {
+        return <AccessDenied message="You don't have permission to access settings." />
+    }
+
     if (!company && !user?.is_platform_admin) {
         return (
             <div className="p-6">
@@ -215,11 +230,12 @@ export default function SettingsPage() {
             </div>
 
             <Tabs defaultValue="company" className="w-full">
-                <TabsList className="grid w-full max-w-4xl grid-cols-2 md:grid-cols-5 h-auto md:h-12 p-1 gap-1">
+                <TabsList className="grid w-full max-w-4xl grid-cols-3 md:grid-cols-6 h-auto md:h-12 p-1 gap-1">
                     <TabsTrigger value="company" className="h-full">Profile</TabsTrigger>
                     <TabsTrigger value="jobs" className="h-full">Jobs</TabsTrigger>
                     <TabsTrigger value="vehicles" className="h-full">Fleet</TabsTrigger>
                     <TabsTrigger value="costing" className="h-full">Cost Engine</TabsTrigger>
+                    <TabsTrigger value="team" className="h-full">Team</TabsTrigger>
                     <TabsTrigger value="account" className="h-full">My Account</TabsTrigger>
                 </TabsList>
 
@@ -424,58 +440,7 @@ export default function SettingsPage() {
 
                 {/* TEAM MEMBERS TAB */}
                 <TabsContent value="team" className="mt-6">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between">
-                            <div>
-                                <CardTitle className="flex items-center gap-2">
-                                    <Users className="h-5 w-5" />
-                                    Team Directory
-                                </CardTitle>
-                                <CardDescription>
-                                    View all employees and drivers registered to your company.
-                                </CardDescription>
-                            </div>
-                            {/* Future: Add Invite button here */}
-                        </CardHeader>
-                        <CardContent>
-                            <div className="rounded-md border">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Name</TableHead>
-                                            <TableHead>Role</TableHead>
-                                            <TableHead>Email</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {teamMembers.length === 0 ? (
-                                            <TableRow>
-                                                <TableCell colSpan={3} className="text-center py-6 text-muted-foreground">
-                                                    No team members found.
-                                                </TableCell>
-                                            </TableRow>
-                                        ) : (
-                                            teamMembers.map((member) => (
-                                                <TableRow key={member.id}>
-                                                    <TableCell className="font-medium">
-                                                        {member.full_name || 'Unknown User'}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Badge variant="secondary" className="capitalize">
-                                                            {(member.role || 'user').replace('_', ' ')}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="text-muted-foreground">
-                                                        {member.email || member.phone || 'No contact info'}
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <TeamManagement currentUser={user} />
                 </TabsContent>
 
                 {/* COMPANY PROFILE TAB */}
@@ -636,5 +601,458 @@ export default function SettingsPage() {
                 </TabsContent>
             </Tabs>
         </div>
+    )
+}
+
+// ─── Role Badge Helper ────────────────────────────────────────────────────────
+
+function getRoleBadgeClass(role: string) {
+    switch (role) {
+        case 'admin': return 'bg-purple-100 text-purple-800 border-purple-200'
+        case 'fleet_manager': return 'bg-blue-100 text-blue-800 border-blue-200'
+        case 'dispatcher': return 'bg-green-100 text-green-800 border-green-200'
+        case 'accountant': return 'bg-amber-100 text-amber-800 border-amber-200'
+        default: return 'bg-gray-100 text-gray-800 border-gray-200'
+    }
+}
+
+// ─── Team Management Component ────────────────────────────────────────────────
+
+function TeamManagement({ currentUser }: { currentUser: Profile | null | undefined }) {
+    const { data: members = [], isLoading } = useTeamMembers()
+    const createMutation = useCreateTeamMember()
+    const updateMutation = useUpdateTeamMember()
+    const deleteMutation = useDeleteTeamMember()
+    const resetPasswordMutation = useResetTeamMemberPassword()
+
+    const canManage = currentUser?.role === 'admin' || currentUser?.role === 'fleet_manager' || currentUser?.is_platform_admin
+
+    // Dialog states
+    const [addOpen, setAddOpen] = useState(false)
+    const [editMember, setEditMember] = useState<Profile | null>(null)
+    const [resetMember, setResetMember] = useState<Profile | null>(null)
+    const [deleteMemberTarget, setDeleteMemberTarget] = useState<Profile | null>(null)
+
+    // Add form state
+    const [addForm, setAddForm] = useState({ full_name: '', email: '', password: '', role: 'dispatcher' as 'fleet_manager' | 'dispatcher' | 'accountant', phone: '' })
+    const [addErrors, setAddErrors] = useState<Record<string, string>>({})
+
+    // Edit form state
+    const [editForm, setEditForm] = useState({ full_name: '', role: '', phone: '' })
+
+    // Reset password form state
+    const [resetForm, setResetForm] = useState({ newPassword: '', confirmPassword: '' })
+    const [resetErrors, setResetErrors] = useState<Record<string, string>>({})
+
+    // Populate edit form when editMember changes
+    useEffect(() => {
+        if (editMember) {
+            setEditForm({
+                full_name: editMember.full_name || '',
+                role: editMember.role || '',
+                phone: editMember.phone || '',
+            })
+        }
+    }, [editMember])
+
+    const handleAdd = async (e: React.FormEvent) => {
+        e.preventDefault()
+        const errors: Record<string, string> = {}
+        if (!addForm.full_name.trim()) errors.full_name = 'Full name is required'
+        if (!addForm.email.trim()) errors.email = 'Email is required'
+        if (!addForm.password || addForm.password.length < 8) errors.password = 'Password must be at least 8 characters'
+        if (!addForm.role) errors.role = 'Role is required'
+        if (Object.keys(errors).length > 0) { setAddErrors(errors); return }
+        setAddErrors({})
+
+        const result = await createMutation.mutateAsync({
+            full_name: addForm.full_name.trim(),
+            email: addForm.email.trim(),
+            password: addForm.password,
+            role: addForm.role,
+            phone: addForm.phone.trim() || undefined,
+        })
+
+        if (result.success) {
+            toast.success(`${addForm.full_name} has been added to your team.`)
+            setAddOpen(false)
+            setAddForm({ full_name: '', email: '', password: '', role: 'dispatcher', phone: '' })
+        } else {
+            toast.error(result.error || 'Failed to create team member')
+        }
+    }
+
+    const handleEdit = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!editMember) return
+
+        const result = await updateMutation.mutateAsync({
+            userId: editMember.id,
+            data: {
+                full_name: editForm.full_name || undefined,
+                role: editForm.role || undefined,
+                phone: editForm.phone || undefined,
+            },
+        })
+
+        if (result.success) {
+            toast.success('Team member updated.')
+            setEditMember(null)
+        } else {
+            toast.error(result.error || 'Failed to update team member')
+        }
+    }
+
+    const handleResetPassword = async (e: React.FormEvent) => {
+        e.preventDefault()
+        if (!resetMember) return
+        const errors: Record<string, string> = {}
+        if (!resetForm.newPassword || resetForm.newPassword.length < 8) errors.newPassword = 'Password must be at least 8 characters'
+        if (resetForm.newPassword !== resetForm.confirmPassword) errors.confirmPassword = 'Passwords do not match'
+        if (Object.keys(errors).length > 0) { setResetErrors(errors); return }
+        setResetErrors({})
+
+        const result = await resetPasswordMutation.mutateAsync({
+            userId: resetMember.id,
+            newPassword: resetForm.newPassword,
+        })
+
+        if (result.success) {
+            toast.success(`Password reset for ${resetMember.full_name}.`)
+            setResetMember(null)
+            setResetForm({ newPassword: '', confirmPassword: '' })
+        } else {
+            toast.error(result.error || 'Failed to reset password')
+        }
+    }
+
+    const handleDelete = async () => {
+        if (!deleteMemberTarget) return
+        const result = await deleteMutation.mutateAsync(deleteMemberTarget.id)
+        if (result.success) {
+            toast.success(`${deleteMemberTarget.full_name} has been removed.`)
+            setDeleteMemberTarget(null)
+        } else {
+            toast.error(result.error || 'Failed to delete team member')
+        }
+    }
+
+    return (
+        <>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <CardTitle className="flex items-center gap-2">
+                            <Users className="h-5 w-5" />
+                            Team Members
+                        </CardTitle>
+                        <CardDescription>
+                            Manage dispatchers, fleet managers, and accountants for your company.
+                        </CardDescription>
+                    </div>
+                    {canManage && (
+                        <Button onClick={() => setAddOpen(true)} className="gap-2">
+                            <Plus className="h-4 w-4" />
+                            Add Team Member
+                        </Button>
+                    )}
+                </CardHeader>
+                <CardContent>
+                    {isLoading ? (
+                        <div className="flex justify-center py-8">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : (
+                        <div className="rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Name</TableHead>
+                                        <TableHead>Role</TableHead>
+                                        <TableHead>Email</TableHead>
+                                        <TableHead>Phone</TableHead>
+                                        {canManage && <TableHead className="text-right">Actions</TableHead>}
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {members.length === 0 ? (
+                                        <TableRow>
+                                            <TableCell colSpan={canManage ? 5 : 4} className="text-center py-8 text-muted-foreground">
+                                                No team members found. Add your first team member above.
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : (
+                                        members.map((member) => {
+                                            const isSelf = currentUser?.id === member.id
+                                            const isOtherAdmin = member.role === 'admin' && !currentUser?.is_platform_admin && !isSelf
+                                            return (
+                                                <TableRow key={member.id}>
+                                                    <TableCell className="font-medium">
+                                                        {member.full_name || 'Unknown User'}
+                                                        {isSelf && <span className="ml-2 text-xs text-muted-foreground">(you)</span>}
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        <span className={cn('inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold capitalize', getRoleBadgeClass(member.role || ''))}>
+                                                            {(member.role || 'user').replace('_', ' ')}
+                                                        </span>
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground text-sm">
+                                                        {member.email || '—'}
+                                                    </TableCell>
+                                                    <TableCell className="text-muted-foreground text-sm">
+                                                        {member.phone || '—'}
+                                                    </TableCell>
+                                                    {canManage && (
+                                                        <TableCell className="text-right">
+                                                            <div className="flex justify-end gap-1">
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8"
+                                                                    disabled={isOtherAdmin}
+                                                                    onClick={() => setEditMember(member)}
+                                                                    title="Edit"
+                                                                >
+                                                                    <Pencil className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8"
+                                                                    disabled={isOtherAdmin}
+                                                                    onClick={() => { setResetMember(member); setResetForm({ newPassword: '', confirmPassword: '' }) }}
+                                                                    title="Reset Password"
+                                                                >
+                                                                    <KeyRound className="h-4 w-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="icon"
+                                                                    className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                                                    disabled={isSelf || isOtherAdmin}
+                                                                    onClick={() => setDeleteMemberTarget(member)}
+                                                                    title="Delete"
+                                                                >
+                                                                    <Trash2 className="h-4 w-4" />
+                                                                </Button>
+                                                            </div>
+                                                        </TableCell>
+                                                    )}
+                                                </TableRow>
+                                            )
+                                        })
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* ─── Add Team Member Dialog ─── */}
+            <Dialog open={addOpen} onOpenChange={(o) => { if (!o) { setAddOpen(false); setAddErrors({}) } }}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Plus className="h-5 w-5 text-primary" />
+                            Add Team Member
+                        </DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleAdd} className="space-y-4 py-2">
+                        <div className="space-y-1.5">
+                            <Label>Full Name <span className="text-destructive">*</span></Label>
+                            <Input
+                                placeholder="Jane Smith"
+                                value={addForm.full_name}
+                                onChange={e => setAddForm(f => ({ ...f, full_name: e.target.value }))}
+                                autoFocus
+                            />
+                            {addErrors.full_name && <p className="text-xs text-destructive">{addErrors.full_name}</p>}
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Email <span className="text-destructive">*</span></Label>
+                            <Input
+                                type="email"
+                                placeholder="jane@company.com"
+                                value={addForm.email}
+                                onChange={e => setAddForm(f => ({ ...f, email: e.target.value }))}
+                            />
+                            {addErrors.email && <p className="text-xs text-destructive">{addErrors.email}</p>}
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Password <span className="text-destructive">*</span></Label>
+                            <Input
+                                type="password"
+                                placeholder="Minimum 8 characters"
+                                value={addForm.password}
+                                onChange={e => setAddForm(f => ({ ...f, password: e.target.value }))}
+                            />
+                            {addErrors.password && <p className="text-xs text-destructive">{addErrors.password}</p>}
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Role <span className="text-destructive">*</span></Label>
+                            <Select value={addForm.role} onValueChange={(v) => setAddForm(f => ({ ...f, role: v as 'fleet_manager' | 'dispatcher' | 'accountant' }))}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="fleet_manager">Fleet Manager</SelectItem>
+                                    <SelectItem value="dispatcher">Dispatcher</SelectItem>
+                                    <SelectItem value="accountant">Accountant</SelectItem>
+                                </SelectContent>
+                            </Select>
+                            {addErrors.role && <p className="text-xs text-destructive">{addErrors.role}</p>}
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Phone <span className="text-muted-foreground text-xs">(optional)</span></Label>
+                            <Input
+                                type="tel"
+                                placeholder="(555) 000-0000"
+                                value={addForm.phone}
+                                onChange={e => setAddForm(f => ({ ...f, phone: e.target.value }))}
+                            />
+                        </div>
+                        <DialogFooter className="pt-2">
+                            <Button type="button" variant="outline" onClick={() => { setAddOpen(false); setAddErrors({}) }}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={createMutation.isPending} className="gap-2">
+                                {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Add Member
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* ─── Edit Team Member Dialog ─── */}
+            <Dialog open={!!editMember} onOpenChange={(o) => { if (!o) setEditMember(null) }}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Pencil className="h-5 w-5 text-primary" />
+                            Edit Team Member
+                        </DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleEdit} className="space-y-4 py-2">
+                        <div className="space-y-1.5">
+                            <Label>Full Name</Label>
+                            <Input
+                                placeholder="Jane Smith"
+                                value={editForm.full_name}
+                                onChange={e => setEditForm(f => ({ ...f, full_name: e.target.value }))}
+                                autoFocus
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Role</Label>
+                            <Select value={editForm.role} onValueChange={(v) => setEditForm(f => ({ ...f, role: v }))}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select role" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="admin">Admin</SelectItem>
+                                    <SelectItem value="fleet_manager">Fleet Manager</SelectItem>
+                                    <SelectItem value="dispatcher">Dispatcher</SelectItem>
+                                    <SelectItem value="accountant">Accountant</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Phone</Label>
+                            <Input
+                                type="tel"
+                                placeholder="(555) 000-0000"
+                                value={editForm.phone}
+                                onChange={e => setEditForm(f => ({ ...f, phone: e.target.value }))}
+                            />
+                        </div>
+                        <DialogFooter className="pt-2">
+                            <Button type="button" variant="outline" onClick={() => setEditMember(null)}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={updateMutation.isPending} className="gap-2">
+                                {updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Save Changes
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* ─── Reset Password Dialog ─── */}
+            <Dialog open={!!resetMember} onOpenChange={(o) => { if (!o) { setResetMember(null); setResetErrors({}) } }}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <KeyRound className="h-5 w-5 text-primary" />
+                            Reset Password — {resetMember?.full_name}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <form onSubmit={handleResetPassword} className="space-y-4 py-2">
+                        <div className="space-y-1.5">
+                            <Label>New Password <span className="text-destructive">*</span></Label>
+                            <Input
+                                type="password"
+                                placeholder="Minimum 8 characters"
+                                value={resetForm.newPassword}
+                                onChange={e => setResetForm(f => ({ ...f, newPassword: e.target.value }))}
+                                autoFocus
+                            />
+                            {resetErrors.newPassword && <p className="text-xs text-destructive">{resetErrors.newPassword}</p>}
+                        </div>
+                        <div className="space-y-1.5">
+                            <Label>Confirm Password <span className="text-destructive">*</span></Label>
+                            <Input
+                                type="password"
+                                placeholder="Repeat new password"
+                                value={resetForm.confirmPassword}
+                                onChange={e => setResetForm(f => ({ ...f, confirmPassword: e.target.value }))}
+                            />
+                            {resetErrors.confirmPassword && <p className="text-xs text-destructive">{resetErrors.confirmPassword}</p>}
+                        </div>
+                        <DialogFooter className="pt-2">
+                            <Button type="button" variant="outline" onClick={() => { setResetMember(null); setResetErrors({}) }}>
+                                Cancel
+                            </Button>
+                            <Button type="submit" disabled={resetPasswordMutation.isPending} className="gap-2">
+                                {resetPasswordMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                                Reset Password
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </DialogContent>
+            </Dialog>
+
+            {/* ─── Delete Confirmation Dialog ─── */}
+            <Dialog open={!!deleteMemberTarget} onOpenChange={(o) => { if (!o) setDeleteMemberTarget(null) }}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-destructive">
+                            <Trash2 className="h-5 w-5" />
+                            Remove Team Member?
+                        </DialogTitle>
+                    </DialogHeader>
+                    <p className="text-sm text-muted-foreground py-2">
+                        This will permanently remove <strong>{deleteMemberTarget?.full_name}</strong> and revoke their access to the platform. This action cannot be undone.
+                    </p>
+                    <DialogFooter className="pt-2">
+                        <Button type="button" variant="outline" onClick={() => setDeleteMemberTarget(null)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            type="button"
+                            variant="destructive"
+                            onClick={handleDelete}
+                            disabled={deleteMutation.isPending}
+                            className="gap-2"
+                        >
+                            {deleteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                            {deleteMutation.isPending ? 'Removing...' : 'Yes, Remove'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     )
 }

@@ -14,6 +14,7 @@ import { VehicleUpdate } from '@/types/database'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from 'sonner'
 import { useState } from 'react'
+import { PermissionGate } from '@/components/auth/PermissionGate'
 
 export default function VehicleDetailPage() {
     const params = useParams()
@@ -145,49 +146,51 @@ export default function VehicleDetailPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2 ml-10 sm:ml-0">
-                    {/* Maintenance toggle buttons */}
-                    {vehicle.status === 'maintenance' ? (
-                        <Button
-                            variant="outline"
-                            className="gap-2 border-green-500 text-green-700 hover:bg-green-50"
-                            onClick={handleReturnFromMaintenance}
-                            disabled={isTogglingMaintenance}
-                        >
-                            <CheckCircle2 className="h-4 w-4" />
-                            <span className="hidden sm:inline">Return from Maintenance</span>
-                        </Button>
-                    ) : vehicle.status !== 'in_use' ? (
-                        <Button
-                            variant="outline"
-                            className="gap-2 border-orange-400 text-orange-700 hover:bg-orange-50"
-                            onClick={handleSendToMaintenance}
-                            disabled={isTogglingMaintenance}
-                        >
-                            <ShieldAlert className="h-4 w-4" />
-                            <span className="hidden sm:inline">Send to Maintenance</span>
-                        </Button>
-                    ) : null}
-                    <Dialog open={isEditing} onOpenChange={setIsEditing}>
-                        <Button variant="outline" className="gap-2" onClick={() => setIsEditing(true)}>
-                            <Edit className="h-4 w-4" />
-                            <span className="hidden sm:inline">Edit</span>
-                        </Button>
-                        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-                            <DialogHeader>
-                                <DialogTitle>Edit Vehicle</DialogTitle>
-                            </DialogHeader>
-                            <VehicleForm initialData={vehicle} onSubmit={handleUpdate} isSubmitting={updateMutation.isPending} />
-                        </DialogContent>
-                    </Dialog>
+                    <PermissionGate permission="manage:vehicles">
+                        {/* Maintenance toggle buttons */}
+                        {vehicle.status === 'maintenance' ? (
+                            <Button
+                                variant="outline"
+                                className="gap-2 border-green-500 text-green-700 hover:bg-green-50"
+                                onClick={handleReturnFromMaintenance}
+                                disabled={isTogglingMaintenance}
+                            >
+                                <CheckCircle2 className="h-4 w-4" />
+                                <span className="hidden sm:inline">Return from Maintenance</span>
+                            </Button>
+                        ) : vehicle.status !== 'in_use' ? (
+                            <Button
+                                variant="outline"
+                                className="gap-2 border-orange-400 text-orange-700 hover:bg-orange-50"
+                                onClick={handleSendToMaintenance}
+                                disabled={isTogglingMaintenance}
+                            >
+                                <ShieldAlert className="h-4 w-4" />
+                                <span className="hidden sm:inline">Send to Maintenance</span>
+                            </Button>
+                        ) : null}
+                        <Dialog open={isEditing} onOpenChange={setIsEditing}>
+                            <Button variant="outline" className="gap-2" onClick={() => setIsEditing(true)}>
+                                <Edit className="h-4 w-4" />
+                                <span className="hidden sm:inline">Edit</span>
+                            </Button>
+                            <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+                                <DialogHeader>
+                                    <DialogTitle>Edit Vehicle</DialogTitle>
+                                </DialogHeader>
+                                <VehicleForm initialData={vehicle} onSubmit={handleUpdate} isSubmitting={updateMutation.isPending} />
+                            </DialogContent>
+                        </Dialog>
 
-                    <Button
-                        variant="destructive"
-                        size="icon"
-                        onClick={handleDelete}
-                        disabled={deleteMutation.isPending}
-                    >
-                        <Trash2 className="h-4 w-4" />
-                    </Button>
+                        <Button
+                            variant="destructive"
+                            size="icon"
+                            onClick={handleDelete}
+                            disabled={deleteMutation.isPending}
+                        >
+                            <Trash2 className="h-4 w-4" />
+                        </Button>
+                    </PermissionGate>
                 </div>
             </div>
 

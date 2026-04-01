@@ -6,10 +6,17 @@ import { Button } from '@/components/ui/button'
 import { VehicleForm } from '@/components/vehicles/VehicleForm'
 import { useCreateVehicle } from '@/hooks/useVehicles'
 import { VehicleInsert } from '@/types/database'
+import { useHasPermission } from '@/hooks/useCurrentUser'
+import { AccessDenied } from '@/components/auth/PermissionGate'
 
 export default function NewVehiclePage() {
     const router = useRouter()
     const createMutation = useCreateVehicle()
+    const canManageVehicles = useHasPermission('manage:vehicles')
+
+    if (!canManageVehicles) {
+        return <AccessDenied message="You don't have permission to add vehicles." />
+    }
 
     const handleSubmit = async (data: VehicleInsert) => {
         await createMutation.mutateAsync(data)

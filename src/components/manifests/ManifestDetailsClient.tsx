@@ -29,6 +29,7 @@ import { generateManifestPDF } from '@/lib/generateManifestPDF'
 import { JobPODViewer } from '@/components/jobs/JobPODViewer'
 import { JobFinancialsCard } from '@/components/jobs/JobFinancialsCard'
 import { TrendingUp, PieChart, FileText, IndianRupee } from 'lucide-react'
+import { PermissionGate } from '@/components/auth/PermissionGate'
 
 interface ManifestDetailsClientProps {
     manifest: any
@@ -332,9 +333,11 @@ export function ManifestDetailsClient({ manifest }: ManifestDetailsClientProps) 
                     )}
 
                     {manifest.status !== 'cancelled' && manifest.status !== 'completed' && (
-                        <Button variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={handleCancelManifest} disabled={isActionLoading}>
-                            <AlertCircle className="mr-2 h-4 w-4" /> Cancel Manifest
-                        </Button>
+                        <PermissionGate permission="manage:dispatch">
+                            <Button variant="ghost" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={handleCancelManifest} disabled={isActionLoading}>
+                                <AlertCircle className="mr-2 h-4 w-4" /> Cancel Manifest
+                            </Button>
+                        </PermissionGate>
                     )}
                 </div>
             </div>

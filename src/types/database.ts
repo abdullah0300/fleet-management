@@ -8,6 +8,7 @@ export type Json =
 
 export interface Customer {
   id: string
+  company_id: string
   name: string
   email?: string | null
   phone?: string | null
