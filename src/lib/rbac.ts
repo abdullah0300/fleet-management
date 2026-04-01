@@ -130,9 +130,18 @@ export function canAccessRoute(role: UserRole | null, pathname: string, isPlatfo
         return hasPermission(role, requiredPermission)
     }
 
-    // Check for dynamic routes (e.g., /dashboard/vehicles/[id])
-    const basePath = pathname.split('/').slice(0, 3).join('/')
+    const segments = pathname.split('/')
+    const lastSegment = segments[segments.length - 1]
+    const basePath = segments.slice(0, 3).join('/')
     const basePermission = routePermissions[basePath]
+
+    // Paths ending in /edit (e.g. /dashboard/jobs/abc/edit) require manage permission
+    if (lastSegment === 'edit' && basePermission) {
+        const managePermission = basePermission.replace('view:', 'manage:') as Permission
+        return hasPermission(role, managePermission)
+    }
+
+    // Check for dynamic routes (e.g., /dashboard/vehicles/[id])
     if (basePermission) {
         return hasPermission(role, basePermission)
     }
