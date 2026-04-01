@@ -99,7 +99,7 @@ export function ServiceForm({ initialData, onSubmit, isSubmitting }: ServiceForm
             parts_cost: data.parts_cost || null,
             labor_cost: data.labor_cost || null,
             mechanic_notes: data.mechanic_notes || null,
-            odometer_at_service: data.odometer_at_service || null,
+            odometer_at_service: data.odometer_at_service != null ? data.odometer_at_service : null,
             service_date: data.service_date || null,
             next_service_date: data.next_service_date || null,
             next_service_odometer: data.next_service_odometer || null,

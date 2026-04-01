@@ -7,7 +7,9 @@ import { useVehicleMaintenanceStatus } from '@/hooks/useSmartMaintenance'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { VehicleForm } from '@/components/vehicles/VehicleForm'
 import { VehicleHealthVisualizer } from '@/components/maintenance/VehicleHealthVisualizer'
 import { VehicleUpdate } from '@/types/database'
@@ -30,6 +32,28 @@ export default function VehicleDetailPage() {
     const deleteMutation = useDeleteVehicle()
     const [isEditing, setIsEditing] = useState(false)
     const [isTogglingMaintenance, setIsTogglingMaintenance] = useState(false)
+    const [isOdometerOpen, setIsOdometerOpen] = useState(false)
+    const [newOdometer, setNewOdometer] = useState('')
+    const [odometerSaving, setOdometerSaving] = useState(false)
+
+    const handleUpdateOdometer = async () => {
+        const val = Number(newOdometer)
+        if (!val || val <= 0) {
+            toast.error('Please enter a valid odometer reading.')
+            return
+        }
+        setOdometerSaving(true)
+        try {
+            await updateMutation.mutateAsync({ id, updates: { odometer_reading: val } })
+            toast.success('Odometer updated to ' + val.toLocaleString() + ' mi')
+            setIsOdometerOpen(false)
+            setNewOdometer('')
+        } catch (err: any) {
+            toast.error('Failed to update odometer: ' + err.message)
+        } finally {
+            setOdometerSaving(false)
+        }
+    }
 
     const handleDelete = async () => {
         if (!confirm('Are you sure you want to delete this vehicle?')) return
@@ -216,6 +240,14 @@ export default function VehicleDetailPage() {
                         <div className="text-xl sm:text-2xl font-bold">
                             {(vehicle.odometer_reading || 0).toLocaleString()} mi
                         </div>
+                        <PermissionGate permission="manage:vehicles">
+                            <button
+                                className="text-[10px] text-primary underline underline-offset-2 mt-1 hover:text-primary/80"
+                                onClick={() => { setNewOdometer(String(vehicle.odometer_reading || '')); setIsOdometerOpen(true) }}
+                            >
+                                Update reading
+                            </button>
+                        </PermissionGate>
                     </CardContent>
                 </Card>
                 <Card>
@@ -254,6 +286,43 @@ export default function VehicleDetailPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Update Odometer Dialog */}
+            <Dialog open={isOdometerOpen} onOpenChange={setIsOdometerOpen}>
+                <DialogContent className="max-w-sm">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Gauge className="h-4 w-4" /> Update Odometer Reading
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3 py-2">
+                        <p className="text-sm text-muted-foreground">
+                            Enter the current mileage from the truck's dashboard. This keeps maintenance schedules accurate.
+                        </p>
+                        <div className="space-y-1.5">
+                            <Label className="text-sm font-medium">Current Odometer (Miles)</Label>
+                            <Input
+                                type="number"
+                                placeholder="e.g. 150000"
+                                value={newOdometer}
+                                onChange={e => setNewOdometer(e.target.value)}
+                                autoFocus
+                            />
+                            {vehicle.odometer_reading && (
+                                <p className="text-[10px] text-muted-foreground">
+                                    Last recorded: {vehicle.odometer_reading.toLocaleString()} mi
+                                </p>
+                            )}
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setIsOdometerOpen(false)}>Cancel</Button>
+                        <Button onClick={handleUpdateOdometer} disabled={odometerSaving}>
+                            {odometerSaving ? 'Saving...' : 'Save Odometer'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
 
             {/* Details Section */}
             <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2">

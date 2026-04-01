@@ -55,6 +55,7 @@ export default function WorkOrderDetailPage() {
     const [isEditing, setIsEditing] = useState(false)
     const [isSaving, setIsSaving] = useState(false)
     const [completeOdometer, setCompleteOdometer] = useState<string>('')
+    const [odometerError, setOdometerError] = useState<string>('')
     const [showCompleteDialog, setShowCompleteDialog] = useState(false)
 
     // ── Sync form state when data arrives ──
@@ -113,11 +114,16 @@ export default function WorkOrderDetailPage() {
 
     const handleComplete = async () => {
         if (!record) return
+        if (!completeOdometer || Number(completeOdometer) <= 0) {
+            setOdometerError('Odometer reading is required to complete a work order.')
+            return
+        }
+        setOdometerError('')
         try {
             await completeMutation.mutateAsync({
                 id: record.id,
                 cost: calculatedTotal || undefined,
-                odometerReading: completeOdometer ? Number(completeOdometer) : undefined,
+                odometerReading: Number(completeOdometer),
             })
             toast.success('Work order completed!')
             setShowCompleteDialog(false)
@@ -501,7 +507,7 @@ export default function WorkOrderDetailPage() {
                     </DialogHeader>
                     <div className="space-y-4 py-2">
                         <p className="text-sm text-muted-foreground">
-                            Mark this maintenance as completed. Optionally enter the vehicle's current odometer to keep mileage tracking accurate.
+                            Enter the vehicle's current odometer reading to complete this work order. This keeps mileage tracking and next-service calculations accurate.
                         </p>
                         {vehicle && (
                             <div className="p-3 bg-muted/30 rounded-lg border text-sm">
@@ -510,20 +516,29 @@ export default function WorkOrderDetailPage() {
                                     <span className="font-medium">{vehicle.make} {vehicle.model} ({vehicle.license_plate})</span>
                                 </div>
                                 <div className="flex justify-between mt-1">
-                                    <span className="text-muted-foreground">Last Known Odometer</span>
+                                    <span className="text-muted-foreground">Last Recorded Odometer</span>
                                     <span className="font-medium">{(vehicle.odometer_reading || 0).toLocaleString()} mi</span>
                                 </div>
                             </div>
                         )}
                         <div className="space-y-1.5">
-                            <Label className="text-sm">Current Odometer Reading (Miles)</Label>
+                            <Label className="text-sm font-medium">
+                                Current Odometer Reading (Miles) <span className="text-red-500">*</span>
+                            </Label>
                             <Input
                                 type="number"
-                                placeholder={`e.g. ${((vehicle?.odometer_reading || 0) + 100)}`}
+                                placeholder={`e.g. ${((vehicle?.odometer_reading || 0)).toLocaleString()}`}
                                 value={completeOdometer}
-                                onChange={e => setCompleteOdometer(e.target.value)}
+                                onChange={e => { setCompleteOdometer(e.target.value); setOdometerError('') }}
+                                className={odometerError ? 'border-red-500 focus-visible:ring-red-500' : ''}
                             />
-                            <p className="text-[10px] text-muted-foreground">Leave blank to skip odometer update</p>
+                            {odometerError ? (
+                                <p className="text-xs text-red-500 flex items-center gap-1">
+                                    <AlertCircle className="h-3 w-3" /> {odometerError}
+                                </p>
+                            ) : (
+                                <p className="text-[10px] text-muted-foreground">Required — updates vehicle mileage and recalculates next service schedule</p>
+                            )}
                         </div>
                         <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg text-sm">
                             <div className="flex justify-between">

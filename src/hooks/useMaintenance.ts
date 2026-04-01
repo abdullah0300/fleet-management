@@ -370,7 +370,8 @@ export function useCompleteMaintenance() {
                     .single()
 
                 if (program) {
-                    const currentOdo = odometerReading || data.odometer_at_service || 0
+                    const currentOdo = odometerReading ?? data.odometer_at_service ?? null
+                    if (currentOdo == null) return data // no reliable odometer — skip smart tracking update
                     const serviceDate = data.service_date ? new Date(data.service_date) : new Date()
 
                     const nextOdo = currentOdo + (program.interval_miles || 5000)
