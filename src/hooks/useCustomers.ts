@@ -2,20 +2,24 @@ import { useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Customer } from '@/types/database'
 import { toast } from 'sonner'
+import { useCurrentUser } from './useCurrentUser'
 
 export function useCustomers() {
     const [customers, setCustomers] = useState<Customer[]>([])
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState<string | null>(null)
     const supabase = createClient()
+    const { data: user } = useCurrentUser()
 
     const fetchCustomers = useCallback(async () => {
+        if (!user?.company_id) return
         setIsLoading(true)
         setError(null)
         try {
             const { data, error: fetchError } = await supabase
                 .from('customers')
                 .select('*')
+                .eq('company_id', user.company_id)
                 .order('name', { ascending: true })
 
             if (fetchError) throw fetchError
@@ -27,13 +31,14 @@ export function useCustomers() {
         } finally {
             setIsLoading(false)
         }
-    }, [])
+    }, [user?.company_id])
 
     const createCustomer = useCallback(async (customerData: Partial<Customer>) => {
+        if (!user?.company_id) return null
         try {
             const { data, error: insertError } = await supabase
                 .from('customers')
-                .insert([customerData])
+                .insert([{ ...customerData, company_id: user.company_id }])
                 .select()
                 .single()
 
@@ -47,7 +52,7 @@ export function useCustomers() {
             toast.error('Failed to create customer')
             return null
         }
-    }, [])
+    }, [user?.company_id])
 
     const updateCustomer = useCallback(async (id: string, customerData: Partial<Customer>) => {
         try {
