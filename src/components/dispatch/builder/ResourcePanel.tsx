@@ -15,7 +15,7 @@ import { useState, useMemo } from 'react'
 import { useCreateDriver } from '@/hooks/useDrivers'
 import { useCreateVehicle } from '@/hooks/useVehicles'
 import { toast } from 'sonner'
-
+ 
 interface ResourcePanelProps {
     drivers: any[]
     vehicles: any[]
