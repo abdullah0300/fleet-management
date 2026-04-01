@@ -1,8 +1,13 @@
 import { login } from './actions'
-import { Truck, MapPin, Shield, BarChart3, ArrowLeft } from 'lucide-react'
+import { Truck, MapPin, Shield, BarChart3, ArrowLeft, AlertCircle } from 'lucide-react'
 import Link from 'next/link'
 
-export default function LoginPage() {
+export default async function LoginPage({
+    searchParams,
+}: {
+    searchParams: Promise<{ error?: string; message?: string }>
+}) {
+    const { error, message } = await searchParams
     return (
         <>
             {/* Left Panel - Brand Side */}
@@ -116,6 +121,19 @@ export default function LoginPage() {
                             </p>
                         </div>
 
+                        {error && (
+                            <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                                <span>{decodeURIComponent(error)}</span>
+                            </div>
+                        )}
+
+                        {message && (
+                            <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                                <span>{decodeURIComponent(message)}</span>
+                            </div>
+                        )}
+
                         <form className="flex flex-col gap-5">
                             <div className="grid gap-2">
                                 <label htmlFor="email" className="text-sm font-medium leading-none">Email</label>
@@ -130,7 +148,12 @@ export default function LoginPage() {
                                 />
                             </div>
                             <div className="grid gap-2">
-                                <label htmlFor="password" className="text-sm font-medium leading-none">Password</label>
+                                <div className="flex items-center justify-between">
+                                    <label htmlFor="password" className="text-sm font-medium leading-none">Password</label>
+                                    <Link href="/forgot-password" className="text-xs hover:underline" style={{ color: '#548EC7' }}>
+                                        Forgot password?
+                                    </Link>
+                                </div>
                                 <input
                                     id="password"
                                     name="password"

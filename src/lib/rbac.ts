@@ -55,7 +55,6 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     ],
     dispatcher: [
         'view:dashboard', 'view:vehicles', 'view:drivers',
-        'view:dashboard', 'view:vehicles', 'view:drivers',
         'view:jobs', 'manage:jobs', 'view:routes', 'manage:routes',
         'view:dispatch', 'manage:dispatch', 'view:manifests', 'manage:manifests',
         'view:tracking', 'view:maintenance', 'view:documents', 'view:notifications',
