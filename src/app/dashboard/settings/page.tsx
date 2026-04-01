@@ -365,6 +365,9 @@ export default function SettingsPage() {
                             </div>
                         </CardContent>
                     </Card>
+
+                    {/* Maintenance Alerts Card */}
+                    <MaintenanceAlertsSettings company={company} onSave={handleSave} isSaving={isSaving} />
                 </TabsContent>
 
                 {/* COST ENGINE DEFAULTS TAB */}
@@ -442,6 +445,8 @@ export default function SettingsPage() {
                 <TabsContent value="team" className="mt-6">
                     <TeamManagement currentUser={user} />
                 </TabsContent>
+
+                {/* NOTIFICATIONS TAB is part of the existing tabs — inject alerts card into costing tab below */}
 
                 {/* COMPANY PROFILE TAB */}
                 <TabsContent value="company" className="mt-6">
@@ -614,6 +619,116 @@ function getRoleBadgeClass(role: string) {
         case 'accountant': return 'bg-amber-100 text-amber-800 border-amber-200'
         default: return 'bg-gray-100 text-gray-800 border-gray-200'
     }
+}
+
+// ─── Maintenance Alerts Settings Component ────────────────────────────────────
+
+function MaintenanceAlertsSettings({
+    company,
+    onSave,
+    isSaving,
+}: {
+    company: any
+    onSave: () => void
+    isSaving: boolean
+}) {
+    const supabase = createClient()
+    const settings = company?.settings as Record<string, any> | null
+    const [enabled, setEnabled] = useState<boolean>(settings?.maintenanceAlerts?.enabled !== false)
+    const [testing, setTesting] = useState(false)
+    const [testResult, setTestResult] = useState<string | null>(null)
+
+    const handleToggle = async (val: boolean) => {
+        setEnabled(val)
+        if (!company?.id) return
+        const newSettings = {
+            ...(settings || {}),
+            maintenanceAlerts: { ...(settings?.maintenanceAlerts || {}), enabled: val },
+        }
+        await supabase.from('companies').update({ settings: newSettings }).eq('id', company.id)
+    }
+
+    const handleTest = async () => {
+        setTesting(true)
+        setTestResult(null)
+        try {
+            const res = await fetch('/api/cron/maintenance-alerts')
+            const data = await res.json()
+            if (res.ok) {
+                setTestResult(
+                    `✅ Ran successfully — ${data.programs_checked} programs checked, ` +
+                    `${data.overdue_records + data.due_soon_records} records flagged, ` +
+                    `${data.emails_sent} email${data.emails_sent !== 1 ? 's' : ''} sent`
+                )
+            } else {
+                setTestResult(`❌ Error: ${data.error || 'Unknown error'}`)
+            }
+        } catch (e: any) {
+            setTestResult(`❌ Failed: ${e.message}`)
+        } finally {
+            setTesting(false)
+        }
+    }
+
+    return (
+        <Card className="mt-4">
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <span className="text-lg">🔔</span> Maintenance Email Alerts
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                            Daily email digest sent at 8:00 AM UTC to all admins and fleet managers
+                            when vehicles are overdue or due within 7 days / 500 miles.
+                        </CardDescription>
+                    </div>
+                    <button
+                        role="switch"
+                        aria-checked={enabled}
+                        onClick={() => handleToggle(!enabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${enabled ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                    >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
+                    <p className="font-medium text-foreground">How it works</p>
+                    <ul className="text-muted-foreground space-y-1 list-disc list-inside text-xs">
+                        <li>Runs automatically every day at 8:00 AM UTC via Vercel Cron</li>
+                        <li>Checks both date-based and odometer-based maintenance schedules</li>
+                        <li>Sends one email digest per company — no per-vehicle spam</li>
+                        <li>Requires <code className="bg-muted px-1 rounded">RESEND_API_KEY</code> in Vercel env variables to send emails</li>
+                        <li>In-app notifications work regardless of email setup</li>
+                    </ul>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleTest}
+                        disabled={testing}
+                        className="gap-2"
+                    >
+                        {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <span>▶</span>}
+                        {testing ? 'Running...' : 'Test Alerts Now'}
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                        Runs the check immediately and shows what would be alerted.
+                    </p>
+                </div>
+
+                {testResult && (
+                    <div className={`rounded-lg border p-3 text-sm ${testResult.startsWith('✅') ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                        {testResult}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    )
 }
 
 // ─── Team Management Component ────────────────────────────────────────────────
