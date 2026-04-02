@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // DAILY MAINTENANCE ALERTS — Vercel Cron Job
@@ -21,13 +23,30 @@ export const runtime = 'nodejs'
 export const maxDuration = 60
 
 export async function GET(req: NextRequest) {
-    // Protect the endpoint — Vercel sets this header on cron invocations
+    // Allow: (1) Vercel cron with CRON_SECRET, (2) logged-in admin/fleet_manager
     const authHeader = req.headers.get('authorization')
-    if (
-        process.env.NODE_ENV === 'production' &&
-        authHeader !== `Bearer ${process.env.CRON_SECRET}`
-    ) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const isCron = authHeader === `Bearer ${process.env.CRON_SECRET}`
+
+    if (!isCron) {
+        // Check for a valid Supabase session (manual "Test Alerts Now" from settings)
+        const cookieStore = await cookies()
+        const sessionClient = createServerClient(
+            process.env.NEXT_PUBLIC_SUPABASE_URL!,
+            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+            { cookies: { getAll: () => cookieStore.getAll() } }
+        )
+        const { data: { user } } = await sessionClient.auth.getUser()
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
+        const { data: profile } = await sessionClient
+            .from('profiles')
+            .select('role')
+            .eq('id', user.id)
+            .single()
+        if (!profile || !['admin', 'fleet_manager'].includes(profile.role)) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+        }
     }
 
     const supabase = createClient(
