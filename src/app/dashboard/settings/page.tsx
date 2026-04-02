@@ -368,6 +368,9 @@ export default function SettingsPage() {
 
                     {/* Maintenance Alerts Card */}
                     <MaintenanceAlertsSettings company={company} onSave={handleSave} isSaving={isSaving} />
+
+                    {/* Overdue Jobs Alerts Card */}
+                    <OverdueJobsSettings company={company} />
                 </TabsContent>
 
                 {/* COST ENGINE DEFAULTS TAB */}
@@ -718,6 +721,108 @@ function MaintenanceAlertsSettings({
                     </Button>
                     <p className="text-xs text-muted-foreground">
                         Runs the check immediately and shows what would be alerted.
+                    </p>
+                </div>
+
+                {testResult && (
+                    <div className={`rounded-lg border p-3 text-sm ${testResult.startsWith('✅') ? 'bg-green-50 border-green-200 text-green-800' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                        {testResult}
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    )
+}
+
+// ─── Overdue Jobs Settings Component ─────────────────────────────────────────
+
+function OverdueJobsSettings({ company }: { company: any }) {
+    const supabase = createClient()
+    const settings = company?.settings as Record<string, any> | null
+    const [enabled, setEnabled] = useState<boolean>(settings?.jobAlerts?.enabled !== false)
+    const [testing, setTesting] = useState(false)
+    const [testResult, setTestResult] = useState<string | null>(null)
+
+    const handleToggle = async (val: boolean) => {
+        setEnabled(val)
+        if (!company?.id) return
+        const newSettings = {
+            ...(settings || {}),
+            jobAlerts: { ...(settings?.jobAlerts || {}), enabled: val },
+        }
+        await supabase.from('companies').update({ settings: newSettings }).eq('id', company.id)
+    }
+
+    const handleTest = async () => {
+        setTesting(true)
+        setTestResult(null)
+        try {
+            const res = await fetch('/api/cron/overdue-jobs')
+            const data = await res.json()
+            if (res.ok) {
+                setTestResult(
+                    `✅ Ran successfully — ${data.overdue_jobs} overdue job${data.overdue_jobs !== 1 ? 's' : ''} found, ` +
+                    `${data.notifications_sent} notification${data.notifications_sent !== 1 ? 's' : ''} sent, ` +
+                    `${data.emails_sent} email${data.emails_sent !== 1 ? 's' : ''} sent`
+                )
+            } else {
+                setTestResult(`❌ Error: ${data.error || 'Unknown error'}`)
+            }
+        } catch (e: any) {
+            setTestResult(`❌ Failed: ${e.message}`)
+        } finally {
+            setTesting(false)
+        }
+    }
+
+    return (
+        <Card className="mt-4">
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <span className="text-lg">🚨</span> Overdue Jobs Email Alerts
+                        </CardTitle>
+                        <CardDescription className="mt-1">
+                            Daily email digest sent at 8:00 AM UTC to dispatchers and admins
+                            when jobs are past their scheduled date and still pending or assigned.
+                        </CardDescription>
+                    </div>
+                    <button
+                        role="switch"
+                        aria-checked={enabled}
+                        onClick={() => handleToggle(!enabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${enabled ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                    >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                </div>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
+                    <p className="font-medium text-foreground">How it works</p>
+                    <ul className="text-muted-foreground space-y-1 list-disc list-inside text-xs">
+                        <li>Runs automatically every day at 8:00 AM UTC via Vercel Cron</li>
+                        <li>Finds jobs where scheduled date has passed and status is pending or assigned</li>
+                        <li>Sends one email digest per company — no per-job spam</li>
+                        <li>Also creates in-app notifications visible in the notification bell</li>
+                        <li>Requires <code className="bg-muted px-1 rounded">RESEND_API_KEY</code> in Vercel env variables to send emails</li>
+                    </ul>
+                </div>
+
+                <div className="flex items-center gap-3">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleTest}
+                        disabled={testing}
+                        className="gap-2"
+                    >
+                        {testing ? <Loader2 className="h-3 w-3 animate-spin" /> : <span>▶</span>}
+                        {testing ? 'Running...' : 'Test Overdue Jobs Now'}
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                        Runs the check immediately and shows how many overdue jobs were found.
                     </p>
                 </div>
 
