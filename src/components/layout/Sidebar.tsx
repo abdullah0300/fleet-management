@@ -9,38 +9,70 @@ import { createClient } from '@/lib/supabase/client'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { getAccessibleRoutes, UserRole } from '@/lib/rbac'
 
-// Animated line-md icon names per nav item
+// line-md icons animate on mount (SVG stroke draw).
+// mdi icons used where line-md has no equivalent — they're visible and consistent.
 const iconMap: Record<string, string> = {
-    'Dashboard':   'line-md:home-alt',
-    'Companies':   'line-md:building-twotone',
-    'Vehicles':    'line-md:car-twotone',
-    'Drivers':     'line-md:account-multiple',
-    'Routes':      'line-md:map-marker-alt',
+    'Dashboard':   'line-md:home-md',
+    'Companies':   'line-md:account-multiple',
+    'Vehicles':    'mdi:truck-outline',
+    'Drivers':     'line-md:account',
+    'Routes':      'line-md:map-marker',
     'Dispatch':    'line-md:calendar',
-    'Jobs':        'line-md:clipboard-list-twotone',
-    'Manifests':   'line-md:document-list',
-    'Finances':    'line-md:payment',
-    'Costs':       'line-md:payment',
-    'Customers':   'line-md:account-small',
+    'Jobs':        'line-md:list-3',
+    'Manifests':   'line-md:document',
+    'Finances':    'mdi:cash-multiple',
+    'Costs':       'mdi:cash-multiple',
+    'Customers':   'line-md:account-add',
     'Tracking':    'line-md:compass-loop',
-    'Maintenance': 'line-md:wrench',
-    'Reports':     'line-md:chart-bar',
-    'Documents':   'line-md:file-document',
-    'Settings':    'line-md:cog',
+    'Maintenance': 'mdi:wrench-outline',
+    'Reports':     'mdi:chart-bar',
+    'Documents':   'line-md:document-list',
+    'Settings':    'line-md:cog-loop',
 }
 
-const signOutIcon = 'line-md:logout'
+// Each nav item manages its own hover key so re-mounting the Icon
+// replays its built-in SVG draw animation on button hover.
+function NavItem({
+    href,
+    icon,
+    label,
+    isActive,
+}: {
+    href: string
+    icon: string
+    label: string
+    isActive: boolean
+}) {
+    const [key, setKey] = useState(0)
 
-// Wrapper that re-mounts the icon on hover to replay its entry animation
-function AnimatedIcon({ icon, className }: { icon: string; className?: string }) {
+    return (
+        <Link
+            href={href}
+            onMouseEnter={() => setKey(k => k + 1)}
+            className={cn(
+                "flex items-center gap-3 rounded-lg px-3 py-2.5 transition-all w-full",
+                isActive
+                    ? "bg-primary text-primary-foreground font-medium shadow-sm"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+            )}
+        >
+            <Icon key={key} icon={icon} width={20} height={20} className="shrink-0" />
+            <span className="truncate text-sm">{label}</span>
+        </Link>
+    )
+}
+
+function SignOutButton({ onSignOut }: { onSignOut: () => void }) {
     const [key, setKey] = useState(0)
     return (
-        <span
-            className={cn('shrink-0', className)}
+        <button
+            onClick={onSignOut}
             onMouseEnter={() => setKey(k => k + 1)}
+            className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
         >
-            <Icon key={key} icon={icon} width={16} height={16} />
-        </span>
+            <Icon key={key} icon="line-md:logout" width={20} height={20} className="shrink-0" />
+            Sign Out
+        </button>
     )
 }
 
@@ -62,9 +94,9 @@ export function Sidebar({ className }: { className?: string }) {
     return (
         <div className={cn("flex flex-1 flex-col gap-2 min-h-0 overflow-hidden", className)}>
             <div className="flex-1 overflow-y-auto overflow-x-hidden py-4">
-                <nav className="flex flex-col gap-1 px-3 text-sm font-medium">
+                <nav className="flex flex-col gap-0.5 px-3 font-medium">
                     {routes.map((item, index) => {
-                        const iconName = iconMap[item.name] ?? 'line-md:home-alt'
+                        const iconName = iconMap[item.name] ?? 'line-md:home-md'
                         const isActive = pathname === item.path ||
                             (item.path !== '/dashboard' && pathname.startsWith(item.path))
                         const isNewGroup = index === 0 || item.group !== routes[index - 1].group
@@ -78,18 +110,12 @@ export function Sidebar({ className }: { className?: string }) {
                                         </p>
                                     </div>
                                 )}
-                                <Link
+                                <NavItem
                                     href={item.path}
-                                    className={cn(
-                                        "flex items-center gap-3 rounded-lg px-3 py-2 transition-all w-full",
-                                        isActive
-                                            ? "bg-primary text-primary-foreground font-medium shadow-sm"
-                                            : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                                    )}
-                                >
-                                    <AnimatedIcon icon={iconName} />
-                                    <span className="truncate">{item.name}</span>
-                                </Link>
+                                    icon={iconName}
+                                    label={item.name}
+                                    isActive={isActive}
+                                />
                             </div>
                         )
                     })}
@@ -97,13 +123,7 @@ export function Sidebar({ className }: { className?: string }) {
             </div>
 
             <div className="px-2 pb-2">
-                <button
-                    onClick={handleSignOut}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
-                >
-                    <AnimatedIcon icon={signOutIcon} />
-                    Sign Out
-                </button>
+                <SignOutButton onSignOut={handleSignOut} />
             </div>
 
             <div className="p-4 mt-auto border-t">
