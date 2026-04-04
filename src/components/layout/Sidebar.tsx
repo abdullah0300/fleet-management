@@ -2,60 +2,56 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import {
-    LayoutDashboard,
-    Truck,
-    Users,
-    Map,
-    ClipboardList,
-    ScrollText,
-    Navigation,
-    FileText,
-    Settings,
-    ChartBar,
-    DollarSign,
-    Wrench,
-    CalendarDays,
-    LogOut,
-    Building2,
-    ContactRound
-} from 'lucide-react'
+import { Icon } from '@iconify/react'
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { createClient } from '@/lib/supabase/client'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { getAccessibleRoutes, UserRole } from '@/lib/rbac'
 
-// Map route names to icons
-const iconMap: Record<string, any> = {
-    'Dashboard': LayoutDashboard,
-    'Companies': Building2,
-    'Vehicles': Truck,
-    'Drivers': Users,
-    'Routes': Map,
-    'Dispatch': CalendarDays, // Note: Dispatch might not be in getAccessibleRoutes yet, need to check
-    'Jobs': ClipboardList,
-    'Manifests': ScrollText,
-    'Costs': DollarSign,
-    'Customers': ContactRound,
-    'Tracking': Navigation,
-    'Maintenance': Wrench,
-    'Reports': ChartBar,
-    'Documents': FileText,
-    'Settings': Settings,
+// Animated line-md icon names per nav item
+const iconMap: Record<string, string> = {
+    'Dashboard':   'line-md:home-alt',
+    'Companies':   'line-md:building-twotone',
+    'Vehicles':    'line-md:car-twotone',
+    'Drivers':     'line-md:account-multiple',
+    'Routes':      'line-md:map-marker-alt',
+    'Dispatch':    'line-md:calendar',
+    'Jobs':        'line-md:clipboard-list-twotone',
+    'Manifests':   'line-md:document-list',
+    'Finances':    'line-md:payment',
+    'Costs':       'line-md:payment',
+    'Customers':   'line-md:account-small',
+    'Tracking':    'line-md:compass-loop',
+    'Maintenance': 'line-md:wrench',
+    'Reports':     'line-md:chart-bar',
+    'Documents':   'line-md:file-document',
+    'Settings':    'line-md:cog',
+}
+
+const signOutIcon = 'line-md:logout'
+
+// Wrapper that re-mounts the icon on hover to replay its entry animation
+function AnimatedIcon({ icon, className }: { icon: string; className?: string }) {
+    const [key, setKey] = useState(0)
+    return (
+        <span
+            className={cn('shrink-0', className)}
+            onMouseEnter={() => setKey(k => k + 1)}
+        >
+            <Icon key={key} icon={icon} width={16} height={16} />
+        </span>
+    )
 }
 
 export function Sidebar({ className }: { className?: string }) {
     const pathname = usePathname()
     const { data: user } = useCurrentUser()
 
-    // Get accessible routes based on role and platform admin status
     const routes = getAccessibleRoutes(
         user?.role as UserRole | null,
         user?.is_platform_admin || false
     )
-
-    // Add Dispatch manually if needed (it wasn't in rbac.ts list but was in sidebar)
-    // or better, add it to rbac.ts. For now, let's append it if not present, assuming it's a common route?
 
     const handleSignOut = async () => {
         const supabase = createClient()
@@ -68,11 +64,9 @@ export function Sidebar({ className }: { className?: string }) {
             <div className="flex-1 overflow-y-auto overflow-x-hidden py-4">
                 <nav className="flex flex-col gap-1 px-3 text-sm font-medium">
                     {routes.map((item, index) => {
-                        const Icon = iconMap[item.name === 'Finances' ? 'Costs' : item.name] || LayoutDashboard
+                        const iconName = iconMap[item.name] ?? 'line-md:home-alt'
                         const isActive = pathname === item.path ||
                             (item.path !== '/dashboard' && pathname.startsWith(item.path))
-
-                        // Check if we need to render a group header
                         const isNewGroup = index === 0 || item.group !== routes[index - 1].group
 
                         return (
@@ -93,7 +87,7 @@ export function Sidebar({ className }: { className?: string }) {
                                             : "text-muted-foreground hover:bg-muted hover:text-foreground"
                                     )}
                                 >
-                                    <Icon className="h-4 w-4 shrink-0" />
+                                    <AnimatedIcon icon={iconName} />
                                     <span className="truncate">{item.name}</span>
                                 </Link>
                             </div>
@@ -107,7 +101,7 @@ export function Sidebar({ className }: { className?: string }) {
                     onClick={handleSignOut}
                     className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                 >
-                    <LogOut className="h-4 w-4" />
+                    <AnimatedIcon icon={signOutIcon} />
                     Sign Out
                 </button>
             </div>
@@ -118,6 +112,6 @@ export function Sidebar({ className }: { className?: string }) {
                     <p>Created by Webcraftio</p>
                 </div>
             </div>
-        </div >
+        </div>
     )
 }
