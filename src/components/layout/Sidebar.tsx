@@ -9,24 +9,23 @@ import { createClient } from '@/lib/supabase/client'
 import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { getAccessibleRoutes, UserRole } from '@/lib/rbac'
 
-// line-md icons animate on mount (SVG stroke draw).
-// mdi icons used where line-md has no equivalent — they're visible and consistent.
+// All line-md — every icon has a built-in SVG draw/morph animation
 const iconMap: Record<string, string> = {
-    'Dashboard':   'line-md:home-md',
-    'Companies':   'line-md:account-multiple',
-    'Vehicles':    'mdi:truck-outline',
+    'Dashboard':   'line-md:home-md-twotone',
+    'Companies':   'line-md:briefcase-twotone',      // briefcase = business/company
+    'Vehicles':    'line-md:speedometer-loop',        // speedometer loops = fleet vehicles
     'Drivers':     'line-md:account',
-    'Routes':      'line-md:map-marker',
-    'Dispatch':    'line-md:calendar',
-    'Jobs':        'line-md:list-3',
-    'Manifests':   'line-md:document',
-    'Finances':    'mdi:cash-multiple',
-    'Costs':       'mdi:cash-multiple',
-    'Customers':   'line-md:account-add',
+    'Routes':      'line-md:map-marker-alt-twotone',
+    'Dispatch':    'line-md:calendar-twotone',
+    'Jobs':        'line-md:clipboard-list-twotone',
+    'Manifests':   'line-md:list-3-twotone',
+    'Finances':    'line-md:file-document-twotone',  // financial documents
+    'Costs':       'line-md:file-document-twotone',
+    'Customers':   'line-md:person-search-twotone',  // person lookup = customer
     'Tracking':    'line-md:compass-loop',
-    'Maintenance': 'mdi:wrench-outline',
-    'Reports':     'mdi:chart-bar',
-    'Documents':   'line-md:document-list',
+    'Maintenance': 'line-md:construction-twotone',   // construction = maintenance/repairs
+    'Reports':     'line-md:document-list-twotone',
+    'Documents':   'line-md:document-list-twotone',
     'Settings':    'line-md:cog-loop',
 }
 
