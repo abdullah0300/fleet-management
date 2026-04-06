@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
+import Papa from 'papaparse'
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, Download, Loader2 } from 'lucide-react'
 import {
     Dialog,
@@ -32,6 +33,13 @@ const ALL_COLUMNS = [...REQUIRED_COLUMNS, ...OPTIONAL_COLUMNS]
 const VALID_PAYMENT_TYPES = ['per_mile', 'per_trip', 'hourly', 'salary']
 const VALID_STATUSES = ['available', 'on_trip', 'off_duty']
 
+/** Returns true only if the date string represents a real calendar date */
+function isCalendarDateValid(year: number, month: number, day: number): boolean {
+    // month is 1-based here
+    const d = new Date(year, month - 1, day)
+    return d.getFullYear() === year && d.getMonth() === month - 1 && d.getDate() === day
+}
+
 export function BulkDriverImport({ trigger }: BulkDriverImportProps) {
     const [isOpen, setIsOpen] = useState(false)
     const [step, setStep] = useState<'upload' | 'preview' | 'importing' | 'result'>('upload')
@@ -49,104 +57,148 @@ export function BulkDriverImport({ trigger }: BulkDriverImportProps) {
     }, [])
 
     const parseCSV = (text: string): ParsedDriver[] => {
-        const lines = text.trim().split('\n')
-        if (lines.length < 2) return []
+        const result = Papa.parse<Record<string, string>>(text, {
+            header: true,
+            skipEmptyLines: true,
+            dynamicTyping: false,
+            transformHeader: (h) => h.toLowerCase().trim(),
+        })
 
-        // Parse header
-        const header = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/"/g, ''))
+        if (result.errors.length > 0 && result.data.length === 0) {
+            throw new Error(`CSV parse error: ${result.errors[0].message}`)
+        }
 
-        // Validate header has required columns
+        const header = result.meta.fields ?? []
+
         const missingRequired = REQUIRED_COLUMNS.filter(col => !header.includes(col))
         if (missingRequired.length > 0) {
             throw new Error(`Missing required columns: ${missingRequired.join(', ')}`)
         }
 
-        // Parse rows
+        const seenEmails = new Set<string>()
         const drivers: ParsedDriver[] = []
-        for (let i = 1; i < lines.length; i++) {
-            const line = lines[i].trim()
-            if (!line) continue // Skip empty lines
 
-            const values = line.split(',').map(v => v.trim().replace(/"/g, ''))
+        result.data.forEach((row, i) => {
             const errors: string[] = []
+            const rowIndex = i + 2 // 1-based + header row
 
             const driver: ParsedDriver = {
-                _rowIndex: i,
+                _rowIndex: rowIndex,
                 _errors: errors,
                 email: '',
                 full_name: '',
             }
 
-            header.forEach((col, idx) => {
-                const value = values[idx]?.trim() || ''
-
-                if (col === 'email') {
-                    if (!value) {
-                        errors.push('Email is required')
+            // email
+            const rawEmail = row['email']?.trim() || ''
+            if (!rawEmail) {
+                errors.push('Email is required')
+            } else {
+                const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+                if (!emailRegex.test(rawEmail)) {
+                    errors.push('Invalid email format')
+                } else {
+                    const normalised = rawEmail.toLowerCase()
+                    if (seenEmails.has(normalised)) {
+                        errors.push(`Duplicate email in file: ${normalised}`)
                     } else {
-                        // Basic email validation
-                        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-                        if (!emailRegex.test(value)) {
-                            errors.push('Invalid email format')
-                        } else {
-                            driver.email = value.toLowerCase()
-                        }
-                    }
-                } else if (col === 'full_name') {
-                    if (!value) {
-                        errors.push('Full name is required')
-                    } else {
-                        driver.full_name = value
-                    }
-                } else if (col === 'phone') {
-                    driver.phone = value
-                } else if (col === 'rate_amount' && value) {
-                    const rate = parseFloat(value)
-                    if (isNaN(rate) || rate < 0) {
-                        errors.push('Invalid rate amount')
-                    } else {
-                        driver.rate_amount = rate
-                    }
-                } else if (col === 'payment_type' && value) {
-                    if (!VALID_PAYMENT_TYPES.includes(value.toLowerCase())) {
-                        errors.push(`Invalid payment type. Use: ${VALID_PAYMENT_TYPES.join(', ')}`)
-                    } else {
-                        driver.payment_type = value.toLowerCase() as 'per_mile' | 'per_trip' | 'hourly' | 'salary'
-                    }
-                } else if (col === 'status' && value) {
-                    if (!VALID_STATUSES.includes(value.toLowerCase())) {
-                        errors.push(`Invalid status. Use: ${VALID_STATUSES.join(', ')}`)
-                    } else {
-                        driver.status = value.toLowerCase() as 'available' | 'on_trip' | 'off_duty'
-                    }
-                } else if (col === 'license_number') {
-                    driver.license_number = value
-                } else if (col === 'license_expiry' && value) {
-                    // Accept MM/DD/YYYY or YYYY-MM-DD
-                    const usDateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
-                    const isoDateRegex = /^\d{4}-\d{2}-\d{2}$/
-                    const usMatch = value.match(usDateRegex)
-                    if (usMatch) {
-                        // Convert MM/DD/YYYY to YYYY-MM-DD for storage
-                        const [, month, day, year] = usMatch
-                        driver.license_expiry = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-                    } else if (isoDateRegex.test(value)) {
-                        driver.license_expiry = value
-                    } else {
-                        errors.push('Invalid license expiry date (use MM/DD/YYYY format)')
-                    }
-                } else if (col === 'login_pin' && value) {
-                    const pinRegex = /^\d{4,6}$/
-                    if (!pinRegex.test(value)) {
-                        errors.push('Invalid PIN (must be 4-6 digits)')
-                    } else {
-                        driver.login_pin = value
+                        seenEmails.add(normalised)
+                        driver.email = normalised
                     }
                 }
-            })
+            }
+
+            // full_name
+            const fullName = row['full_name']?.trim() || ''
+            if (!fullName) {
+                errors.push('Full name is required')
+            } else {
+                driver.full_name = fullName
+            }
+
+            // phone
+            const phone = row['phone']?.trim()
+            if (phone) driver.phone = phone
+
+            // license_number
+            const licenseNumber = row['license_number']?.trim()
+            if (licenseNumber) driver.license_number = licenseNumber
+
+            // license_expiry — accept MM/DD/YYYY or YYYY-MM-DD, validate calendar
+            const expiryRaw = row['license_expiry']?.trim()
+            if (expiryRaw) {
+                const usDateRegex = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/
+                const isoDateRegex = /^(\d{4})-(\d{2})-(\d{2})$/
+                const usMatch = expiryRaw.match(usDateRegex)
+                const isoMatch = expiryRaw.match(isoDateRegex)
+
+                if (usMatch) {
+                    const month = parseInt(usMatch[1])
+                    const day = parseInt(usMatch[2])
+                    const year = parseInt(usMatch[3])
+                    if (!isCalendarDateValid(year, month, day)) {
+                        errors.push(`Invalid license expiry date: ${expiryRaw}`)
+                    } else {
+                        driver.license_expiry = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+                    }
+                } else if (isoMatch) {
+                    const year = parseInt(isoMatch[1])
+                    const month = parseInt(isoMatch[2])
+                    const day = parseInt(isoMatch[3])
+                    if (!isCalendarDateValid(year, month, day)) {
+                        errors.push(`Invalid license expiry date: ${expiryRaw}`)
+                    } else {
+                        driver.license_expiry = expiryRaw
+                    }
+                } else {
+                    errors.push('Invalid license expiry date format (use MM/DD/YYYY or YYYY-MM-DD)')
+                }
+            }
+
+            // payment_type
+            const paymentType = row['payment_type']?.trim().toLowerCase()
+            if (paymentType) {
+                if (!VALID_PAYMENT_TYPES.includes(paymentType)) {
+                    errors.push(`Invalid payment type. Use: ${VALID_PAYMENT_TYPES.join(', ')}`)
+                } else {
+                    driver.payment_type = paymentType as 'per_mile' | 'per_trip' | 'hourly' | 'salary'
+                }
+            }
+
+            // rate_amount
+            const rateStr = row['rate_amount']?.trim()
+            if (rateStr) {
+                const rate = parseFloat(rateStr)
+                if (isNaN(rate) || rate < 0) {
+                    errors.push('Invalid rate amount')
+                } else {
+                    driver.rate_amount = rate
+                }
+            }
+
+            // status
+            const status = row['status']?.trim().toLowerCase()
+            if (status) {
+                if (!VALID_STATUSES.includes(status)) {
+                    errors.push(`Invalid status. Use: ${VALID_STATUSES.join(', ')}`)
+                } else {
+                    driver.status = status as 'available' | 'on_trip' | 'off_duty'
+                }
+            }
+
+            // login_pin
+            const pin = row['login_pin']?.trim()
+            if (pin) {
+                const pinRegex = /^\d{4,6}$/
+                if (!pinRegex.test(pin)) {
+                    errors.push('Invalid PIN (must be 4-6 digits)')
+                } else {
+                    driver.login_pin = pin
+                }
+            }
 
             drivers.push(driver)
-        }
+        })
 
         return drivers
     }
@@ -255,7 +307,7 @@ export function BulkDriverImport({ trigger }: BulkDriverImportProps) {
                         Bulk Driver Import
                     </DialogTitle>
                     <DialogDescription>
-                        Import multiple drivers from a CSV file. New users will be automatically created.
+                        Import multiple drivers from a CSV file. New user accounts will be automatically created.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -346,7 +398,7 @@ export function BulkDriverImport({ trigger }: BulkDriverImportProps) {
                                                 <td className="p-2">{driver._rowIndex}</td>
                                                 <td className="p-2">{driver.full_name || '-'}</td>
                                                 <td className="p-2">{driver.email || '-'}</td>
-                                                <td className="p-2 font-mono">{driver.login_pin || '-'}</td>
+                                                <td className="p-2 font-mono">{driver.login_pin ? '••••' : '-'}</td>
                                                 <td className="p-2">
                                                     {driver._errors.length > 0 ? (
                                                         <span className="text-status-error">{driver._errors[0]}</span>

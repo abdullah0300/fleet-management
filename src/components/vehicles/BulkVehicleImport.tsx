@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import Papa from 'papaparse'
 import { Upload, FileSpreadsheet, AlertCircle, CheckCircle2, X, Download } from 'lucide-react'
 import {
     Dialog,
@@ -43,92 +44,125 @@ export function BulkVehicleImport({ trigger }: BulkVehicleImportProps) {
     const bulkCreate = useBulkCreateVehicles()
 
     const parseCSV = (text: string): ParsedVehicle[] => {
-        const lines = text.trim().split('\n')
-        if (lines.length < 2) return []
+        const result = Papa.parse<Record<string, string>>(text, {
+            header: true,
+            skipEmptyLines: true,
+            dynamicTyping: false,
+            transformHeader: (h) => h.toLowerCase().trim(),
+        })
 
-        // Parse header
-        const header = lines[0].toLowerCase().split(',').map(h => h.trim().replace(/"/g, ''))
+        if (result.errors.length > 0 && result.data.length === 0) {
+            throw new Error(`CSV parse error: ${result.errors[0].message}`)
+        }
 
-        // Validate header has required columns
+        const header = result.meta.fields ?? []
+
         const missingRequired = REQUIRED_COLUMNS.filter(col => !header.includes(col))
         if (missingRequired.length > 0) {
             throw new Error(`Missing required columns: ${missingRequired.join(', ')}`)
         }
 
-        // Parse rows
+        const seenPlates = new Set<string>()
         const vehicles: ParsedVehicle[] = []
-        for (let i = 1; i < lines.length; i++) {
-            const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''))
+
+        result.data.forEach((row, i) => {
             const errors: string[] = []
+            const rowIndex = i + 2 // 1-based + header row
 
             const vehicle: ParsedVehicle = {
-                _rowIndex: i,
+                _rowIndex: rowIndex,
                 _errors: errors,
                 license_plate: '',
                 make: '',
                 model: '',
             }
 
-            header.forEach((col, idx) => {
-                const value = values[idx]?.trim() || ''
+            // Required fields
+            const licensePlate = row['license_plate']?.trim() || ''
+            const make = row['make']?.trim() || ''
+            const model = row['model']?.trim() || ''
 
-                if (ALL_COLUMNS.includes(col)) {
-                    if (REQUIRED_COLUMNS.includes(col) && !value) {
-                        errors.push(`${col} is required`)
-                    }
+            if (!licensePlate) {
+                errors.push('license_plate is required')
+            } else if (seenPlates.has(licensePlate.toUpperCase())) {
+                errors.push(`Duplicate license plate: ${licensePlate}`)
+            } else {
+                seenPlates.add(licensePlate.toUpperCase())
+                vehicle.license_plate = licensePlate
+            }
 
-                    // Type conversions and validation
-                    if (col === 'year' && value) {
-                        const year = parseInt(value)
-                        if (isNaN(year) || year < 1900 || year > new Date().getFullYear() + 1) {
-                            errors.push('Invalid year')
-                        } else {
-                            vehicle[col] = year
-                        }
-                    } else if (col === 'fuel_efficiency' && value) {
-                        const efficiency = parseFloat(value)
-                        if (isNaN(efficiency) || efficiency <= 0) {
-                            errors.push('Invalid fuel efficiency')
-                        } else {
-                            vehicle[col] = efficiency
-                        }
-                    } else if (col === 'odometer_reading' && value) {
-                        const reading = parseInt(value)
-                        if (isNaN(reading) || reading < 0) {
-                            errors.push('Invalid odometer reading')
-                        } else {
-                            vehicle.odometer_reading = reading
-                        }
-                    } else if (col === 'fuel_type' && value) {
-                        if (!VALID_FUEL_TYPES.includes(value.toLowerCase())) {
-                            errors.push(`Invalid fuel type. Use: ${VALID_FUEL_TYPES.join(', ')}`)
-                        } else {
-                            vehicle.fuel_type = value.toLowerCase() as 'diesel' | 'petrol' | 'electric' | 'hybrid'
-                        }
-                    } else if (col === 'status' && value) {
-                        if (!VALID_STATUSES.includes(value.toLowerCase())) {
-                            errors.push(`Invalid status. Use: ${VALID_STATUSES.join(', ')}`)
-                        } else {
-                            vehicle.status = value.toLowerCase() as 'available' | 'in_use' | 'maintenance' | 'inactive'
-                        }
-                    } else if (col === 'license_plate' && value) {
-                        vehicle.license_plate = value
-                    } else if (col === 'make' && value) {
-                        vehicle.make = value
-                    } else if (col === 'model' && value) {
-                        vehicle.model = value
-                    } else if (col === 'vehicle_type' && value) {
-                        vehicle.vehicle_type = value
-                    } else if (col === 'vin_number' && value) {
-                        vehicle.vin_number = value
-                    } else if (col === 'rfid_tag' && value) {
-                        vehicle.rfid_tag = value
-                    }
+            if (!make) {
+                errors.push('make is required')
+            } else {
+                vehicle.make = make
+            }
+
+            if (!model) {
+                errors.push('model is required')
+            } else {
+                vehicle.model = model
+            }
+
+            // Optional fields
+            const yearStr = row['year']?.trim()
+            if (yearStr) {
+                const year = parseInt(yearStr)
+                if (isNaN(year) || year < 1900 || year > new Date().getFullYear() + 1) {
+                    errors.push('Invalid year')
+                } else {
+                    vehicle.year = year
                 }
-            })
+            }
+
+            const fuelEffStr = row['fuel_efficiency']?.trim()
+            if (fuelEffStr) {
+                const efficiency = parseFloat(fuelEffStr)
+                if (isNaN(efficiency) || efficiency <= 0) {
+                    errors.push('Invalid fuel efficiency')
+                } else {
+                    vehicle.fuel_efficiency = efficiency
+                }
+            }
+
+            const odomStr = row['odometer_reading']?.trim()
+            if (odomStr) {
+                const reading = parseInt(odomStr)
+                if (isNaN(reading) || reading < 0) {
+                    errors.push('Invalid odometer reading')
+                } else {
+                    vehicle.odometer_reading = reading
+                }
+            }
+
+            const fuelType = row['fuel_type']?.trim().toLowerCase()
+            if (fuelType) {
+                if (!VALID_FUEL_TYPES.includes(fuelType)) {
+                    errors.push(`Invalid fuel type. Use: ${VALID_FUEL_TYPES.join(', ')}`)
+                } else {
+                    vehicle.fuel_type = fuelType as 'diesel' | 'petrol' | 'electric' | 'hybrid'
+                }
+            }
+
+            const status = row['status']?.trim().toLowerCase()
+            if (status) {
+                if (!VALID_STATUSES.includes(status)) {
+                    errors.push(`Invalid status. Use: ${VALID_STATUSES.join(', ')}`)
+                } else {
+                    vehicle.status = status as 'available' | 'in_use' | 'maintenance' | 'inactive'
+                }
+            }
+
+            const vehicleType = row['vehicle_type']?.trim()
+            if (vehicleType) vehicle.vehicle_type = vehicleType
+
+            const vin = row['vin_number']?.trim()
+            if (vin) vehicle.vin_number = vin
+
+            const rfid = row['rfid_tag']?.trim()
+            if (rfid) vehicle.rfid_tag = rfid
 
             vehicles.push(vehicle)
-        }
+        })
 
         return vehicles
     }
@@ -142,6 +176,10 @@ export function BulkVehicleImport({ trigger }: BulkVehicleImportProps) {
             try {
                 const text = e.target?.result as string
                 const vehicles = parseCSV(text)
+                if (vehicles.length === 0) {
+                    alert('No data rows found in CSV')
+                    return
+                }
                 setParsedVehicles(vehicles)
                 setStep('preview')
             } catch (error) {
