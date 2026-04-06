@@ -222,9 +222,13 @@ export function BulkVehicleImport({ trigger }: BulkVehicleImportProps) {
     }
 
     const downloadTemplate = () => {
-        const headers = ALL_COLUMNS.join(',')
-        const example = 'ABC-1234,Toyota,Camry,2023,sedan,petrol,12.5,available,50000,1HGBH41JXMN109186,RFID-001'
-        const csv = `${headers}\n${example}`
+        const csv = Papa.unparse({
+            fields: ALL_COLUMNS,
+            data: [
+                ['ABC-1234', 'Toyota', 'Camry', '2023', 'sedan', 'petrol', '12.5', 'available', '50000', '1HGBH41JXMN109186', 'RFID-001'],
+                ['XYZ-5678', 'Ford', 'Transit', '2022', 'van', 'diesel', '10.2', 'available', '30000', '', ''],
+            ],
+        })
         const blob = new Blob([csv], { type: 'text/csv' })
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')

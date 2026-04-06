@@ -264,9 +264,13 @@ export function BulkDriverImport({ trigger }: BulkDriverImportProps) {
     }
 
     const downloadTemplate = () => {
-        const headers = ALL_COLUMNS.join(',')
-        const example = 'driver@example.com,John Doe,555-0123,DL123456,12/31/2025,per_mile,0.50,available,1234'
-        const csv = `${headers}\n${example}`
+        const csv = Papa.unparse({
+            fields: ALL_COLUMNS,
+            data: [
+                ['driver@example.com', 'John Doe', '555-0123', 'DL123456', '12/31/2025', 'per_mile', '0.50', 'available', '1234'],
+                ['jane.smith@example.com', 'Jane Smith', '555-0456', 'DL789012', '2026-06-30', 'hourly', '18.00', 'available', '5678'],
+            ],
+        })
         const blob = new Blob([csv], { type: 'text/csv' })
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
