@@ -163,7 +163,13 @@ function DateTimeInput({
     const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const newDate = e.target.value
         if (!newDate) return
-        const timeToUse = timeVal || '09:00'
+        // When no time is set yet, use minTime as the default if the user picked
+        // the minimum date — otherwise 09:00 would immediately fail validation
+        // (e.g. window_start is 4 PM, user picks same day for window_end → 09:00 < 16:00 → red error)
+        let timeToUse = timeVal
+        if (!timeToUse) {
+            timeToUse = (minDate && newDate === minDate && minTime) ? minTime : '09:00'
+        }
         onChange(`${newDate}T${timeToUse}`)
     }
 
