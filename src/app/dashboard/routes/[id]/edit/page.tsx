@@ -55,7 +55,7 @@ export default function EditRoutePage() {
             <RouteForm
                 initialData={{
                     id: route.id,
-                    name: route.name,
+                    name: route.name ?? undefined,
                     distance_km: route.distance_km ?? 0,
                     estimated_duration: route.estimated_duration ?? 0,
                     estimated_toll_cost: route.estimated_toll_cost ?? 0,
