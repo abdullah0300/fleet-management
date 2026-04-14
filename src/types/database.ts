@@ -281,6 +281,7 @@ export interface Database {
           financial_status: 'pending' | 'pending_review' | 'approved' | null
           scheduled_date: string | null
           scheduled_time: string | null
+          customer_id: string | null
           customer_name: string | null
           customer_phone: string | null
           customer_email: string | null
@@ -345,6 +346,7 @@ export interface Database {
           revenue?: number | null
           billing_type?: 'flat_rate' | 'per_mile' | 'per_weight' | 'hourly' | null
           driver_pay_rate_override?: number | null
+          customer_id?: string | null
           source_integration?: string | null
           external_job_ref?: string | null
           created_at?: string
