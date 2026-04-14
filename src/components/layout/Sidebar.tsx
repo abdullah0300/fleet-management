@@ -27,6 +27,7 @@ const iconMap: Record<string, string> = {
     'Reports':     'line-md:document-list-twotone',
     'Documents':   'line-md:document-list-twotone',
     'Settings':    'line-md:cog-loop',
+    'Integrations': 'line-md:switch-off-to-switch-on-transition',
 }
 
 // Each nav item manages its own hover key so re-mounting the Icon
