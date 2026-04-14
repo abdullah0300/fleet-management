@@ -290,6 +290,8 @@ export interface Database {
           revenue: number | null
           billing_type: 'flat_rate' | 'per_mile' | 'per_weight' | 'hourly' | null
           driver_pay_rate_override: number | null
+          source_integration: string | null
+          external_job_ref: string | null
           created_at: string
           updated_at: string
         }
@@ -316,6 +318,8 @@ export interface Database {
           billing_type?: 'flat_rate' | 'per_mile' | 'per_weight' | 'hourly' | null
           driver_pay_rate_override?: number | null
           customer_id?: string | null
+          source_integration?: string | null
+          external_job_ref?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -341,6 +345,8 @@ export interface Database {
           revenue?: number | null
           billing_type?: 'flat_rate' | 'per_mile' | 'per_weight' | 'hourly' | null
           driver_pay_rate_override?: number | null
+          source_integration?: string | null
+          external_job_ref?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -374,6 +380,7 @@ export interface Database {
           actual_completion_lng: number | null
           flagged_location: boolean | null
           location_name: string | null
+          external_stop_id: string | null
           created_at: string
         }
         Insert: {
@@ -400,6 +407,7 @@ export interface Database {
           actual_completion_lng?: number | null
           flagged_location?: boolean | null
           location_name?: string | null
+          external_stop_id?: string | null
           created_at?: string
         }
         Update: {
@@ -623,6 +631,138 @@ export interface Database {
       }
 
       // ============================================
+      // COMPANY_INTEGRATIONS
+      // ============================================
+      company_integrations: {
+        Row: {
+          id: string
+          company_id: string
+          integration_slug: string
+          status: 'connected' | 'disconnected' | 'error'
+          credentials: string | null   // AES-256-GCM encrypted JSON
+          webhook_secret: string | null
+          connected_by: string | null
+          connected_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          integration_slug: string
+          status?: 'connected' | 'disconnected' | 'error'
+          credentials?: string | null
+          webhook_secret?: string | null
+          connected_by?: string | null
+          connected_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          integration_slug?: string
+          status?: 'connected' | 'disconnected' | 'error'
+          credentials?: string | null
+          webhook_secret?: string | null
+          connected_by?: string | null
+          connected_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+
+      // ============================================
+      // INTEGRATION_EVENTS  (activity log)
+      // ============================================
+      integration_events: {
+        Row: {
+          id: string
+          company_id: string
+          integration_slug: string
+          event_type: string
+          direction: 'inbound' | 'outbound'
+          status: 'success' | 'error'
+          reference: string | null
+          payload: Json | null
+          error_message: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          integration_slug: string
+          event_type: string
+          direction?: 'inbound' | 'outbound'
+          status?: 'success' | 'error'
+          reference?: string | null
+          payload?: Json | null
+          error_message?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          integration_slug?: string
+          event_type?: string
+          direction?: 'inbound' | 'outbound'
+          status?: 'success' | 'error'
+          reference?: string | null
+          payload?: Json | null
+          error_message?: string | null
+          created_at?: string
+        }
+      }
+
+      // ============================================
+      // PENDING_TENDERS  (incoming load tenders)
+      // ============================================
+      pending_tenders: {
+        Row: {
+          id: string
+          company_id: string
+          integration_slug: string
+          shipment_reference: string
+          raw_payload: Json
+          status: 'pending' | 'accepted' | 'declined'
+          job_id: string | null
+          acted_by: string | null
+          acted_at: string | null
+          received_at: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          company_id: string
+          integration_slug?: string
+          shipment_reference: string
+          raw_payload: Json
+          status?: 'pending' | 'accepted' | 'declined'
+          job_id?: string | null
+          acted_by?: string | null
+          acted_at?: string | null
+          received_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          company_id?: string
+          integration_slug?: string
+          shipment_reference?: string
+          raw_payload?: Json
+          status?: 'pending' | 'accepted' | 'declined'
+          job_id?: string | null
+          acted_by?: string | null
+          acted_at?: string | null
+          received_at?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+
+      // ============================================
       // 10. NOTIFICATIONS
       // ============================================
       notifications: {
@@ -772,6 +912,9 @@ export type MaintenanceRecord = Database['public']['Tables']['maintenance_record
 export type Document = Database['public']['Tables']['documents']['Row']
 export type Notification = Database['public']['Tables']['notifications']['Row']
 export type Manifest = Database['public']['Tables']['manifests']['Row']
+export type CompanyIntegration = Database['public']['Tables']['company_integrations']['Row']
+export type IntegrationEvent = Database['public']['Tables']['integration_events']['Row']
+export type PendingTender = Database['public']['Tables']['pending_tenders']['Row']
 
 // Extended Job type with stops (for display)
 export type JobWithStops = Job & {
@@ -792,6 +935,9 @@ export type MaintenanceRecordInsert = Database['public']['Tables']['maintenance_
 export type DocumentInsert = Database['public']['Tables']['documents']['Insert']
 export type NotificationInsert = Database['public']['Tables']['notifications']['Insert']
 export type ManifestInsert = Database['public']['Tables']['manifests']['Insert']
+export type CompanyIntegrationInsert = Database['public']['Tables']['company_integrations']['Insert']
+export type IntegrationEventInsert = Database['public']['Tables']['integration_events']['Insert']
+export type PendingTenderInsert = Database['public']['Tables']['pending_tenders']['Insert']
 
 // Update types (for updating data)
 export type CompanyUpdate = Database['public']['Tables']['companies']['Update']

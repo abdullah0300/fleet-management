@@ -5,6 +5,7 @@ import { VisualDispatchBoard } from '@/components/dispatch/VisualDispatchBoard'
 import { UnassignedJobsList } from '@/components/dispatch/UnassignedJobsList'
 import { Skeleton } from '@/components/ui/skeleton'
 import { DispatchTabs } from '@/components/dispatch/DispatchTabs'
+import { PendingTendersPanel } from '@/components/dispatch/PendingTendersPanel'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,6 +39,7 @@ export default async function DispatchPage() {
 
             <DispatchTabs
                 visualBoard={<VisualDispatchBoard />}
+                pendersPanel={<PendingTendersPanel />}
             >
                 <Suspense fallback={<DispatchLoading />}>
                     <DispatchCommandCenter

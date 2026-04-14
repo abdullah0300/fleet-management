@@ -31,6 +31,8 @@ export type Permission =
     | 'manage:companies'
     | 'view:customers'
     | 'manage:customers'
+    | 'view:integrations'
+    | 'manage:integrations'
 
 // Role-Permission Matrix
 const rolePermissions: Record<UserRole, Permission[]> = {
@@ -42,7 +44,8 @@ const rolePermissions: Record<UserRole, Permission[]> = {
         'view:maintenance', 'manage:maintenance', 'view:documents',
         'manage:documents', 'view:reports', 'manage:reports', 'view:settings', 'manage:settings',
         'view:notifications', // Admin can view notifications
-        'view:customers', 'manage:customers'
+        'view:customers', 'manage:customers',
+        'view:integrations', 'manage:integrations'
     ],
     fleet_manager: [
         'view:dashboard', 'view:vehicles', 'manage:vehicles',
@@ -51,14 +54,16 @@ const rolePermissions: Record<UserRole, Permission[]> = {
         'view:manifests', 'manage:manifests', 'view:tracking',
         'view:maintenance', 'manage:maintenance', 'view:documents',
         'manage:documents', 'view:reports', 'manage:reports', 'view:settings', 'view:notifications',
-        'view:customers', 'manage:customers'
+        'view:customers', 'manage:customers',
+        'view:integrations', 'manage:integrations'
     ],
     dispatcher: [
         'view:dashboard', 'view:vehicles', 'view:drivers',
         'view:jobs', 'manage:jobs', 'view:routes', 'manage:routes',
         'view:dispatch', 'manage:dispatch', 'view:manifests', 'manage:manifests',
         'view:tracking', 'view:maintenance', 'view:documents', 'view:notifications',
-        'view:customers', 'manage:customers'
+        'view:customers', 'manage:customers',
+        'view:integrations'
     ],
     driver: [
         'view:dashboard', 'view:jobs', 'view:tracking', 'view:notifications'
@@ -111,6 +116,7 @@ const routePermissions: Record<string, Permission> = {
     '/dashboard/documents': 'view:documents',
     '/dashboard/reports': 'view:reports',
     '/dashboard/settings': 'view:settings',
+    '/dashboard/integrations': 'view:integrations',
     '/dashboard/costs': 'view:reports',
     '/dashboard/notifications': 'view:notifications',
     '/dashboard/customers': 'view:customers',
@@ -181,6 +187,7 @@ export function getAccessibleRoutes(role: UserRole | null, isPlatformAdmin: bool
         // Admin
         { path: '/dashboard/companies', name: 'Companies', permission: 'view:companies' as Permission, group: 'Admin' },
         { path: '/dashboard/settings', name: 'Settings', permission: 'view:settings' as Permission, group: 'Admin' },
+        { path: '/dashboard/integrations', name: 'Integrations', permission: 'view:integrations' as Permission, group: 'Admin' },
     ]
 
     return allRoutes.filter(route => hasPermission(role, route.permission, isPlatformAdmin))
