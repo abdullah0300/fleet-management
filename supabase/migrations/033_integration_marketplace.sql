@@ -1,5 +1,5 @@
 -- ============================================================
--- Integration Marketplace
+-- Integration Marketplace 
 -- Adds tables for broker integrations (Cargomatic phase 1):
 --   company_integrations  — per-company connection state + encrypted credentials
 --   integration_events    — full activity log per integration
