@@ -175,13 +175,13 @@ export class CargomaticClient {
      */
     async uploadFileToS3(
         presignedUrl: string,
-        fileBuffer: Buffer | ArrayBuffer,
+        fileBuffer: ArrayBuffer,
         contentType: string,
     ): Promise<void> {
         const res = await fetch(presignedUrl, {
             method: 'PUT',
             headers: { 'Content-Type': contentType },
-            body: new Blob([fileBuffer], { type: contentType }),
+            body: fileBuffer,
         })
 
         if (!res.ok) {
