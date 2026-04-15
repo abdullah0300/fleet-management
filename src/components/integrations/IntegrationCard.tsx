@@ -19,6 +19,32 @@ import { toast } from 'sonner'
 import { formatDistanceToNow } from 'date-fns'
 import { Loader2, Plug, Unplug, Activity, Copy, Check } from 'lucide-react'
 
+function IntegrationLogo({ integration }: { integration: TmsIntegration }) {
+    if (integration.logoUrl) {
+        return (
+            <div className="h-10 w-10 rounded-lg bg-white border border-border flex items-center justify-center shrink-0 overflow-hidden p-1.5">
+                <img
+                    src={integration.logoUrl}
+                    alt={`${integration.name} logo`}
+                    className="h-full w-full object-contain"
+                    onError={(e) => {
+                        const parent = e.currentTarget.parentElement
+                        if (parent) {
+                            parent.className = 'h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground shrink-0'
+                            parent.innerHTML = integration.logoText
+                        }
+                    }}
+                />
+            </div>
+        )
+    }
+    return (
+        <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground shrink-0">
+            {integration.logoText}
+        </div>
+    )
+}
+
 interface IntegrationCardProps {
     integration: TmsIntegration
 }
@@ -52,9 +78,7 @@ export function IntegrationCard({ integration }: IntegrationCardProps) {
                 <CardHeader className="pb-3">
                     <div className="flex items-start justify-between gap-3">
                         <div className="flex items-center gap-3">
-                            <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center text-sm font-bold text-muted-foreground shrink-0">
-                                {integration.logoText}
-                            </div>
+                            <IntegrationLogo integration={integration} />
                             <div>
                                 <CardTitle className="text-base">{integration.name}</CardTitle>
                                 <CardDescription className="text-xs mt-0.5">
