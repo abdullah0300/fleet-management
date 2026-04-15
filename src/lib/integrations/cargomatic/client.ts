@@ -181,7 +181,7 @@ export class CargomaticClient {
         const res = await fetch(presignedUrl, {
             method: 'PUT',
             headers: { 'Content-Type': contentType },
-            body: fileBuffer,
+            body: new Blob([fileBuffer], { type: contentType }),
         })
 
         if (!res.ok) {
