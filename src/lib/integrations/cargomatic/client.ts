@@ -175,7 +175,7 @@ export class CargomaticClient {
      */
     async uploadFileToS3(
         presignedUrl: string,
-        fileBuffer: Buffer | ArrayBuffer,
+        fileBuffer: ArrayBuffer,
         contentType: string,
     ): Promise<void> {
         const res = await fetch(presignedUrl, {
