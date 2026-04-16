@@ -2,6 +2,11 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useCompanyId } from './useCurrentUser'
 import { Manifest, ManifestInsert, ManifestUpdate, Job } from '@/types/database'
+import {
+    notifyManifestDispatched,
+    notifyManifestCancelled,
+    notifyManifestCompleted,
+} from '@/actions/manifests'
 
 const supabase = createClient()
 
@@ -187,10 +192,20 @@ export function useUpdateManifest() {
 
             return manifest
         },
-        onSuccess: (_, variables) => {
+        onSuccess: (updatedManifest, variables) => {
             queryClient.invalidateQueries({ queryKey: manifestKeys.lists() })
             queryClient.invalidateQueries({ queryKey: manifestKeys.detail(variables.id) })
             queryClient.invalidateQueries({ queryKey: ['jobs'] })
+
+            // Trigger status-based notifications
+            const newStatus = variables.updates.status
+            if (newStatus === 'dispatched') {
+                notifyManifestDispatched(variables.id).catch(console.error)
+            } else if (newStatus === 'cancelled') {
+                notifyManifestCancelled(variables.id).catch(console.error)
+            } else if (newStatus === 'completed') {
+                notifyManifestCompleted(variables.id).catch(console.error)
+            }
         }
     })
 }

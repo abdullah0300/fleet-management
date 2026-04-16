@@ -2,6 +2,8 @@
 
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase/server'
+import { sendEmail, isEmailEnabled } from '@/lib/email'
+import { buildWelcomeMemberEmail, MemberRole } from '@/lib/email/templates/welcome-member'
 
 // Initialize admin client with service role key (bypasses RLS)
 const supabaseAdmin = createSupabaseClient(
@@ -84,6 +86,26 @@ export async function createTeamMember(data: {
             // Attempt cleanup of created auth user
             await supabaseAdmin.auth.admin.deleteUser(userId)
             return { success: false, error: upsertError.message }
+        }
+
+        // ── Send welcome email ────────────────────────────────────────────────
+        const emailEnabled = await isEmailEnabled(company_id, 'onboardingEmails')
+        if (emailEnabled) {
+            const { data: company } = await supabaseAdmin
+                .from('companies')
+                .select('name')
+                .eq('id', company_id)
+                .single()
+
+            const { subject, html } = buildWelcomeMemberEmail({
+                memberName: data.full_name,
+                memberEmail: data.email,
+                role: data.role as MemberRole,
+                companyName: company?.name ?? 'Your Company',
+                temporaryPassword: data.password,
+            })
+
+            await sendEmail({ to: data.email, subject, html })
         }
 
         return { success: true, userId }

@@ -371,6 +371,73 @@ export default function SettingsPage() {
 
                     {/* Overdue Jobs Alerts Card */}
                     <OverdueJobsSettings company={company} />
+
+                    {/* Transactional Email Notifications */}
+                    <EmailToggleSettings
+                        company={company}
+                        settingKey="jobAssignmentEmails"
+                        icon="📋"
+                        title="Job Assignment & Cancellation Emails"
+                        description="Emails drivers when a job is assigned to them, and notifies drivers, dispatchers, and admins when a job is cancelled."
+                        bullets={[
+                            'Driver gets an email when a standalone job is assigned to them',
+                            'Driver, dispatcher, and admin are notified when a job is cancelled',
+                            'Skipped for jobs inside a manifest — manifest emails handle those',
+                        ]}
+                    />
+
+                    <EmailToggleSettings
+                        company={company}
+                        settingKey="manifestEmails"
+                        icon="🗂️"
+                        title="Manifest Dispatch & Cancellation Emails"
+                        description="Emails drivers when a manifest is dispatched or cancelled. Supersedes per-job emails when jobs are bundled into a manifest."
+                        bullets={[
+                            'Driver receives a dispatch email with manifest summary when dispatched',
+                            'Driver, dispatcher, and admin are notified if a manifest is cancelled',
+                            'On completion, customer emails are sent per job (see Customer Emails below)',
+                        ]}
+                    />
+
+                    <EmailToggleSettings
+                        company={company}
+                        settingKey="customerEmails"
+                        icon="🤝"
+                        title="Customer Notification Emails"
+                        description="Sends shipment status updates directly to your customers (no TruckersCall login required). Sent from your company name."
+                        bullets={[
+                            'Customer is notified when their job is scheduled (in progress)',
+                            'Customer receives a delivery confirmation when a job is completed',
+                            'Customer is notified if their job or manifest is cancelled',
+                            'Only sent if the customer has an email address on record',
+                        ]}
+                    />
+
+                    <EmailToggleSettings
+                        company={company}
+                        settingKey="integrationAlerts"
+                        icon="🔌"
+                        title="Marketplace Integration Alerts"
+                        description="Sends email alerts to dispatchers and admins when new load tenders arrive from connected marketplaces, and alerts admins on integration errors."
+                        bullets={[
+                            'Immediate email when a new load tender arrives (Cargomatic, etc.)',
+                            'Admin alert when an integration encounters an auth or connection error',
+                            'Works for all connected marketplaces — not hardcoded to any one provider',
+                        ]}
+                    />
+
+                    <EmailToggleSettings
+                        company={company}
+                        settingKey="onboardingEmails"
+                        icon="👋"
+                        title="Onboarding & Welcome Emails"
+                        description="Welcome emails sent when new team members or company accounts are created."
+                        bullets={[
+                            'New company admins receive a welcome email with login instructions',
+                            'New drivers, dispatchers, and other team members receive a role-specific welcome email',
+                            'Includes temporary password so they can log in immediately',
+                        ]}
+                    />
                 </TabsContent>
 
                 {/* COST ENGINE DEFAULTS TAB */}
@@ -831,6 +898,70 @@ function OverdueJobsSettings({ company }: { company: any }) {
                         {testResult}
                     </div>
                 )}
+            </CardContent>
+        </Card>
+    )
+}
+
+// ─── Generic Email Toggle Settings Component ──────────────────────────────────
+
+function EmailToggleSettings({
+    company,
+    settingKey,
+    icon,
+    title,
+    description,
+    bullets,
+}: {
+    company: any
+    settingKey: string
+    icon: string
+    title: string
+    description: string
+    bullets: string[]
+}) {
+    const supabase = createClient()
+    const settings = company?.settings as Record<string, any> | null
+    const [enabled, setEnabled] = useState<boolean>(settings?.[settingKey]?.enabled !== false)
+
+    const handleToggle = async (val: boolean) => {
+        setEnabled(val)
+        if (!company?.id) return
+        const newSettings = {
+            ...(settings || {}),
+            [settingKey]: { ...(settings?.[settingKey] || {}), enabled: val },
+        }
+        await supabase.from('companies').update({ settings: newSettings }).eq('id', company.id)
+    }
+
+    return (
+        <Card className="mt-4">
+            <CardHeader>
+                <div className="flex items-center justify-between">
+                    <div>
+                        <CardTitle className="flex items-center gap-2 text-base">
+                            <span className="text-lg">{icon}</span> {title}
+                        </CardTitle>
+                        <CardDescription className="mt-1">{description}</CardDescription>
+                    </div>
+                    <button
+                        role="switch"
+                        aria-checked={enabled}
+                        onClick={() => handleToggle(!enabled)}
+                        className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${enabled ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+                    >
+                        <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                    </button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="rounded-lg border bg-muted/30 p-4 text-sm space-y-1">
+                    <p className="font-medium text-foreground">What this covers</p>
+                    <ul className="text-muted-foreground space-y-1 list-disc list-inside text-xs">
+                        {bullets.map((b, i) => <li key={i}>{b}</li>)}
+                        <li>Requires <code className="bg-muted px-1 rounded">RESEND_API_KEY</code> in Vercel env variables to send emails</li>
+                    </ul>
+                </div>
             </CardContent>
         </Card>
     )

@@ -11,6 +11,61 @@ import {
 } from '@/lib/integrations/cargomatic/mapper'
 import { CargomaticCredentials } from '@/lib/integrations/types'
 import { JobStopInsert } from '@/types/database'
+import { sendEmail, isEmailEnabled, getRecipients, createNotifications } from '@/lib/email'
+import { buildIntegrationErrorEmail } from '@/lib/email/templates/integration-error'
+
+const INTEGRATION_NAMES: Record<string, string> = {
+    cargomatic: 'Cargomatic',
+    dat: 'DAT',
+    '123loadboard': '123Loadboard',
+    truckstop: 'Truckstop',
+    convoy: 'Convoy',
+}
+
+async function sendIntegrationErrorAlert(
+    companyId: string,
+    slug: string,
+    errorMessage: string,
+    errorCode?: string,
+) {
+    const integrationName = INTEGRATION_NAMES[slug] ?? slug
+    const emailEnabled = await isEmailEnabled(companyId, 'integrationAlerts')
+    const admins = await getRecipients(companyId, ['admin'])
+    if (admins.length === 0) return
+
+    // In-app notification for all admins
+    await createNotifications(admins.map(a => ({
+        user_id: a.id,
+        type: 'integration_error',
+        title: `${integrationName} Integration Error`,
+        message: errorMessage,
+        data: { integration_slug: slug, error: errorMessage },
+    })))
+
+    if (!emailEnabled) return
+
+    const serviceDb = getServiceClient()
+    const { data: company } = await serviceDb
+        .from('companies')
+        .select('name')
+        .eq('id', companyId)
+        .single()
+
+    for (const admin of admins) {
+        if (!admin.email) continue
+        const { subject, html } = buildIntegrationErrorEmail({
+            adminName: admin.full_name,
+            adminEmail: admin.email,
+            companyName: company?.name ?? 'Your Company',
+            integrationName,
+            integrationSlug: slug,
+            errorMessage,
+            errorCode,
+            occurredAt: new Date().toLocaleString('en-US', { dateStyle: 'full', timeStyle: 'short' }),
+        })
+        await sendEmail({ to: admin.email, subject, html })
+    }
+}
 
 // ─── Service-role client (bypasses RLS for writes) ───────────
 function getServiceClient() {
@@ -116,6 +171,8 @@ export async function connectIntegration(
             await client.authenticate()
         } catch (err: unknown) {
             const message = err instanceof Error ? err.message : 'Authentication failed'
+            // Alert the admin — credentials are invalid
+            await sendIntegrationErrorAlert(companyId, slug, `Authentication failed: ${message}`, 'AUTH_FAILED')
             return { success: false, webhookUrl: '', error: message }
         }
     }
@@ -247,6 +304,10 @@ export async function acceptTender(tenderId: string): Promise<{
             reference: tender.shipment_reference,
             error_message: message,
         })
+        // Alert admins if this looks like an auth/connection issue
+        if (message.toLowerCase().includes('auth') || message.toLowerCase().includes('401') || message.toLowerCase().includes('403')) {
+            await sendIntegrationErrorAlert(companyId, tender.integration_slug, message, 'API_ERROR')
+        }
         return { success: false, error: message }
     }
 
