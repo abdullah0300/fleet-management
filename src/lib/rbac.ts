@@ -183,11 +183,11 @@ export function getAccessibleRoutes(role: UserRole | null, isPlatformAdmin: bool
         // Management
         { path: '/dashboard/maintenance', name: 'Maintenance', permission: 'view:maintenance' as Permission, group: 'Management' },
         { path: '/dashboard/documents', name: 'Documents', permission: 'view:documents' as Permission, group: 'Management' },
+        { path: '/dashboard/integrations', name: 'Integrations', permission: 'view:integrations' as Permission, group: 'Management' },
 
         // Admin
         { path: '/dashboard/companies', name: 'Companies', permission: 'view:companies' as Permission, group: 'Admin' },
         { path: '/dashboard/settings', name: 'Settings', permission: 'view:settings' as Permission, group: 'Admin' },
-        { path: '/dashboard/integrations', name: 'Integrations', permission: 'view:integrations' as Permission, group: 'Admin' },
     ]
 
     return allRoutes.filter(route => hasPermission(role, route.permission, isPlatformAdmin))

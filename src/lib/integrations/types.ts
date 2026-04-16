@@ -6,7 +6,8 @@ export interface TmsIntegration {
     slug: string
     name: string
     description: string
-    logoText: string          // short text/emoji for logo placeholder
+    logoText: string          // short text fallback if logoUrl fails
+    logoUrl?: string          // real company logo (Clearbit)
     category: 'freight_broker' | 'load_board' | 'tms'
     status: 'available' | 'coming_soon'
     authFields: Array<{ name: string; label: string; type: 'text' | 'password' }>

@@ -15,6 +15,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog'
 import { useConnectIntegration } from '@/hooks/useIntegrations'
+import { useCurrentUser } from '@/hooks/useCurrentUser'
 import { toast } from 'sonner'
 import { Copy, Check, Loader2 } from 'lucide-react'
 
@@ -33,6 +34,8 @@ export function CargomaticSetup({ open, onOpenChange }: CargomaticSetupProps) {
     const [webhookUrl, setWebhookUrl] = useState<string | null>(null)
     const [copied, setCopied] = useState(false)
     const connect = useConnectIntegration()
+    const { data: user } = useCurrentUser()
+    const isAdmin = user?.is_platform_admin || user?.role === 'admin'
 
     const { register, handleSubmit, reset, formState: { errors } } = useForm<FormData>({
         resolver: zodResolver(schema),
@@ -45,7 +48,13 @@ export function CargomaticSetup({ open, onOpenChange }: CargomaticSetupProps) {
         })
 
         if (result.success) {
-            setWebhookUrl(result.webhookUrl)
+            if (isAdmin) {
+                setWebhookUrl(result.webhookUrl)
+            } else {
+                toast.success('Connected to Cargomatic')
+                handleClose()
+                return
+            }
             toast.success('Connected to Cargomatic')
         } else {
             toast.error(result.error ?? 'Connection failed')
@@ -76,8 +85,8 @@ export function CargomaticSetup({ open, onOpenChange }: CargomaticSetupProps) {
                 {!webhookUrl ? (
                     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                         <p className="text-sm text-muted-foreground">
-                            Enter your Cargomatic staging credentials. We&apos;ll verify them and
-                            generate a webhook URL for you to share with Cargomatic.
+                            Enter your Cargomatic credentials to connect your account.
+                            {isAdmin && " We'll generate a webhook URL for you to share with Cargomatic."}
                         </p>
 
                         <div className="space-y-2">
