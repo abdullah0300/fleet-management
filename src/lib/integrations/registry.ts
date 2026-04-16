@@ -6,7 +6,7 @@ const INTEGRATIONS: TmsIntegration[] = [
         name: 'Cargomatic',
         description: 'Receive load tenders, accept shipments, manage stops, and upload PODs directly from Cargomatic\'s TMS.',
         logoText: 'CM',
-        logoUrl: 'https://www.google.com/s2/favicons?domain=cargomatic.com&sz=128',
+        logoUrl: 'https://cargomaticprod.wpenginepowered.com/wp-content/uploads/2021/01/logo-footer.svg',
         category: 'freight_broker',
         status: 'available',
         authFields: [
