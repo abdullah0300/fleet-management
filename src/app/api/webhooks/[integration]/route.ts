@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { detectWebhookEventType } from '@/lib/integrations/cargomatic/mapper'
+import { sendEmail, isEmailEnabled, getRecipients } from '@/lib/email'
+import { buildLoadTenderEmail } from '@/lib/email/templates/load-tender'
+
+// Integration display names — extend as new integrations are added
+const INTEGRATION_NAMES: Record<string, string> = {
+    cargomatic: 'Cargomatic',
+    dat: 'DAT',
+    '123loadboard': '123Loadboard',
+    truckstop: 'Truckstop',
+    convoy: 'Convoy',
+}
 
 export const runtime = 'nodejs'
 
@@ -124,23 +135,61 @@ async function handleLoadTender(
         payload: { shipmentReference: shipmentRef },
     })
 
-    // Notify all dispatchers and admins in the company
+    const integrationName = INTEGRATION_NAMES[integration] ?? (integration.charAt(0).toUpperCase() + integration.slice(1))
+
+    // Notify all dispatchers and admins in the company (in-app)
     const { data: recipients } = await supabase
         .from('profiles')
-        .select('id')
+        .select('id, email, full_name')
         .eq('company_id', companyId)
         .in('role', ['admin', 'fleet_manager', 'dispatcher'])
 
     if (recipients && recipients.length > 0) {
-        const notifications = recipients.map(r => ({
+        const notifications = recipients.map((r: any) => ({
             user_id: r.id,
             type: 'load_tender',
             title: 'New Load Tender',
-            message: `A new load tender (${shipmentRef}) has arrived from ${integration.charAt(0).toUpperCase() + integration.slice(1)}.`,
+            message: `A new load tender (${shipmentRef}) has arrived from ${integrationName}.`,
             data: { shipment_reference: shipmentRef, integration },
             read: false,
         }))
         await supabase.from('notifications').insert(notifications)
+    }
+
+    // ── Email notification ────────────────────────────────────────────────────
+    const emailEnabled = await isEmailEnabled(companyId, 'integrationAlerts')
+    if (emailEnabled && process.env.RESEND_API_KEY) {
+        // Fetch company name
+        const { data: company } = await supabase
+            .from('companies')
+            .select('name')
+            .eq('id', companyId)
+            .single()
+
+        // Extract stop info from raw payload if available
+        const shipment = (payload.shipment ?? payload) as any
+        const stops: any[] = shipment?.stops ?? []
+        const pickupStop = stops.find((s: any) => s.sequence === 0 || s.type === 'pickup') ?? stops[0]
+        const deliveryStop = stops.at(-1)
+
+        const recipientEmails = (recipients ?? [])
+            .filter((r: any) => r.email)
+            .map((r: any) => r.email as string)
+
+        if (recipientEmails.length > 0) {
+            const { subject, html } = buildLoadTenderEmail({
+                companyName: company?.name ?? 'Your Company',
+                integrationName,
+                integrationSlug: integration,
+                shipmentReference: shipmentRef,
+                pickupLocation: pickupStop?.locationAddress ?? pickupStop?.locationName ?? undefined,
+                deliveryLocation: deliveryStop?.locationAddress ?? deliveryStop?.locationName ?? undefined,
+                pickupWindowStart: pickupStop?.windowStart ?? undefined,
+                deliveryWindowEnd: deliveryStop?.windowEnd ?? undefined,
+                totalStops: stops.length || undefined,
+            })
+            await sendEmail({ to: recipientEmails, subject, html })
+        }
     }
 }
 

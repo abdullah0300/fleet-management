@@ -5,6 +5,7 @@ import { Job, JobInsert, JobUpdate, JobStop, JobStopInsert, JobWithStops, Vehicl
 import { DriverWithProfile } from './useDrivers'
 import { vehicleKeys } from './useVehicles'
 import { driverKeys } from './useDrivers'
+import { notifyJobAssigned, notifyJobCancelled, notifyJobCompleted, notifyCustomerJobStarted } from '@/actions/jobs'
 
 // ============================================
 // EXTENDED TYPES
@@ -508,9 +509,19 @@ export function useUpdateJobWithStops() {
 
     return useMutation({
         mutationFn: updateJobWithStopsApi,
-        onSuccess: (updatedJob) => {
+        onSuccess: (updatedJob, variables) => {
             queryClient.setQueryData(jobKeys.detail(updatedJob.id), updatedJob)
             queryClient.invalidateQueries({ queryKey: jobKeys.lists() })
+
+            // Trigger status-based notifications
+            const newStatus = variables.job.status
+            if (newStatus === 'cancelled') {
+                notifyJobCancelled(updatedJob.id).catch(console.error)
+            } else if (newStatus === 'completed') {
+                notifyJobCompleted(updatedJob.id).catch(console.error)
+            } else if (newStatus === 'in_progress') {
+                notifyCustomerJobStarted(updatedJob.id).catch(console.error)
+            }
         },
     })
 }
@@ -542,9 +553,21 @@ export function useUpdateJob() {
 
     return useMutation({
         mutationFn: updateJobApi,
-        onSuccess: (updatedJob) => {
+        onSuccess: (updatedJob, variables) => {
             queryClient.setQueryData(jobKeys.detail(updatedJob.id), updatedJob)
             queryClient.invalidateQueries({ queryKey: jobKeys.lists() })
+
+            // Trigger status-based notifications
+            const newStatus = variables.updates.status
+            if (newStatus === 'cancelled') {
+                notifyJobCancelled(updatedJob.id).catch(console.error)
+            } else if (newStatus === 'completed') {
+                notifyJobCompleted(updatedJob.id).catch(console.error)
+            } else if (newStatus === 'in_progress') {
+                notifyCustomerJobStarted(updatedJob.id).catch(console.error)
+            } else if (newStatus === 'assigned' && variables.updates.driver_id) {
+                notifyJobAssigned(updatedJob.id).catch(console.error)
+            }
         },
     })
 }
@@ -585,6 +608,10 @@ export function useAssignJob() {
             if (updatedJob.manifest_id) {
                 queryClient.invalidateQueries({ queryKey: ['manifests'] })
             }
+
+            // Fire-and-forget notification (emails driver, in-app for ops team)
+            // Skipped internally if job belongs to a manifest
+            notifyJobAssigned(updatedJob.id).catch(console.error)
         },
     })
 }

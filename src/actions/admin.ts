@@ -2,6 +2,8 @@
 
 import { createClient } from '@supabase/supabase-js'
 import { CompanyInsert } from '@/types/database'
+import { sendEmail } from '@/lib/email'
+import { buildWelcomeCompanyEmail } from '@/lib/email/templates/welcome-company'
 
 // Initialize Supabase Admin client with Service Role Key
 // This bypasses RLS and allows user management
@@ -108,6 +110,17 @@ export async function createCompanyWithAdmin(params: CreateCompanyParams) {
             if (profileError) {
                 console.error('Error updating profile:', profileError)
             }
+        }
+
+        // ── Send welcome email to new company admin ───────────────────────────
+        if (params.adminEmail && params.adminPassword) {
+            const { subject, html } = buildWelcomeCompanyEmail({
+                adminName: params.adminName ?? 'Company Admin',
+                adminEmail: params.adminEmail,
+                companyName: params.name,
+                temporaryPassword: params.adminPassword,
+            })
+            await sendEmail({ to: params.adminEmail, subject, html })
         }
 
         return { success: true, company }
