@@ -67,6 +67,24 @@ async function sendIntegrationErrorAlert(
     }
 }
 
+// ─── Geocoding helper ─────────────────────────────────────────
+
+async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+    const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    if (!key || !address) return null
+    try {
+        const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${key}`
+        const res = await fetch(url)
+        const data = await res.json()
+        if (data.status === 'OK' && data.results?.[0]?.geometry?.location) {
+            return data.results[0].geometry.location
+        }
+    } catch {
+        // silently skip — map just won't show route
+    }
+    return null
+}
+
 // ─── Service-role client (bypasses RLS for writes) ───────────
 function getServiceClient() {
     return createServiceClient(
@@ -353,10 +371,14 @@ export async function acceptTender(tenderId: string): Promise<{
         return { success: false, error: jobErr?.message ?? 'Failed to create job' }
     }
 
-    // Insert job stops
+    // Insert job stops (with geocoded coordinates)
     if (stops.length > 0) {
-        const stopsInsert: JobStopInsert[] = stops.map(s =>
-            cargomaticStopToJobStopInsert(s as any, jobData.id, stops.length)
+        const stopsInsert: JobStopInsert[] = await Promise.all(
+            stops.map(async (s: any) => {
+                const base = cargomaticStopToJobStopInsert(s, jobData.id, stops.length)
+                const coords = await geocodeAddress(s.locationAddress)
+                return coords ? { ...base, latitude: coords.lat, longitude: coords.lng } : base
+            })
         )
         const { error: stopsErr } = await serviceDb.from('job_stops').insert(stopsInsert)
         if (stopsErr) {
