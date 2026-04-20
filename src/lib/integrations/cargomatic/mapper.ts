@@ -87,7 +87,7 @@ export function cargomaticRealStopToJobStopInsert(
         longitude: loc?.lng ?? null,
         window_start: stop.window_start ?? null,
         window_end: stop.window_end ?? null,
-        arrival_mode: 'window',
+        arrival_mode: (stop.window_start && stop.window_end) ? 'window' : undefined,
         status: 'pending',
         external_stop_id: stop._id,
     }
