@@ -6,10 +6,6 @@
 import { JobInsert, JobStopInsert } from '@/types/database'
 import { CargomaticShipment, CargomaticStop, WebhookEventType } from '../types'
 
-/**
- * Map a Cargomatic shipment to a JobInsert.
- * The job is created in 'pending' status — dispatcher assigns driver/vehicle later.
- */
 export function cargomaticShipmentToJobInsert(
     shipment: CargomaticShipment,
     companyId: string,
@@ -24,13 +20,6 @@ export function cargomaticShipmentToJobInsert(
     }
 }
 
-/**
- * Map a single Cargomatic stop to a JobStopInsert.
- *
- * @param stop       The Cargomatic stop object
- * @param jobId      The newly created job's UUID
- * @param totalStops Total stop count in this shipment (used to identify last stop)
- */
 export function cargomaticStopToJobStopInsert(
     stop: CargomaticStop,
     jobId: string,
@@ -58,30 +47,74 @@ export function cargomaticStopToJobStopInsert(
     }
 }
 
+// ─── Real Cargomatic webhook stop format ──────────────────────
+
+interface CargomaticRealStop {
+    sequence: number
+    action: 'pickup' | 'deliver' | string
+    location: Array<{
+        address: string
+        name: string
+        lat: number
+        lng: number
+    }>
+    window_start: string | null
+    window_end: string | null
+    _id: string
+}
+
 /**
- * Detect the webhook event type from the raw payload.
- * Cargomatic pushes shipment objects — we infer the event type from the status field
- * or any action field if present.
- *
- * Based on the Cargomatic email:
- *   - Load Tenders: new shipments pushed to the webhook
- *   - Load Updates: status changes
- *   - Load Cancels: cancellation events
+ * Map a stop from the real Cargomatic webhook payload (stop.location[] format).
+ */
+export function cargomaticRealStopToJobStopInsert(
+    stop: CargomaticRealStop,
+    jobId: string,
+): JobStopInsert {
+    const loc = stop.location?.[0]
+
+    let type: 'pickup' | 'dropoff' | 'waypoint'
+    if (stop.action === 'pickup') type = 'pickup'
+    else if (stop.action === 'deliver') type = 'dropoff'
+    else type = 'waypoint'
+
+    return {
+        job_id: jobId,
+        sequence_order: stop.sequence,
+        type,
+        address: loc?.address ?? '',
+        location_name: loc?.name ?? '',
+        latitude: loc?.lat ?? null,
+        longitude: loc?.lng ?? null,
+        window_start: stop.window_start ?? null,
+        window_end: stop.window_end ?? null,
+        arrival_mode: 'window',
+        status: 'pending',
+        external_stop_id: stop._id,
+    }
+}
+
+/**
+ * Detect the webhook event type from the raw Cargomatic payload.
  */
 export function detectWebhookEventType(payload: Record<string, unknown>): WebhookEventType {
-    // If the payload has an explicit action field
+    // Real Cargomatic format uses an explicit "event" field
+    const event = payload.event as string | undefined
+    if (event === 'load_tendered') return 'load_tender'
+    if (event === 'load_cancelled' || event === 'load_canceled') return 'load_cancel'
+    if (event === 'load_updated') return 'load_update'
+
+    // Fallback: infer from action field
     const action = payload.action as string | undefined
     if (action === 'cancel' || action === 'cancelled') return 'load_cancel'
     if (action === 'update') return 'load_update'
     if (action === 'add' || action === 'tender') return 'load_tender'
 
-    // Infer from status field
+    // Fallback: infer from status
     const status = payload.status as string | undefined
     if (status === 'cancelled' || status === 'canceled') return 'load_cancel'
 
-    // If it has a shipmentReference and no existing status that indicates in-progress,
-    // treat as a new tender
-    if (payload.shipmentReference || payload.shipment_reference) {
+    // Fallback: any payload with a shipment reference is a tender
+    if (payload.shipmentId || payload.shipmentReference || payload.shipment_reference) {
         return 'load_tender'
     }
 
