@@ -8,6 +8,7 @@ import { CargomaticClient } from '@/lib/integrations/cargomatic/client'
 import {
     cargomaticShipmentToJobInsert,
     cargomaticStopToJobStopInsert,
+    cargomaticRealStopToJobStopInsert,
 } from '@/lib/integrations/cargomatic/mapper'
 import { CargomaticCredentials } from '@/lib/integrations/types'
 import { JobStopInsert } from '@/types/database'
@@ -271,31 +272,19 @@ export async function acceptTender(tenderId: string): Promise<{
     // 4. Build the job from the raw payload
     const rawPayload = tender.raw_payload as Record<string, unknown>
 
-    // The webhook payload may be the shipment object directly or wrapped
-    const shipmentData = (rawPayload.shipment ?? rawPayload) as {
-        shipmentId?: string
-        shipmentReference?: string
-        stops?: Array<{
-            stopId: string
-            locationName: string
-            locationAddress: string
-            windowStart: string
-            windowEnd: string
-            appointmentConfirmed: boolean
-            complete: boolean
-            sequence: number
-        }>
-    }
-
-    const stops = shipmentData.stops ?? []
+    // Real Cargomatic format: { event, shipmentId, shipment: { stops: [...] } }
+    // Fallback test format:   { shipmentReference, stops: [...] }
+    const isRealFormat = !!(rawPayload.event && rawPayload.shipment)
+    const shipmentObj = (rawPayload.shipment ?? rawPayload) as Record<string, unknown>
+    const stops = (shipmentObj.stops ?? []) as any[]
 
     // Create job
     const jobInsert = cargomaticShipmentToJobInsert(
         {
-            shipmentId: shipmentData.shipmentId ?? '',
+            shipmentId: (shipmentObj.id ?? shipmentObj.shipment_id ?? '') as string,
             shipmentReference: tender.shipment_reference,
             status: 'pending',
-            stops: stops as any,
+            stops: [],
         },
         companyId,
     )
@@ -310,15 +299,26 @@ export async function acceptTender(tenderId: string): Promise<{
         return { success: false, error: jobErr?.message ?? 'Failed to create job' }
     }
 
-    // Insert job stops (with geocoded coordinates)
+    // Insert job stops
     if (stops.length > 0) {
-        const stopsInsert: JobStopInsert[] = await Promise.all(
-            stops.map(async (s: any) => {
-                const base = cargomaticStopToJobStopInsert(s, jobData.id, stops.length)
-                const coords = await geocodeAddress(s.locationAddress)
-                return coords ? { ...base, latitude: coords.lat, longitude: coords.lng } : base
-            })
-        )
+        let stopsInsert: JobStopInsert[]
+
+        if (isRealFormat) {
+            // Real Cargomatic payload — lat/lng already in stop.location[0]
+            stopsInsert = stops.map((s: any) =>
+                cargomaticRealStopToJobStopInsert(s, jobData.id)
+            )
+        } else {
+            // Test/legacy format — geocode addresses
+            stopsInsert = await Promise.all(
+                stops.map(async (s: any) => {
+                    const base = cargomaticStopToJobStopInsert(s, jobData.id, stops.length)
+                    const coords = await geocodeAddress(s.locationAddress)
+                    return coords ? { ...base, latitude: coords.lat, longitude: coords.lng } : base
+                })
+            )
+        }
+
         const { error: stopsErr } = await serviceDb.from('job_stops').insert(stopsInsert)
         if (stopsErr) {
             // Job was created — don't roll back, just log the error

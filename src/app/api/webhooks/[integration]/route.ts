@@ -95,10 +95,12 @@ async function handleLoadTender(
     integration: string,
     payload: Record<string, unknown>,
 ) {
-    // Extract shipmentReference from payload
+    // Extract shipmentReference — real Cargomatic format uses top-level shipmentId
     const shipmentRef =
+        (payload.shipmentId as string) ??
         (payload.shipmentReference as string) ??
         (payload.shipment_reference as string) ??
+        ((payload.shipment as Record<string, unknown>)?.shipment_id as string) ??
         ((payload.shipment as Record<string, unknown>)?.shipmentReference as string) ??
         'UNKNOWN'
 
