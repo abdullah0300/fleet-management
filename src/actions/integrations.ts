@@ -56,6 +56,37 @@ function maskUsername(username: string): string {
     return `${username[0]}${'*'.repeat(Math.min(username.length - 1, 4))}${username.slice(-1)}`
 }
 
+function buildCargomaticNotes(payload: Record<string, unknown>, shipmentRef: string): string {
+    const shipment = payload.shipment as Record<string, unknown> | undefined
+    const refs = ((payload.referenceNumbers ?? shipment?.reference_numbers ?? []) as Array<{ name: string; value: string }>)
+    const getRef = (name: string) => refs.find(r => r.name === name)?.value ?? ''
+
+    const bol = getRef('master_bol')
+    const orderId = getRef('order_id')
+
+    const firstStop = (shipment?.stops as any[])?.[0]
+    const eq = firstStop?.equipments?.[0]
+    const container = eq
+        ? `${eq.equipment_id} (${eq._equipmentSize}ft ${eq._type})`
+        : getRef('equipment_id')
+
+    const lines: string[] = [
+        `Cargomatic Load: ${shipmentRef}`,
+        bol && `BOL: ${bol}`,
+        orderId && `Order: ${orderId}`,
+        container && `Container: ${container}`,
+        (shipment?.vessel_or_rail as string) && `Vessel: ${shipment?.vessel_or_rail}`,
+        [shipment?.service_type, shipment?.shipment_type, shipment?.movement_type]
+            .filter(Boolean).length > 0 &&
+            `Service: ${[shipment?.service_type, shipment?.shipment_type, shipment?.movement_type].filter(Boolean).join(' / ')}`,
+        (shipment?.shipper as any)?.company_name && `Shipper: ${(shipment?.shipper as any).company_name}`,
+        shipment?.carrier_cost != null && `Rate: $${Number(shipment.carrier_cost).toFixed(2)}`,
+        (shipment?.special_instructions as string) && `Instructions: ${shipment?.special_instructions}`,
+    ]
+
+    return lines.filter(Boolean).join('\n')
+}
+
 async function getAuthenticatedCompanyId(): Promise<{ companyId: string; userId: string }> {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -278,16 +309,22 @@ export async function acceptTender(tenderId: string): Promise<{
     const shipmentObj = (rawPayload.shipment ?? rawPayload) as Record<string, unknown>
     const stops = (shipmentObj.stops ?? []) as any[]
 
+    // Build rich notes from Cargomatic payload
+    const notes = buildCargomaticNotes(rawPayload, tender.shipment_reference)
+
     // Create job
-    const jobInsert = cargomaticShipmentToJobInsert(
-        {
-            shipmentId: (shipmentObj.id ?? shipmentObj.shipment_id ?? '') as string,
-            shipmentReference: tender.shipment_reference,
-            status: 'pending',
-            stops: [],
-        },
-        companyId,
-    )
+    const jobInsert = {
+        ...cargomaticShipmentToJobInsert(
+            {
+                shipmentId: (shipmentObj.id ?? shipmentObj.shipment_id ?? '') as string,
+                shipmentReference: tender.shipment_reference,
+                status: 'pending',
+                stops: [],
+            },
+            companyId,
+        ),
+        notes,
+    }
 
     const { data: jobData, error: jobErr } = await serviceDb
         .from('jobs')
