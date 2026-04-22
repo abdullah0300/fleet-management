@@ -17,7 +17,7 @@ const iconMap: Record<string, string> = {
     'Drivers':     'line-md:account',
     'Routes':      'line-md:map-marker-alt-twotone',
     'Dispatch':    'line-md:calendar-twotone',
-    'Jobs':        'line-md:clipboard-list-twotone',
+    // 'Jobs':        'line-md:clipboard-list-twotone',
     'Manifests':   'line-md:list-3-twotone',
     'Finances':    'line-md:file-document-twotone',  // financial documents
     'Costs':       'line-md:file-document-twotone',
