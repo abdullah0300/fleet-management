@@ -1,187 +1,152 @@
+'use client'
+
+import { useState } from 'react'
 import { login } from './actions'
-import { Truck, MapPin, Shield, BarChart3, ArrowLeft, AlertCircle } from 'lucide-react'
+import { ArrowLeft, Eye } from 'lucide-react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
+import { useFormStatus } from 'react-dom'
 
-export default async function LoginPage({
-    searchParams,
-}: {
-    searchParams: Promise<{ error?: string; message?: string }>
-}) {
-    const { error, message } = await searchParams
-    return (
-        <>
-            {/* Left Panel - Brand Side */}
-            <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-                {/* Background patterns */}
-                <div className="absolute inset-0 opacity-[0.03]">
-                    <svg className="h-full w-full" xmlns="http://www.w3.org/2000/svg">
-                        <defs>
-                            <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="white" strokeWidth="0.5" />
-                            </pattern>
-                        </defs>
-                        <rect width="100%" height="100%" fill="url(#grid)" />
-                    </svg>
-                </div>
+function SubmitButton() {
+  const { pending } = useFormStatus()
 
-                {/* Decorative road lines */}
-                <div className="absolute bottom-0 left-0 right-0 h-2" style={{ background: 'linear-gradient(to right, #548EC7, #3d6f9e, #548EC7)' }} />
-                <div className="absolute bottom-4 left-0 right-0 h-[2px]" style={{ backgroundColor: 'rgba(84, 142, 199, 0.3)' }} />
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="w-full bg-[#548EC7] text-white rounded-xl py-3.5 font-semibold hover:bg-[#6ca4db] transition duration-300 shadow-lg shadow-[#548EC7]/20 disabled:opacity-60 disabled:cursor-not-allowed"
+    >
+      {pending ? 'Signing In...' : 'Sign In'}
+    </button>
+  )
+}
 
-                {/* Floating glow accents */}
-                <div className="absolute top-20 -left-20 w-72 h-72 rounded-full blur-3xl" style={{ backgroundColor: 'rgba(84, 142, 199, 0.1)' }} />
-                <div className="absolute bottom-40 -right-20 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl" />
+export default function LoginPage() {
+  const [showPassword, setShowPassword] = useState(false)
+  const searchParams = useSearchParams()
 
-                {/* Content */}
-                <div className="relative z-10 flex flex-col justify-between p-12 w-full">
-                    {/* Top: Logo */}
-                    <div className="flex items-center gap-3">
-                        <div className="h-12 w-12 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: '#548EC7', boxShadow: '0 10px 15px -3px rgba(84, 142, 199, 0.25)' }}>
-                            <Truck className="h-7 w-7 text-white" />
-                        </div>
-                        <div>
-                            <h2 className="text-2xl font-bold text-white tracking-tight">Trucker&apos;sCall</h2>
-                            <p className="text-xs font-medium tracking-wider uppercase" style={{ color: 'rgba(84, 142, 199, 0.8)' }}>Fleet Management Platform</p>
-                        </div>
-                    </div>
+  const error = searchParams.get('error')
 
-                    {/* Middle: Hero Text */}
-                    <div className="space-y-8">
-                        <div className="space-y-4">
-                            <h1 className="text-5xl font-extrabold text-white leading-tight">
-                                Command Your<br />
-                                <span className="text-transparent bg-clip-text" style={{ backgroundImage: 'linear-gradient(to right, #548EC7, #3d6f9e)' }}>
-                                    Entire Fleet
-                                </span>
-                            </h1>
-                            <p className="text-lg text-slate-400 max-w-md leading-relaxed">
-                                Track vehicles, manage drivers, optimize routes, and keep your trucks rolling — all from one powerful dashboard.
-                            </p>
-                        </div>
+  return (
+    <div className="min-h-screen w-full max-w-full bg-[#111111] text-white overflow-x-hidden relative flex items-center justify-center px-4 sm:px-6 lg:px-8 xl:px-10 py-4 sm:py-6">
+      
+      {/* Grain Overlay */}
+      <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(circle,_rgba(255,255,255,0.08)_1px,_transparent_1px)] bg-[length:4px_4px]" />
 
-                        {/* Feature Pills */}
-                        <div className="grid grid-cols-2 gap-4 max-w-md">
-                            <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
-                                <MapPin className="h-5 w-5 shrink-0" style={{ color: '#548EC7' }} />
-                                <span className="text-sm text-slate-300 font-medium">Live Tracking</span>
-                            </div>
-                            <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
-                                <Shield className="h-5 w-5 text-emerald-400 shrink-0" />
-                                <span className="text-sm text-slate-300 font-medium">Fleet Safety</span>
-                            </div>
-                            <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
-                                <BarChart3 className="h-5 w-5 shrink-0" style={{ color: '#548EC7' }} />
-                                <span className="text-sm text-slate-300 font-medium">Cost Analytics</span>
-                            </div>
-                            <div className="flex items-center gap-3 bg-white/5 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/10">
-                                <Truck className="h-5 w-5 text-purple-400 shrink-0" />
-                                <span className="text-sm text-slate-300 font-medium">Route Optimization</span>
-                            </div>
-                        </div>
-                    </div>
+      <div className="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-10 xl:gap-14 items-center relative z-10 overflow-hidden">
 
-                    {/* Bottom: Testimonial / tagline */}
-                    <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                            <div className="flex -space-x-2">
-                                <div className="h-8 w-8 rounded-full border-2 border-slate-900 flex items-center justify-center text-xs font-bold text-white" style={{ backgroundColor: '#548EC7' }}>A</div>
-                                <div className="h-8 w-8 rounded-full bg-blue-500 border-2 border-slate-900 flex items-center justify-center text-xs font-bold text-white">B</div>
-                                <div className="h-8 w-8 rounded-full bg-emerald-500 border-2 border-slate-900 flex items-center justify-center text-xs font-bold text-white">C</div>
-                            </div>
-                            <p className="text-sm text-slate-500">Trusted by dispatchers & fleet owners</p>
-                        </div>
-                    </div>
-                </div>
+        {/* LEFT SIDE */}
+        <div className="max-w-xl mx-auto md:mx-0 w-full">
+
+          {/* Back Button */}
+          <Link
+            href="https://www.truckerscall.com/"
+            className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition mb-5 sm:mb-6 group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            Back to Home
+          </Link>
+
+          {/* Logo */}
+          <div className="flex items-center gap-4 mb-6 sm:mb-8">
+            <div>
+              <h1 className="text-3xl sm:text-4xl xl:text-5xl font-serif tracking-wide">
+                Trucker&apos;sCall
+              </h1>
+            </div>
+          </div>
+
+          {/* Heading */}
+          <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-[72px] font-black leading-[0.92] uppercase tracking-tight mb-6 sm:mb-8">
+            The Fleet <br />
+            Management <br />
+            Intelligence
+          </h2>
+
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2">
+              {error}
+            </div>
+          )}
+
+          {/* Form */}
+          <form action={login} className="space-y-3 max-w-md w-full">
+
+            <input
+              id="email"
+              name="email"
+              type="email"
+              placeholder="dispatcher@truckerscall.com"
+              required
+              className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-5 py-3.5 outline-none text-sm placeholder:text-gray-500 focus:border-[#548EC7]/60 transition"
+            />
+
+            {/* Password Field */}
+            <div className="relative">
+              <input
+                id="password"
+                name="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="Password"
+                required
+                className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-5 py-3.5 pr-14 outline-none text-sm placeholder:text-gray-500 focus:border-[#548EC7]/60 transition"
+              />
+
+              {/* Eye Button */}
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition"
+              >
+                <Eye className="w-5 h-5" />
+              </button>
             </div>
 
-            {/* Right Panel - Login Form */}
-            <div className="w-full lg:w-1/2 flex items-center justify-center bg-background p-4 relative">
-                <Link href="/" className="absolute top-8 left-8 flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors group">
-                    <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
-                    Back to Home
-                </Link>
-                <div className="w-full max-w-sm space-y-8">
-                    {/* Mobile Logo (hidden on lg+) */}
-                    <div className="flex flex-col items-center gap-3 lg:hidden">
-                        <div className="h-14 w-14 rounded-xl flex items-center justify-center shadow-lg" style={{ backgroundColor: '#548EC7' }}>
-                            <Truck className="h-8 w-8 text-white" />
-                        </div>
-                        <div className="text-center">
-                            <h2 className="text-2xl font-bold tracking-tight">Trucker&apos;sCall</h2>
-                            <p className="text-xs text-muted-foreground font-medium tracking-wider uppercase">Fleet Management Platform</p>
-                        </div>
-                    </div>
+            {/* Keep Me Logged In + Forgot Password */}
+            <div className="flex items-center justify-between text-sm mt-2">
+              <label className="flex items-center gap-2 cursor-pointer select-none text-gray-300">
+                <input type="checkbox" className="accent-[#548EC7]" />
+                Keep me logged in
+              </label>
 
-                    {/* Form Card */}
-                    <div className="bg-card p-8 rounded-2xl border border-border shadow-sm space-y-6">
-                        <div className="space-y-2 text-center">
-                            <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
-                            <p className="text-sm text-muted-foreground">
-                                Enter your credentials to access your dashboard
-                            </p>
-                        </div>
-
-                        {error && (
-                            <div className="flex items-start gap-3 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-                                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                                <span>{decodeURIComponent(error)}</span>
-                            </div>
-                        )}
-
-                        {message && (
-                            <div className="flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
-                                <span>{decodeURIComponent(message)}</span>
-                            </div>
-                        )}
-
-                        <form className="flex flex-col gap-5">
-                            <div className="grid gap-2">
-                                <label htmlFor="email" className="text-sm font-medium leading-none">Email</label>
-                                <input
-                                    id="email"
-                                    name="email"
-                                    type="email"
-                                    placeholder="dispatcher@truckerscall.com"
-                                    required
-                                    className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:border-[#548EC7] transition-all disabled:cursor-not-allowed disabled:opacity-50"
-                                    style={{ '--tw-ring-color': 'rgba(84, 142, 199, 0.5)' } as React.CSSProperties}
-                                />
-                            </div>
-                            <div className="grid gap-2">
-                                <div className="flex items-center justify-between">
-                                    <label htmlFor="password" className="text-sm font-medium leading-none">Password</label>
-                                    <Link href="/forgot-password" className="text-xs hover:underline" style={{ color: '#548EC7' }}>
-                                        Forgot password?
-                                    </Link>
-                                </div>
-                                <input
-                                    id="password"
-                                    name="password"
-                                    type="password"
-                                    placeholder="••••••••"
-                                    required
-                                    className="flex h-11 w-full rounded-lg border border-input bg-background px-4 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:border-[#548EC7] transition-all disabled:cursor-not-allowed disabled:opacity-50"
-                                    style={{ '--tw-ring-color': 'rgba(84, 142, 199, 0.5)' } as React.CSSProperties}
-                                />
-                            </div>
-
-                            <div className="mt-1">
-                                <button
-                                    formAction={login}
-                                    className="inline-flex items-center justify-center rounded-lg text-sm font-semibold transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 text-white h-11 px-4 py-2 w-full bg-[#548EC7] hover:bg-[#6ba0d4] active:bg-[#4a7db3] shadow-md hover:shadow-lg"
-                                >
-                                    Sign in to Dashboard
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-
-                    <p className="text-center text-xs text-muted-foreground">
-                        By continuing, you agree to Trucker&apos;sCall&apos;s{' '}
-                        <Link href="/privacy-policy" className="hover:underline" style={{ color: '#548EC7' }}>Privacy Policy</Link>.
-                    </p>
-                </div>
+              <button
+                type="button"
+                className="text-[#548EC7] hover:text-white transition underline underline-offset-4 whitespace-nowrap"
+              >
+                Forgot password?
+              </button>
             </div>
-        </>
-    )
+
+            {/* Submit */}
+            <SubmitButton />
+          </form>
+        </div>
+
+        {/* RIGHT SIDE (unchanged) */}
+        <div className="hidden md:flex items-center justify-center relative">
+          <div className="relative w-[280px] sm:w-[340px] md:w-[380px] lg:w-[440px] xl:w-[520px] h-[280px] sm:h-[340px] md:h-[380px] lg:h-[440px] xl:h-[520px] max-w-full">
+
+            <div className="absolute inset-0 bg-[#548EC7]/10 blur-3xl rounded-full" />
+
+            <div
+              className="absolute inset-0 overflow-hidden border border-white/10 shadow-2xl"
+              style={{
+                clipPath:
+                  'path("M141.5 61.5C216 -7.5 359.5 -24.5 440 52.5C520.5 129.5 638.5 110.5 612.5 233C586.5 355.5 493.5 341.5 468 431C442.5 520.5 354.5 645.5 222 592C89.5 538.5 86.5 420 39.5 365.5C-7.5 311 6.5 183 82 131.5C157.5 80 67 130.5 141.5 61.5Z")',
+              }}
+            >
+              <img
+                src="https://images.unsplash.com/photo-1616432043562-3671ea2e5242?q=80&w=1400&auto=format&fit=crop"
+                alt="fleet"
+                className="w-full h-full object-cover opacity-90"
+              />
+              <div className="absolute inset-0 bg-black/30" />
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  )
 }
