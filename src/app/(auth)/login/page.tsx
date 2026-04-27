@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { login } from './actions'
 import { ArrowLeft, Eye } from 'lucide-react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
 import { useFormStatus } from 'react-dom'
 
 function SubmitButton() {
@@ -21,16 +20,18 @@ function SubmitButton() {
   )
 }
 
-export default function LoginPage() {
+export default function LoginPage({
+  searchParams,
+}: {
+  searchParams: { error?: string }
+}) {
   const [showPassword, setShowPassword] = useState(false)
-  const searchParams = useSearchParams()
 
-  const error = searchParams.get('error')
+  const error = searchParams?.error
 
   return (
     <div className="min-h-screen w-full max-w-full bg-[#111111] text-white overflow-x-hidden relative flex items-center justify-center px-4 sm:px-6 lg:px-8 xl:px-10 py-4 sm:py-6">
-      
-      {/* Grain Overlay */}
+
       <div className="absolute inset-0 opacity-20 pointer-events-none bg-[radial-gradient(circle,_rgba(255,255,255,0.08)_1px,_transparent_1px)] bg-[length:4px_4px]" />
 
       <div className="w-full max-w-7xl grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-10 xl:gap-14 items-center relative z-10 overflow-hidden">
@@ -38,7 +39,6 @@ export default function LoginPage() {
         {/* LEFT SIDE */}
         <div className="max-w-xl mx-auto md:mx-0 w-full">
 
-          {/* Back Button */}
           <Link
             href="https://www.truckerscall.com/"
             className="inline-flex items-center gap-2 text-sm text-gray-400 hover:text-white transition mb-5 sm:mb-6 group"
@@ -47,30 +47,24 @@ export default function LoginPage() {
             Back to Home
           </Link>
 
-          {/* Logo */}
           <div className="flex items-center gap-4 mb-6 sm:mb-8">
-            <div>
-              <h1 className="text-3xl sm:text-4xl xl:text-5xl font-serif tracking-wide">
-                Trucker&apos;sCall
-              </h1>
-            </div>
+            <h1 className="text-3xl sm:text-4xl xl:text-5xl font-serif tracking-wide">
+              Trucker&apos;sCall
+            </h1>
           </div>
 
-          {/* Heading */}
           <h2 className="text-4xl sm:text-5xl lg:text-6xl xl:text-[72px] font-black leading-[0.92] uppercase tracking-tight mb-6 sm:mb-8">
             The Fleet <br />
             Management <br />
             Intelligence
           </h2>
 
-          {/* Error Message */}
           {error && (
             <div className="mb-4 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-2">
               {error}
             </div>
           )}
 
-          {/* Form */}
           <form action={login} className="space-y-3 max-w-md w-full">
 
             <input
@@ -82,18 +76,16 @@ export default function LoginPage() {
               className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-5 py-3.5 outline-none text-sm placeholder:text-gray-500 focus:border-[#548EC7]/60 transition"
             />
 
-            {/* Password Field */}
             <div className="relative">
               <input
                 id="password"
                 name="password"
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? 'text' : 'password'}
                 placeholder="Password"
                 required
                 className="w-full bg-[#1a1a1a] border border-white/10 rounded-xl px-5 py-3.5 pr-14 outline-none text-sm placeholder:text-gray-500 focus:border-[#548EC7]/60 transition"
               />
 
-              {/* Eye Button */}
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
@@ -103,10 +95,12 @@ export default function LoginPage() {
               </button>
             </div>
 
-            {/* Keep Me Logged In + Forgot Password */}
             <div className="flex items-center justify-between text-sm mt-2">
               <label className="flex items-center gap-2 cursor-pointer select-none text-gray-300">
-                <input type="checkbox" className="accent-[#548EC7]" />
+                <input
+                  type="checkbox"
+                  className="accent-[#548EC7]"
+                />
                 Keep me logged in
               </label>
 
@@ -118,14 +112,14 @@ export default function LoginPage() {
               </button>
             </div>
 
-            {/* Submit */}
             <SubmitButton />
+
           </form>
         </div>
 
-        {/* RIGHT SIDE (unchanged) */}
+        {/* RIGHT SIDE */}
         <div className="hidden md:flex items-center justify-center relative">
-          <div className="relative w-[280px] sm:w-[340px] md:w-[380px] lg:w-[440px] xl:w-[520px] h-[280px] sm:h-[340px] md:h-[380px] lg:h-[440px] xl:h-[520px] max-w-full">
+          <div className="relative w-[280px] sm:w-[340px] md:w-[380px] lg:w-[440px] xl:w-[520px] h-[280px] sm:h-[340px] md:h-[380px] lg:h-[440px] xl:h-[520px]">
 
             <div className="absolute inset-0 bg-[#548EC7]/10 blur-3xl rounded-full" />
 
@@ -143,6 +137,7 @@ export default function LoginPage() {
               />
               <div className="absolute inset-0 bg-black/30" />
             </div>
+
           </div>
         </div>
 
