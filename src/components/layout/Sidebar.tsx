@@ -129,7 +129,7 @@ export function Sidebar({ className }: { className?: string }) {
             <div className="p-4 mt-auto border-t">
                 <div className="text-xs text-center text-muted-foreground">
                     <p className="font-semibold text-primary/80">Trucker'sCall</p>
-                    <p>Created by Webcraftio</p>
+                    <p>Operated by Nexterix • Built by Webcraftio</p>
                 </div>
             </div>
         </div>

@@ -159,12 +159,12 @@ export function JobsList({ initialData }: JobsListProps) {
                     </div>
                 </div>
                 <Button
-                    onClick={() => router.push('/dashboard/jobs/new')}
+                    onClick={() => router.push('/dashboard/dispatch')}
                     className="gap-2"
                     size="lg"
                 >
                     <Plus className="h-4 w-4" />
-                    Create Job
+                    Create in Dispatch
                 </Button>
             </div>
 
@@ -263,11 +263,11 @@ export function JobsList({ initialData }: JobsListProps) {
                             {!searchQuery && statusFilter === 'all' && (
                                 <Button
                                     className="mt-4 gap-2"
-                                    onClick={() => router.push('/dashboard/jobs/new')}
+                                    onClick={() => router.push('/dashboard/dispatch')}
                                     variant="outline"
                                 >
                                     <Plus className="h-4 w-4" />
-                                    Create Job
+                                    Create in Dispatch
                                 </Button>
                             )}
                         </div>
