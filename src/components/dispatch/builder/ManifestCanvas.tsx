@@ -412,7 +412,7 @@ function SortableManifestItem({
 
             <div className="flex-1 min-w-0">
                 <div className="flex justify-between items-start">
-                    <div className="font-medium text-sm truncate">{job.customers?.name || job.customer_name || 'Unknown Customer'}</div>
+                    <div className="font-medium text-sm truncate">{(job as any).customers?.name || job.customer_name || 'Unknown Customer'}</div>
                     <Badge variant="secondary" className="text-[10px]">{job.job_number}</Badge>
                 </div>
                 <div className="text-xs text-muted-foreground truncate flex items-center gap-1 mt-0.5">

@@ -27,7 +27,7 @@ export function JobPool({ jobs, onJobCreated }: JobPoolProps) {
     const filteredJobs = useMemo(() => {
         const result = jobs.filter(j =>
             j.job_number?.toLowerCase().includes(search.toLowerCase()) ||
-            (j.customers?.name?.toLowerCase().includes(search.toLowerCase()) || j.customer_name?.toLowerCase().includes(search.toLowerCase()))
+            ((j as any).customers?.name?.toLowerCase().includes(search.toLowerCase()) || j.customer_name?.toLowerCase().includes(search.toLowerCase()))
         )
 
         // Sort by Date then Time
@@ -120,7 +120,7 @@ function PoolJobCard({ job }: { job: PoolJob }) {
                     <Badge variant="outline" className="text-[10px] h-4 px-1">{job.status}</Badge>
                 </div>
             </div>
-            <div className="text-xs font-medium truncate mb-1">{job.customers?.name || job.customer_name}</div>
+            <div className="text-xs font-medium truncate mb-1">{(job as any).customers?.name || job.customer_name}</div>
 
             {/* Schedule Info */}
             <div className="flex flex-wrap gap-1 mb-1.5">
