@@ -52,7 +52,7 @@ export function JobsList({ initialData }: JobsListProps) {
         const matchesSearch =
             job.job_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             job.customers?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            job.customer_name?.toLowerCase().includes(searchQuery.toLowerCase())
+            (job.customers?.name?.toLowerCase().includes(searchQuery.toLowerCase()) || job.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()))
 
         let matchesStatus = false;
         if (statusFilter === 'all') {

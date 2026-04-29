@@ -921,6 +921,7 @@ export type PendingTender = Database['public']['Tables']['pending_tenders']['Row
 // Extended Job type with stops (for display)
 export type JobWithStops = Job & {
   job_stops: JobStop[]
+  customers?: Customer | null
 }
 
 // Insert types (for creating data)

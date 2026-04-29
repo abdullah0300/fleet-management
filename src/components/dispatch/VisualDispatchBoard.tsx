@@ -234,7 +234,7 @@ export function VisualDispatchBoard() {
                 return {
                     id: job.id,
                     title: job.job_number, // Unused in custom render but good for default
-                    customer: job.customer_name,
+                    customer: job.customers?.name || job.customer_name,
                     address: pickupAddr?.split(',')[0] || 'Pickup',
                     start,
                     end,

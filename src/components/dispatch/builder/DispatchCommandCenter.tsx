@@ -129,7 +129,7 @@ export function DispatchCommandCenter({ initialDrivers, initialVehicles, initial
                     {activeJob ? (
                         <div className="bg-white border rounded-md p-3 shadow-xl w-[300px] opacity-90 rotate-2 cursor-grabbing">
                             <div className="font-bold text-sm">{activeJob.job_number}</div>
-                            <div className="text-xs">{activeJob.customer_name}</div>
+                            <div className="text-xs">{activeJob.customers?.name || activeJob.customer_name}</div>
                         </div>
                     ) : null}
                 </DragOverlay>,

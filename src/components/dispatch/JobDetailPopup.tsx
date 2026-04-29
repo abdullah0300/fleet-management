@@ -75,7 +75,7 @@ export function JobDetailPopup({ job, open, onOpenChange, onEdit }: JobDetailPop
                     </div>
                     <DialogDescription className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                         <span className="flex items-center gap-1">
-                            <User className="h-3.5 w-3.5" /> {job.customer_name}
+                            <User className="h-3.5 w-3.5" /> {job.customers?.name || job.customer_name}
                         </span>
                         {job.scheduled_date && (
                             <span className="flex items-center gap-1">

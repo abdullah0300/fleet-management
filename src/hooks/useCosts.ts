@@ -343,7 +343,7 @@ export function useJobsForCost() {
         queryFn: async () => {
             const { data, error } = await supabase
                 .from('jobs')
-                .select('id, job_number, customer_name, status')
+                .select('id, job_number, customer_name, status, customers(*)')
                 .in('status', ['pending', 'assigned', 'in_progress'])
                 .order('scheduled_date', { ascending: false })
             if (error) throw error

@@ -331,7 +331,7 @@ export default function JobDetailPage() {
                     <div className="flex items-center gap-4 text-sm text-muted-foreground ml-9">
                         <div className="flex items-center gap-1.5 font-medium text-foreground">
                             <User className="h-4 w-4" />
-                            <span>{job.customer_name}</span>
+                            <span>{job.customers?.name || job.customer_name}</span>
                         </div>
                         <div className="flex items-center gap-1.5">
                             <Calendar className="h-4 w-4" />

@@ -172,7 +172,7 @@ export default function ProofOfDeliveryPage() {
                         </div>
                         <div className="min-w-0">
                             <p className="text-[10px] sm:text-xs text-muted-foreground">Customer</p>
-                            <p className="text-xs sm:text-sm font-medium">{job.customer_name}</p>
+                            <p className="text-xs sm:text-sm font-medium">{job.customers?.name || job.customer_name}</p>
                             {job.customer_phone && (
                                 <p className="text-[10px] sm:text-xs text-muted-foreground">{job.customer_phone}</p>
                             )}

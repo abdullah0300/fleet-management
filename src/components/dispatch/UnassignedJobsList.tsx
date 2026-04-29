@@ -20,7 +20,7 @@ export function UnassignedJobsList() {
     const handleDragStart = (e: React.DragEvent, job: any) => {
         // Set data for the drop
         e.dataTransfer.setData('jobId', job.id)
-        e.dataTransfer.setData('jobTitle', job.customer_name)
+        e.dataTransfer.setData('jobTitle', job.customers?.name || job.customer_name || 'Unknown')
         // required for basic html5 dnd
         e.dataTransfer.effectAllowed = 'move'
 
@@ -66,7 +66,7 @@ export function UnassignedJobsList() {
                                     >
                                         <div className="flex items-center justify-between mb-1">
                                             <span className="font-medium text-sm truncate">
-                                                {job.customer_name}
+                                                {job.customers?.name || job.customer_name}
                                             </span>
                                             <Badge variant="outline" className="text-[10px] h-5">
                                                 {job.job_number}

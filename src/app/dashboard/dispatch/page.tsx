@@ -16,7 +16,7 @@ export default async function DispatchPage() {
     const [driversRes, vehiclesRes, pendingJobsRes] = await Promise.all([
         supabase.from('drivers').select('*, profiles(full_name)'),
         supabase.from('vehicles').select('*'),
-        supabase.from('jobs').select('*, job_stops(*)').eq('status', 'pending').is('manifest_id', null)
+        supabase.from('jobs').select('*, job_stops(*), customers(*)').eq('status', 'pending').is('manifest_id', null)
     ])
 
     const drivers = driversRes.data || []

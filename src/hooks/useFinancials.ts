@@ -33,7 +33,7 @@ export function useFinancials(days: number = 30) {
             // 1. Fetch completed jobs
             const { data: jobs, error: errJobs } = await supabase
                 .from('jobs')
-                .select('*')
+                .select('*, customers(*)')
                 .eq('status', 'completed')
                 .eq('financial_status', 'approved')
                 .gte('updated_at', startDate.toISOString())
@@ -142,7 +142,7 @@ export function useFinancials(days: number = 30) {
                     type: 'job',
                     date: job.updated_at,
                     title: `Job ${job.job_number || 'Unknown'}`,
-                    subtitle: job.customer_name || 'No Customer',
+                    subtitle: job.customers?.name || job.customer_name || 'No Customer',
                     amount: netProfit,
                     isPositive: netProfit >= 0,
                     details: `Rev: $${jobRev.toFixed(0)} | Cost: $${jobCost.toFixed(0)}`

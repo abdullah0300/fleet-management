@@ -169,7 +169,7 @@ export function DriverDetailPopup({ driver, open, onOpenChange, onSelectForManif
                                         <div className="p-3 bg-white rounded-lg border space-y-2">
                                             <div className="flex items-center justify-between">
                                                 <span className="font-medium text-sm">Current Job: {currentJob.job_number}</span>
-                                                <span className="text-xs text-muted-foreground">{currentJob.customer_name}</span>
+                                                <span className="text-xs text-muted-foreground">{currentJob.customers?.name || currentJob.customer_name}</span>
                                             </div>
 
                                             {/* Route */}
@@ -314,7 +314,7 @@ export function DriverDetailPopup({ driver, open, onOpenChange, onSelectForManif
                                         <div key={job.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-md text-sm">
                                             <div>
                                                 <span className="font-medium">{job.job_number}</span>
-                                                <span className="text-muted-foreground ml-2">{job.customer_name}</span>
+                                                <span className="text-muted-foreground ml-2">{job.customers?.name || job.customer_name}</span>
                                             </div>
                                             <Badge variant="outline" className="text-xs">
                                                 {job.status}

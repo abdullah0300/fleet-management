@@ -115,6 +115,7 @@ async function fetchJobs(page = 1, pageSize = 50): Promise<{
         .select(`
             *,
             job_stops (*),
+            customers (*),
             routes:route_id (*),
             vehicles:vehicle_id (*, profiles:current_driver_id(full_name)),
             manifests:manifest_id (id, manifest_number, status),
@@ -152,6 +153,7 @@ async function fetchDriverJobs(driverId: string, limit = 10): Promise<JobWithRel
         .select(`
             *,
             job_stops (*),
+            customers (*),
             routes:route_id (*),
             vehicles:vehicle_id (*),
             manifests:manifest_id (id, manifest_number, status),
@@ -195,6 +197,7 @@ async function fetchJob(id: string): Promise<JobWithRelations> {
         .select(`
             *,
             job_stops (*),
+            customers (*),
             routes:route_id (*),
             vehicles:vehicle_id (*, profiles:current_driver_id(full_name)),
             manifests:manifest_id (id, manifest_number, status),
@@ -326,6 +329,7 @@ async function createJobApi(job: JobInsert): Promise<JobWithRelations> {
         .select(`
             *,
             job_stops (*),
+            customers (*),
             routes:route_id (*),
             vehicles:vehicle_id (*),
             manifests:manifest_id (id, manifest_number, status),
@@ -355,6 +359,7 @@ async function updateJobApi({
         .select(`
             *,
             job_stops (*),
+            customers (*),
             routes:route_id (*),
             vehicles:vehicle_id (*),
             drivers:driver_id (
@@ -396,6 +401,7 @@ async function assignJobApi({
         .select(`
             *,
             job_stops (*),
+            customers (*),
             routes:route_id (*),
             vehicles:vehicle_id (*),
             drivers:driver_id (
