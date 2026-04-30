@@ -27,7 +27,9 @@ export function JobPool({ jobs, onJobCreated }: JobPoolProps) {
     const filteredJobs = useMemo(() => {
         const result = jobs.filter(j =>
             j.job_number?.toLowerCase().includes(search.toLowerCase()) ||
-            ((j as any).customers?.name?.toLowerCase().includes(search.toLowerCase()) || j.customer_name?.toLowerCase().includes(search.toLowerCase()))
+            j.customers?.name?.toLowerCase().includes(search.toLowerCase()) ||
+            j.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
+            j.notes?.toLowerCase().includes(search.toLowerCase())
         )
 
         // Sort by Date then Time

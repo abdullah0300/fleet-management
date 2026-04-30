@@ -105,27 +105,32 @@ export function JobCard({ job, onViewDetails }: JobCardProps) {
         const parts = address.split(',').map(p => p.trim())
         if (parts.length >= 3) return parts[parts.length - 3]
         if (parts.length === 2) return parts[0]
-        return address.substring(0, 20) + (address.length > 20 ? '...' : '')
+        return address.substring(0, 10) + (address.length > 10 ? '...' : '')
     }
 
-    // Get location summary
+    // Get location summary with character limiting
     const getLocationSummary = () => {
         const stops = job.job_stops?.sort((a, b) => a.sequence_order - b.sequence_order) || []
         if (stops.length === 0) return null
 
-        const start = stops[0].location_name || getCity(stops[0].address)
-        const end = stops[stops.length - 1].location_name || getCity(stops[stops.length - 1].address)
+        const limitText = (text: string, limit: number = 10) => {
+            if (!text) return ''
+            return text.length > limit ? text.substring(0, limit) + '...' : text
+        }
+
+        const start = limitText(stops[0].location_name || getCity(stops[0].address))
+        const end = limitText(stops[stops.length - 1].location_name || getCity(stops[stops.length - 1].address))
         const middleCount = stops.length - 2
 
         if (stops.length === 1) return <span className="font-medium text-gray-500">{start}</span>
 
         return (
-            <div className="flex items-center gap-1.5 text-sm text-gray-500 truncate mt-1">
-                <span className="truncate font-medium text-gray-500">{start}</span>
+            <div className="flex items-center gap-1.5 text-sm text-gray-500 mt-1">
+                <span className="font-medium text-gray-500 whitespace-nowrap">{start}</span>
                 <span className="text-gray-400">→</span>
-                <span className="truncate font-medium text-gray-500">{end}</span>
+                <span className="font-medium text-gray-500 whitespace-nowrap">{end}</span>
                 {middleCount > 0 && (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 h-5 min-w-0 bg-gray-100 text-gray-500">
+                    <Badge variant="secondary" className="text-[10px] px-1.5 h-5 min-w-0 bg-gray-100 text-gray-500 shrink-0">
                         +{middleCount}
                     </Badge>
                 )}

@@ -137,7 +137,8 @@ export function ManifestBuilder() {
         !selectedJobs.find(j => j.id === job.id) &&
         (job.job_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
             job.customers?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            job.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()))
+            job.customer_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            job.notes?.toLowerCase().includes(searchQuery.toLowerCase()))
     ) || []
 
     return (
