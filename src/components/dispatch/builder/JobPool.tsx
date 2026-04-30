@@ -4,7 +4,8 @@ import { useDraggable } from '@dnd-kit/core'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Search, MapPin, Plus, Calendar, Clock } from 'lucide-react'
+import { Search, MapPin, Plus, Calendar, Clock, Eye, Pencil, ExternalLink } from 'lucide-react'
+import Link from 'next/link'
 import { useState, useMemo } from 'react'
 import { CSS } from '@dnd-kit/utilities'
 import { JobCreationModal } from './JobCreationModal'
@@ -27,7 +28,7 @@ export function JobPool({ jobs, onJobCreated }: JobPoolProps) {
     const filteredJobs = useMemo(() => {
         const result = jobs.filter(j =>
             j.job_number?.toLowerCase().includes(search.toLowerCase()) ||
-            j.customers?.name?.toLowerCase().includes(search.toLowerCase()) ||
+            (j as any).customers?.name?.toLowerCase().includes(search.toLowerCase()) ||
             j.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
             j.notes?.toLowerCase().includes(search.toLowerCase())
         )
@@ -140,9 +141,25 @@ function PoolJobCard({ job }: { job: PoolJob }) {
                 )}
             </div>
 
-            <div className="text-[10px] text-muted-foreground flex items-center gap-1 truncate">
+            <div className="text-[10px] text-muted-foreground flex items-center gap-1 truncate mb-3">
                 <MapPin className="h-3 w-3 inline" />
                 {deliveryAddress}
+            </div>
+
+            {/* Actions */}
+            <div className="flex gap-2 pt-2 border-t mt-2" onPointerDown={(e) => e.stopPropagation()}>
+                <Link href={`/dashboard/jobs/${job.id}`} className="flex-1">
+                    <Button variant="outline" size="sm" className="w-full h-7 text-[10px] gap-1 px-2">
+                        <Eye className="h-3 w-3" />
+                        View
+                    </Button>
+                </Link>
+                <Link href={`/dashboard/jobs/${job.id}/edit`} className="flex-1">
+                    <Button variant="outline" size="sm" className="w-full h-7 text-[10px] gap-1 px-2">
+                        <Pencil className="h-3 w-3" />
+                        Edit
+                    </Button>
+                </Link>
             </div>
         </div>
     )
