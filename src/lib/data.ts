@@ -306,12 +306,14 @@ export async function getDocuments(): Promise<DocumentWithRelations[]> {
                 relations.job = jobData
                 
                 // Inherit Driver and Vehicle from the Job to enable deep search
-                if (jobData.drivers && jobData.drivers.profiles) {
+                const driver = Array.isArray(jobData.drivers) ? jobData.drivers[0] : jobData.drivers
+                if (driver && driver.profiles) {
                     // Extract profile if it's an array or single object
-                    relations.driver = Array.isArray(jobData.drivers.profiles) ? jobData.drivers.profiles[0] : jobData.drivers.profiles
+                    relations.driver = Array.isArray(driver.profiles) ? driver.profiles[0] : driver.profiles
                 }
-                if (jobData.vehicles) {
-                    relations.vehicle = Array.isArray(jobData.vehicles) ? jobData.vehicles[0] : jobData.vehicles
+                const vehicle = Array.isArray(jobData.vehicles) ? jobData.vehicles[0] : jobData.vehicles
+                if (vehicle) {
+                    relations.vehicle = vehicle
                 }
             }
         }
