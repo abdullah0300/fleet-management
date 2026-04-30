@@ -9,9 +9,11 @@ interface JobCreationModalProps {
     onSave?: (job: any) => void
     defaultOpen?: boolean
     trigger?: React.ReactNode
+    initialData?: any
+    isEditing?: boolean
 }
 
-export function JobCreationModal({ onClose, onSave, defaultOpen, trigger }: JobCreationModalProps) {
+export function JobCreationModal({ onClose, onSave, defaultOpen, trigger, initialData, isEditing }: JobCreationModalProps) {
     const [open, setOpen] = useState(defaultOpen || false)
 
     const handleSave = (newJob: any) => {
@@ -31,9 +33,9 @@ export function JobCreationModal({ onClose, onSave, defaultOpen, trigger }: JobC
             {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
             <DialogContent className="sm:!max-w-3xl max-h-[85vh] flex flex-col bg-white p-0 gap-0 outline-none">
                 <DialogHeader className="px-6 py-4 bg-white border-b shrink-0">
-                    <DialogTitle>Create New Job</DialogTitle>
+                    <DialogTitle>{isEditing ? 'Edit Job' : 'Create New Job'}</DialogTitle>
                     <DialogDescription className="sr-only">
-                        Form to create a new job and assign it to a driver.
+                        Form to {isEditing ? 'edit existing' : 'create a new'} job and assign it to a driver.
                     </DialogDescription>
                 </DialogHeader>
 
@@ -42,6 +44,8 @@ export function JobCreationModal({ onClose, onSave, defaultOpen, trigger }: JobC
                         onSave={handleSave}
                         onCancel={handleCancel}
                         variant="modal"
+                        initialData={initialData}
+                        isEditing={isEditing}
                     />
                 </div>
             </DialogContent>

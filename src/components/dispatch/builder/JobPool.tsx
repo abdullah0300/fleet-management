@@ -154,12 +154,22 @@ function PoolJobCard({ job }: { job: PoolJob }) {
                         View
                     </Button>
                 </Link>
-                <Link href={`/dashboard/jobs/${job.id}/edit`} className="flex-1">
-                    <Button variant="outline" size="sm" className="w-full h-7 text-[10px] gap-1 px-2">
-                        <Pencil className="h-3 w-3" />
-                        Edit
-                    </Button>
-                </Link>
+                <div className="flex-1">
+                    <JobCreationModal
+                        isEditing
+                        initialData={job}
+                        trigger={
+                            <Button variant="outline" size="sm" className="w-full h-7 text-[10px] gap-1 px-2">
+                                <Pencil className="h-3 w-3" />
+                                Edit
+                            </Button>
+                        }
+                        onSave={(updatedJob) => {
+                            // Optionally refresh or update local state if needed
+                            // For now, it will update via React Query if hooks are used
+                        }}
+                    />
+                </div>
             </div>
         </div>
     )
