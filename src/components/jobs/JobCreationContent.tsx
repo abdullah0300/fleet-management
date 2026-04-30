@@ -525,7 +525,7 @@ export function JobCreationContent({ onSave, onCancel, variant = 'page', initial
         // Build the input for the API
         const input: CreateJobWithStopsInput = {
             job: {
-                job_number: jobNumber || `JOB-${Date.now().toString(36).toUpperCase()}`,
+                job_number: jobNumber || undefined,
                 customer_id: customerId,
                 scheduled_date: legacyDate, // derived
                 scheduled_time: legacyTime, // derived

@@ -252,20 +252,76 @@ export async function getMaintenanceRecords(): Promise<MaintenanceRecord[]> {
 // DOCUMENTS
 // ==========================================
 
-export async function getDocuments(): Promise<Document[]> {
+export type DocumentWithRelations = Document & {
+    vehicle?: { license_plate: string; make: string; model: string; vin_number: string | null } | null;
+    driver?: { full_name: string | null; email: string | null; phone: string | null } | null;
+    job?: { job_number: string | null; notes: string | null; external_job_ref: string | null; customer_name: string | null; manifest_number?: string | null } | null;
+    maintenance?: { type: string | null; description: string | null; mechanic_notes: string | null } | null;
+}
+
+export async function getDocuments(): Promise<DocumentWithRelations[]> {
     const supabase = await createClient()
 
-    const { data, error } = await supabase
+    const { data: documents, error } = await supabase
         .from('documents')
         .select('*')
-        .order('expiry_date', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: false })
 
-    if (error) {
+    if (error || !documents) {
         console.error('Error fetching documents:', error)
         return []
     }
 
-    return data || []
+    // Extract unique entity IDs
+    const vehicleIds = [...new Set(documents.filter(d => d.entity_type === 'vehicle').map(d => d.entity_id))]
+    const driverIds = [...new Set(documents.filter(d => d.entity_type === 'driver').map(d => d.entity_id))]
+    const jobIds = [...new Set(documents.filter(d => d.entity_type === 'job').map(d => d.entity_id))]
+    const maintenanceIds = [...new Set(documents.filter(d => d.entity_type === 'maintenance').map(d => d.entity_id))]
+
+    // Fetch related data in parallel
+    const [vehiclesRes, driversRes, jobsRes, maintenanceRes] = await Promise.all([
+        vehicleIds.length > 0 ? supabase.from('vehicles').select('id, license_plate, make, model, vin_number').in('id', vehicleIds) : { data: [] },
+        driverIds.length > 0 ? supabase.from('profiles').select('id, full_name, email, phone').in('id', driverIds) : { data: [] },
+        jobIds.length > 0 ? supabase.from('jobs').select('id, job_number, notes, external_job_ref, customer_name, manifests(manifest_number), drivers(profiles(full_name, email, phone)), vehicles(license_plate, make, model, vin_number)').in('id', jobIds) : { data: [] },
+        maintenanceIds.length > 0 ? supabase.from('maintenance_records').select('id, type, description, mechanic_notes').in('id', maintenanceIds) : { data: [] }
+    ])
+
+    const vehiclesMap = new Map((vehiclesRes.data || []).map(v => [v.id, v]))
+    const driversMap = new Map((driversRes.data || []).map(d => [d.id, d]))
+    const jobsMap = new Map((jobsRes.data || []).map(j => {
+        // extract manifest_number from the joined array/object
+        const manifest_number = j.manifests ? (Array.isArray(j.manifests) ? j.manifests[0]?.manifest_number : (j.manifests as any)?.manifest_number) : null;
+        return [j.id, { ...j, manifest_number }]
+    }))
+    const maintenanceMap = new Map((maintenanceRes.data || []).map(m => [m.id, m]))
+
+    // Hydrate documents with relations
+    return documents.map(doc => {
+        let relations: any = {}
+        if (doc.entity_type === 'vehicle') relations.vehicle = vehiclesMap.get(doc.entity_id)
+        if (doc.entity_type === 'driver') relations.driver = driversMap.get(doc.entity_id)
+        if (doc.entity_type === 'job') {
+            const jobData = jobsMap.get(doc.entity_id)
+            if (jobData) {
+                relations.job = jobData
+                
+                // Inherit Driver and Vehicle from the Job to enable deep search
+                if (jobData.drivers && jobData.drivers.profiles) {
+                    // Extract profile if it's an array or single object
+                    relations.driver = Array.isArray(jobData.drivers.profiles) ? jobData.drivers.profiles[0] : jobData.drivers.profiles
+                }
+                if (jobData.vehicles) {
+                    relations.vehicle = Array.isArray(jobData.vehicles) ? jobData.vehicles[0] : jobData.vehicles
+                }
+            }
+        }
+        if (doc.entity_type === 'maintenance') relations.maintenance = maintenanceMap.get(doc.entity_id)
+        
+        return {
+            ...doc,
+            ...relations
+        }
+    })
 }
 
 // ==========================================

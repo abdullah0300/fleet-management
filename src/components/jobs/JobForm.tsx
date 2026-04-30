@@ -76,7 +76,7 @@ export function JobForm({ initialData, onSubmit, isSubmitting }: JobFormProps) {
     } = useForm<JobFormData>({
         resolver: zodResolver(jobSchema),
         defaultValues: {
-            job_number: initialData?.job_number || `JOB-${Date.now().toString(36).toUpperCase()}`,
+            job_number: initialData?.job_number || undefined,
             customer_name: initialData?.customer_name || '',
             customer_phone: initialData?.customer_phone || '',
             customer_email: initialData?.customer_email || '',

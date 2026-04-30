@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/dialog'
 import { useVehicles } from '@/hooks/useVehicles'
 import { useDrivers } from '@/hooks/useDrivers'
+import { useJobs } from '@/hooks/useJobs'
 import { useUploadDocument } from '@/hooks/useDocuments'
 import { cn } from '@/lib/utils'
 
@@ -76,10 +77,12 @@ export function UploadDialog({ trigger, onSuccess, entityType: initialType, enti
 
     const { data: vehiclesData } = useVehicles()
     const { data: driversData } = useDrivers()
+    const { data: jobsData } = useJobs()
     const uploadMutation = useUploadDocument()
 
     const vehicles = vehiclesData?.data || []
     const drivers = driversData?.data || []
+    const jobs = jobsData?.data || []
 
     // If relatedJobs are provided (e.g. from Manifest page), we MUST link to a job
     const isJobSelectionRequired = !!relatedJobs && relatedJobs.length > 0
@@ -195,7 +198,7 @@ export function UploadDialog({ trigger, onSuccess, entityType: initialType, enti
                     {/* Entity Selection (Hide if fixed) */}
                     {!isFixedEntity && !isJobSelectionRequired && (
                         <>
-                            <div className="grid grid-cols-2 gap-2">
+                            <div className="grid grid-cols-3 gap-2">
                                 <Button
                                     type="button"
                                     variant={entityType === 'vehicle' ? 'default' : 'outline'}
@@ -218,10 +221,21 @@ export function UploadDialog({ trigger, onSuccess, entityType: initialType, enti
                                 >
                                     Driver
                                 </Button>
+                                <Button
+                                    type="button"
+                                    variant={entityType === 'job' ? 'default' : 'outline'}
+                                    className="w-full"
+                                    onClick={() => {
+                                        setEntityType('job')
+                                        setEntityId('')
+                                    }}
+                                >
+                                    Job
+                                </Button>
                             </div>
 
                             <div className="space-y-2">
-                                <Label className="text-sm">Select {entityType === 'vehicle' ? 'Vehicle' : 'Driver'} *</Label>
+                                <Label className="text-sm">Select {entityType === 'vehicle' ? 'Vehicle' : entityType === 'driver' ? 'Driver' : 'Job'} *</Label>
                                 <Select value={entityId} onValueChange={setEntityId}>
                                     <SelectTrigger>
                                         <SelectValue placeholder={`Select a ${entityType}...`} />
@@ -233,10 +247,16 @@ export function UploadDialog({ trigger, onSuccess, entityType: initialType, enti
                                                     {v.make} {v.model} - {v.license_plate}
                                                 </SelectItem>
                                             ))
-                                        ) : (
+                                        ) : entityType === 'driver' ? (
                                             drivers.map((d) => (
                                                 <SelectItem key={d.id} value={d.id}>
                                                     {d.profiles?.full_name || 'Unknown'}
+                                                </SelectItem>
+                                            ))
+                                        ) : (
+                                            jobs.map((j) => (
+                                                <SelectItem key={j.id} value={j.id}>
+                                                    Job #{j.job_number} - {j.customers?.name || j.customer_name || 'Unknown'}
                                                 </SelectItem>
                                             ))
                                         )}

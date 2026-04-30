@@ -373,6 +373,34 @@ export async function acceptTender(tenderId: string): Promise<{
     // Build rich notes from Cargomatic payload
     const notes = buildCargomaticNotes(rawPayload, tender.shipment_reference)
 
+    // Ensure "Cargomatic" customer exists
+    let cargomaticCustomerId: string | null = null
+    const { data: existingCustomer } = await serviceDb
+        .from('customers')
+        .select('id')
+        .eq('company_id', companyId)
+        .ilike('name', 'Cargomatic%')
+        .limit(1)
+        .single()
+
+    if (existingCustomer) {
+        cargomaticCustomerId = existingCustomer.id
+    } else {
+        const { data: newCustomer } = await serviceDb
+            .from('customers')
+            .insert({
+                company_id: companyId,
+                name: 'Cargomatic',
+                email: 'support@cargomatic.com',
+                status: 'active'
+            })
+            .select('id')
+            .single()
+        if (newCustomer) {
+            cargomaticCustomerId = newCustomer.id
+        }
+    }
+
     // Create job
     const jobInsert = {
         ...cargomaticShipmentToJobInsert(
@@ -384,6 +412,8 @@ export async function acceptTender(tenderId: string): Promise<{
             },
             companyId,
         ),
+        customer_id: cargomaticCustomerId,
+        revenue: shipmentObj.carrier_cost ? Number(shipmentObj.carrier_cost) : null,
         notes,
     }
 
