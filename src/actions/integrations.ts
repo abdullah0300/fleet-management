@@ -135,7 +135,6 @@ function buildCargomaticNotes(payload: Record<string, unknown>, shipmentRef: str
             .filter(Boolean).length > 0 &&
             `Service: ${[shipment?.service_type, shipment?.shipment_type, shipment?.movement_type].filter(Boolean).join(' / ')}`,
         (shipment?.shipper as any)?.company_name && `Shipper: ${(shipment?.shipper as any).company_name}`,
-        shipment?.carrier_cost != null && `Rate: $${Number(shipment.carrier_cost).toFixed(2)}`,
         (shipment?.special_instructions as string) && `Instructions: ${shipment?.special_instructions}`,
     ]
 
@@ -391,8 +390,7 @@ export async function acceptTender(tenderId: string): Promise<{
             .insert({
                 company_id: companyId,
                 name: 'Cargomatic',
-                email: 'support@cargomatic.com',
-                status: 'active'
+                email: 'support@cargomatic.com'
             })
             .select('id')
             .single()
@@ -413,7 +411,7 @@ export async function acceptTender(tenderId: string): Promise<{
             companyId,
         ),
         customer_id: cargomaticCustomerId,
-        revenue: shipmentObj.carrier_cost ? Number(shipmentObj.carrier_cost) : null,
+        revenue: (shipmentObj.carrier_cost !== undefined && shipmentObj.carrier_cost !== null) ? Number(shipmentObj.carrier_cost) : null,
         notes,
     }
 
