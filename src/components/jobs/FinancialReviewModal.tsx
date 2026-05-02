@@ -26,11 +26,12 @@ interface FinancialReviewModalProps {
     titleOverride?: string
     descriptionOverride?: string
     isNested?: boolean
+    isCargomatic?: boolean
 }
 
 export function FinancialReviewModal({
     job, isOpen, onClose, onSuccess, onConfirm, isSubmitting = false,
-    titleOverride, descriptionOverride, isNested = false
+    titleOverride, descriptionOverride, isNested = false, isCargomatic = false
 }: FinancialReviewModalProps) {
     // We run the estimate algorithm locally to get base line numbers.
     // In a real app we'd trigger calculateJobCosts inside a useEffect or rely on previously saved estimates if we still wanted them generated early.
@@ -272,7 +273,10 @@ export function FinancialReviewModal({
                     <Button variant="outline" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
                     <Button onClick={handleSubmit} disabled={isSubmitting} className="bg-green-600 hover:bg-green-700 text-white">
                         <CheckCircle2 className="h-4 w-4 mr-2" />
-                        {isSubmitting ? 'Authorizing...' : 'Authorize & Finalize'}
+                        {isSubmitting
+                            ? (isCargomatic ? 'Submitting to Cargomatic...' : 'Authorizing...')
+                            : (isCargomatic ? 'Authorize & Submit to Cargomatic' : 'Authorize & Finalize')
+                        }
                     </Button>
                 </div>
             </DialogContent>

@@ -26,6 +26,8 @@ import { ProofOfDeliveryMap } from '@/components/manifests/ProofOfDeliveryMap'
 import { JobPODViewer } from '@/components/jobs/JobPODViewer'
 import { JobFinancialsCard } from '@/components/jobs/JobFinancialsCard'
 import { FinancialReviewModal } from '@/components/jobs/FinancialReviewModal'
+import { submitJobToCargomatic } from '@/actions/integrations'
+import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { useRealtimeUpdate } from '@/hooks/useRealtimeUpdate'
 import { jobKeys } from '@/hooks/useJobs'
@@ -180,6 +182,16 @@ export default function JobDetailPage() {
             await saveCostMutation.mutateAsync(costPayload as any)
 
             setIsReviewModalOpen(false)
+
+            // ── Submit to Cargomatic if applicable ──
+            if (job.source_integration === 'cargomatic') {
+                const result = await submitJobToCargomatic(id)
+                if (result.success) {
+                    toast.success('Submitted to Cargomatic', { description: result.message })
+                } else {
+                    toast.warning('Cargomatic submission issue', { description: result.message })
+                }
+            }
         } catch (err: any) {
             alert('Failed to authorize finances: ' + err.message)
         } finally {
@@ -240,6 +252,16 @@ export default function JobDetailPage() {
             queryClient.invalidateQueries({ queryKey: ['vehicles'] })
             queryClient.invalidateQueries({ queryKey: ['drivers'] })
             setEndOdometer('')
+
+            // ── Submit to Cargomatic if applicable ──
+            if (job.source_integration === 'cargomatic') {
+                const result = await submitJobToCargomatic(id)
+                if (result.success) {
+                    toast.success('Submitted to Cargomatic', { description: result.message })
+                } else {
+                    toast.warning('Cargomatic submission issue', { description: result.message })
+                }
+            }
         } catch (err: any) {
             alert('Failed to complete job: ' + err.message)
         } finally {
@@ -818,6 +840,7 @@ export default function JobDetailPage() {
                 onClose={() => setIsReviewModalOpen(false)}
                 onConfirm={handleFinancialReviewConfirm}
                 isSubmitting={isReviewSubmitting}
+                isCargomatic={job.source_integration === 'cargomatic'}
             />
         </div>
     )

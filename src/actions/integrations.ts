@@ -513,3 +513,171 @@ export async function declineTender(tenderId: string): Promise<{ success: boolea
 
     return { success: true }
 }
+
+// ─── Submit completed job back to Cargomatic ─────────────────
+
+/**
+ * Called when a dispatcher finalizes a job (Financial Review "Authorize & Finalize"
+ * or "Force Complete" / "Complete Job" button). If the job came from Cargomatic, this will:
+ *  1. Load integration credentials for the company.
+ *  2. Fetch all stops and POD photos for the job.
+ *  3. Upload POD photos to Cargomatic's S3 (via presigned URLs).
+ *  4. Mark each stop as complete in Cargomatic.
+ *  5. Append a note to the job confirming successful submission.
+ */
+export async function submitJobToCargomatic(jobId: string): Promise<{
+    success: boolean
+    message: string
+}> {
+    const serviceDb = getServiceClient()
+
+    // 1. Load the job
+    const { data: job, error: jobErr } = await serviceDb
+        .from('jobs')
+        .select(`
+            id, company_id, source_integration, external_job_ref, notes,
+            job_stops (id, type, sequence_order, status, external_stop_id),
+            proof_of_delivery (id, type, photos)
+        `)
+        .eq('id', jobId)
+        .single()
+
+    if (jobErr || !job) {
+        return { success: false, message: 'Job not found.' }
+    }
+
+    // 2. Only run for Cargomatic jobs
+    if ((job as any).source_integration !== 'cargomatic') {
+        return { success: true, message: 'Not a Cargomatic job — skipped.' }
+    }
+
+    const shipmentRef = (job as any).external_job_ref as string | null
+    if (!shipmentRef) {
+        return { success: false, message: 'No Cargomatic shipment reference found on job.' }
+    }
+
+    // 3. Load integration credentials
+    const { data: integration } = await serviceDb
+        .from('company_integrations')
+        .select('credentials, status')
+        .eq('company_id', (job as any).company_id)
+        .eq('integration_slug', 'cargomatic')
+        .single()
+
+    if (!integration || integration.status !== 'connected' || !integration.credentials) {
+        return { success: false, message: 'Cargomatic integration not connected for this company.' }
+    }
+
+    let credentials: CargomaticCredentials
+    try {
+        credentials = JSON.parse(decrypt(integration.credentials)) as CargomaticCredentials
+    } catch {
+        return { success: false, message: 'Failed to decrypt Cargomatic credentials.' }
+    }
+
+    const client = new CargomaticClient(credentials)
+    await client.authenticate()
+
+    const stops = ((job as any).job_stops ?? []).sort((a: any, b: any) => a.sequence_order - b.sequence_order)
+    const pods = ((job as any).proof_of_delivery ?? []) as Array<{ id: string; type: string; photos: string[] }>
+
+    // 4. Collect all photo URLs from POD records
+    const allPhotoUrls: string[] = pods.flatMap(p => p.photos ?? [])
+
+    // 5. Upload photos to Cargomatic and collect file names
+    const uploadedFileNames: string[] = []
+
+    if (allPhotoUrls.length > 0) {
+        // Step 5a: Register documents with Cargomatic to get S3 upload URLs
+        const docRequests = allPhotoUrls.map((url, i) => {
+            const ext = url.split('?')[0].split('.').pop() ?? 'jpg'
+            const name = `pod_${shipmentRef}_${i + 1}.${ext}`
+            return {
+                entity: 'shipment' as const,
+                entityId: shipmentRef,
+                referenceNumbers: [shipmentRef],
+                type: 'proof_of_delivery',
+                name,
+                contentType: ext === 'pdf' ? 'application/pdf' : `image/${ext}`,
+            }
+        })
+
+        let presignedDocs: Array<{ originalFileName: string; presignedUrl: string }> = []
+        try {
+            presignedDocs = await client.createDocuments(docRequests)
+        } catch (err) {
+            console.error('[Cargomatic] createDocuments failed:', err)
+            // Continue — still try to complete the stops without files
+        }
+
+        // Step 5b: Upload each file to S3 using the presigned URL
+        for (let i = 0; i < presignedDocs.length; i++) {
+            const { originalFileName, presignedUrl } = presignedDocs[i]
+            const photoUrl = allPhotoUrls[i]
+            if (!presignedUrl || !photoUrl) continue
+
+            try {
+                const fileRes = await fetch(photoUrl)
+                if (!fileRes.ok) throw new Error(`Failed to fetch photo: ${photoUrl}`)
+                const fileBuffer = await fileRes.arrayBuffer()
+                const contentType = fileRes.headers.get('content-type') ?? 'image/jpeg'
+
+                await client.uploadFileToS3(presignedUrl, fileBuffer, contentType)
+                uploadedFileNames.push(originalFileName)
+            } catch (err) {
+                console.error(`[Cargomatic] S3 upload failed for ${photoUrl}:`, err)
+            }
+        }
+    }
+
+    // 6. Mark each stop as complete in Cargomatic
+    const errors: string[] = []
+    for (const stop of stops) {
+        const stopId = (stop as any).external_stop_id as string | null
+        if (!stopId) continue // skip stops without a Cargomatic stop ID (manually-created stops)
+
+        try {
+            await client.completeStop(
+                stopId,
+                shipmentRef,
+                uploadedFileNames.length > 0 ? uploadedFileNames : undefined,
+            )
+        } catch (err: any) {
+            const msg = err?.message ?? 'Unknown error'
+            errors.push(`Stop ${stopId}: ${msg}`)
+            console.error(`[Cargomatic] completeStop failed for stop ${stopId}:`, err)
+        }
+    }
+
+    // 7. Append result note to the job
+    const existingNotes = ((job as any).notes ?? '') as string
+    const timestamp = new Date().toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' })
+    const submissionNote = errors.length === 0
+        ? `\n✅ Submitted to Cargomatic on ${timestamp}. ${uploadedFileNames.length} POD file(s) uploaded.`
+        : `\n⚠️ Cargomatic submission attempted on ${timestamp}. Errors: ${errors.join('; ')}`
+
+    await serviceDb
+        .from('jobs')
+        .update({ notes: existingNotes + submissionNote })
+        .eq('id', jobId)
+
+    // 8. Log integration event
+    await serviceDb.from('integration_events').insert({
+        company_id: (job as any).company_id,
+        integration_slug: 'cargomatic',
+        event_type: 'submit_job',
+        direction: 'outbound',
+        status: errors.length === 0 ? 'success' : 'error',
+        reference: shipmentRef,
+        payload: { jobId, filesUploaded: uploadedFileNames.length, errors },
+    })
+
+    if (errors.length > 0) {
+        return { success: false, message: `Partial submission. Some stops failed: ${errors.join('; ')}` }
+    }
+
+    return {
+        success: true,
+        message: `Job submitted to Cargomatic. ${uploadedFileNames.length} POD file(s) sent.`,
+    }
+}
