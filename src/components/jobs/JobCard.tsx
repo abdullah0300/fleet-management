@@ -112,7 +112,7 @@ export function JobCard({ job, onViewDetails }: JobCardProps) {
     const getLocationSummary = () => {
         const stops = job.job_stops?.sort((a, b) => a.sequence_order - b.sequence_order) || []
         if (stops.length === 0) return null
-
+ 
         const limitText = (text: string, limit: number = 10) => {
             if (!text) return ''
             return text.length > limit ? text.substring(0, limit) + '...' : text
