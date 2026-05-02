@@ -138,11 +138,22 @@ export class CargomaticClient {
         stopId: string,
         shipmentReference: string,
         files?: string[],
+        drayageMeta?: {
+            chassis?: string | null
+            containerId?: string | null
+            trailerId?: string | null
+        },
     ): Promise<{ success: boolean; data: unknown }> {
+        // Build meta — only include drayage fields if they have a value
+        const meta: Record<string, unknown> = { files: files ?? [] }
+        if (drayageMeta?.containerId) meta.containerId = drayageMeta.containerId
+        if (drayageMeta?.chassis)     meta.chassis     = drayageMeta.chassis
+        if (drayageMeta?.trailerId)   meta.trailerId   = drayageMeta.trailerId
+
         return this.request('POST', '/stops/complete', {
             stopId,
             shipmentReference,
-            meta: { files: files ?? [] },
+            meta,
         })
     }
 

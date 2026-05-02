@@ -293,6 +293,7 @@ export interface Database {
           driver_pay_rate_override: number | null
           source_integration: string | null
           external_job_ref: string | null
+          integration_metadata: Record<string, unknown> | null
           created_at: string
           updated_at: string
         }
@@ -321,6 +322,7 @@ export interface Database {
           customer_id?: string | null
           source_integration?: string | null
           external_job_ref?: string | null
+          integration_metadata?: Record<string, unknown> | null
           created_at?: string
           updated_at?: string
         }
@@ -349,6 +351,7 @@ export interface Database {
           customer_id?: string | null
           source_integration?: string | null
           external_job_ref?: string | null
+          integration_metadata?: Record<string, unknown> | null
           created_at?: string
           updated_at?: string
         }

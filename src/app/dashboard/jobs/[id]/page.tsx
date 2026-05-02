@@ -26,9 +26,10 @@ import { ProofOfDeliveryMap } from '@/components/manifests/ProofOfDeliveryMap'
 import { JobPODViewer } from '@/components/jobs/JobPODViewer'
 import { JobFinancialsCard } from '@/components/jobs/JobFinancialsCard'
 import { FinancialReviewModal } from '@/components/jobs/FinancialReviewModal'
-import { submitJobToCargomatic } from '@/actions/integrations'
+import { submitJobToCargomatic, transitionStopOnCargomatic } from '@/actions/integrations'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
+import { IntegrationDetailsCard } from '@/components/jobs/IntegrationDetailsCard'
 import { useRealtimeUpdate } from '@/hooks/useRealtimeUpdate'
 import { jobKeys } from '@/hooks/useJobs'
 import { formatDate, formatTime } from '@/lib/utils'
@@ -551,6 +552,13 @@ export default function JobDetailPage() {
                                 </CardContent>
                             </Card>
 
+                            {/* Integration Details Card — only for jobs from integrations */}
+                            <IntegrationDetailsCard
+                                jobId={id}
+                                sourceIntegration={job.source_integration ?? null}
+                                integrationMetadata={(job as any).integration_metadata ?? null}
+                            />
+
                             {/* Stops Card */}
                             <Card>
                                 <CardHeader className="pb-3">
@@ -684,12 +692,17 @@ export default function JobDetailPage() {
                                                                     size="sm"
                                                                     variant="outline"
                                                                     className="h-7 text-xs border-green-200 text-green-700 hover:bg-green-50 disabled:opacity-50 disabled:pointer-events-none"
-                                                                    onClick={() => updateStopMutation.mutate({
-                                                                        id: stop.id,
-                                                                        updates: {
-                                                                            actual_arrival_time: new Date().toISOString(),
+                                                                    onClick={async () => {
+                                                                        const arrivedAt = new Date().toISOString()
+                                                                        updateStopMutation.mutate({
+                                                                            id: stop.id,
+                                                                            updates: { actual_arrival_time: arrivedAt },
+                                                                        })
+                                                                        // Fire-and-forget: notify Cargomatic if applicable
+                                                                        if (job.source_integration === 'cargomatic') {
+                                                                            transitionStopOnCargomatic(id, stop.id, arrivedAt)
                                                                         }
-                                                                    })}
+                                                                    }}
                                                                     disabled={updateStopMutation.isPending || job.status !== 'in_progress'}
                                                                 >
                                                                     <MapPin className="h-3 w-3 mr-1" /> Mark Arrived

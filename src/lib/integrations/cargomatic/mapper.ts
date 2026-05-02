@@ -6,6 +6,36 @@
 import { JobInsert, JobStopInsert } from '@/types/database'
 import { CargomaticShipment, CargomaticStop, WebhookEventType } from '../types'
 
+// ─── Metadata extractor ───────────────────────────────────────
+/**
+ * Extracts all Cargomatic-specific fields from the raw webhook payload
+ * and returns them as a Record to be stored in integration_metadata.
+ * This is the ONLY place where Cargomatic-specific fields are read.
+ */
+export function extractCargomaticMetadata(
+    rawPayload: Record<string, unknown>,
+): Record<string, unknown> {
+    const shipment = (rawPayload.shipment ?? rawPayload) as Record<string, unknown>
+    const refs = ((rawPayload.referenceNumbers ?? shipment?.reference_numbers ?? []) as Array<{ name: string; value: string }>)
+    const getRef = (name: string) => refs.find(r => r.name === name)?.value ?? null
+
+    // Extract equipment (container) info from first stop's equipments array
+    const firstStop = (shipment?.stops as any[])?.[0]
+    const equipment = firstStop?.equipments?.[0]
+
+    return {
+        shipmentType:  (shipment?.shipment_type ?? rawPayload?.shipment_type ?? null) as string | null,
+        containerId:   (equipment?.equipment_id ?? getRef('equipment_id') ?? null) as string | null,
+        containerSize: (equipment?._equipmentSize ? `${equipment._equipmentSize}ft` : null) as string | null,
+        vesselName:    (shipment?.vessel_or_rail ?? null) as string | null,
+        masterBol:     getRef('master_bol'),
+        orderId:       getRef('order_id'),
+        // Chassis and trailerId are NOT known at booking time — dispatcher fills them in later
+        chassis:       null,
+        trailerId:     null,
+    }
+}
+
 export function cargomaticShipmentToJobInsert(
     shipment: CargomaticShipment,
     companyId: string,
