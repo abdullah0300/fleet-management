@@ -99,17 +99,18 @@ export default function LoginPage({
               <label className="flex items-center gap-2 cursor-pointer select-none text-gray-300">
                 <input
                   type="checkbox"
+                  name="remember"
                   className="accent-[#548EC7]"
                 />
                 Keep me logged in
               </label>
 
-              <button
-                type="button"
-                className="text-[#548EC7] hover:text-white transition underline underline-offset-4 whitespace-nowrap"
+              <Link
+                href="/forgot-password"
+                className="text-[#548EC7] hover:text-white transition underline underline-offset-4 whitespace-nowrap text-sm"
               >
                 Forgot password?
-              </button>
+              </Link>
             </div>
 
             <SubmitButton />
